@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { openDatabase, type Database } from '../../src/server/central/db.js';
 import { createCentralServer } from '../../src/server/central/http.js';
 import { addOrgMember, createOrganization, createUser, issueToken } from '../../src/server/central/identity.js';
-import { migrate, pendingMigrations } from '../../src/server/central/migrations.js';
+import { PG_MIGRATIONS, migrate, pendingMigrations } from '../../src/server/central/migrations.js';
 import { contentHash } from '../../src/sync/journal.js';
 import { syncNamespace } from '../../src/sync/namespace.js';
 import type { ChangeBatch, ChangeEntry } from '../../src/sync/types.js';
@@ -63,7 +63,7 @@ describe.skipIf(!pgAvailable)('central server (real Postgres)', () => {
   beforeAll(async () => {
     pg = await startPostgres();
     db = await openDatabase(pg.url);
-    expect((await migrate(db)).applied).toEqual(['0001-core-memory', '0002-rbac-rls', '0003-sessions']);
+    expect((await migrate(db)).applied).toEqual(PG_MIGRATIONS.map((migration) => migration.id));
     await createOrganization(db, 'acme', 'Acme');
     await createOrganization(db, 'other', 'Other');
     await createUser(db, { email: 'lead@acme.test', displayName: 'Lead', orgSlug: 'acme', role: 'admin' });

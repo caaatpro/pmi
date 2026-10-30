@@ -111,7 +111,8 @@ export class LocalSnapshots {
     const cutoff = new Date(now - keepDays * 86_400_000).toISOString();
     const latest = new Set(
       (this.db.prepare(`SELECT id FROM workspace_snapshots s WHERE created_at = (
-         SELECT MAX(created_at) FROM workspace_snapshots t WHERE COALESCE(t.session_id, t.id) = COALESCE(s.session_id, s.id))`).all() as Array<{ id: string }>)
+         SELECT MAX(created_at) FROM workspace_snapshots t
+          WHERE COALESCE(t.session_id, 'project:' || t.project_id) = COALESCE(s.session_id, 'project:' || s.project_id))`).all() as Array<{ id: string }>)
         .map((row) => row.id),
     );
     const doomed = (this.db.prepare('SELECT id FROM workspace_snapshots WHERE pinned = 0 AND created_at < ?').all(cutoff) as Array<{ id: string }>)

@@ -159,9 +159,9 @@ export async function addCheckpoint(
   const owns = ownsSession(session, user, deviceId);
   const state: SessionState = { ...input.state, userId: user.id, deviceId };
   await tx.query(
-    `INSERT INTO work.checkpoints (id, session_id, seq, trigger, state, created_by_user, device_id, orphan, created_at)
-     VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9)`,
-    [input.id, session.id, input.seq, input.trigger, JSON.stringify(state), user.id, deviceId, !owns, input.createdAt],
+    `INSERT INTO work.checkpoints (id, session_id, seq, trigger, state, created_by_user, device_id, orphan, created_at, snapshot_id)
+     VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9, $10)`,
+    [input.id, session.id, input.seq, input.trigger, JSON.stringify(state), user.id, deviceId, !owns, input.createdAt, state.workspaceSnapshotId ?? null],
   );
   if (!owns) return { outcome: 'orphan' };
   if (input.seq <= session.lastCheckpointSeq) return { outcome: 'out_of_order' };
@@ -301,7 +301,19 @@ export interface ResumePackage {
   nextAction: string | null;
   nextActionInferred: boolean;
   lastCheckpoint: SessionState['lastCheckpoint'];
-  snapshot: null;
+  /** The working copy at the last checkpoint, when one was uploaded; restore it with `pmi workspace restore`. */
+  snapshot: ResumeSnapshot | null;
+}
+
+export interface ResumeSnapshot {
+  id: string;
+  manifestSha256: string;
+  baseCommit: string;
+  branch: string | null;
+  fileCount: number;
+  totalBytes: number;
+  pinned: boolean;
+  createdAt: string;
 }
 
 /**
@@ -399,6 +411,15 @@ export async function resumeSession(
     [project.id, decisionIds, chain],
   );
   const decisionFiles = decisions.flatMap((decision) => decision.related_files ?? []);
+  const snapshotId = session.state.workspaceSnapshotId;
+  const [snapshot] = snapshotId
+    ? await tx.query<ResumeSnapshot>(
+      `SELECT id, manifest_sha256 AS "manifestSha256", base_commit AS "baseCommit", branch, file_count AS "fileCount",
+              total_bytes::float8 AS "totalBytes", pinned, created_at AS "createdAt"
+         FROM work.snapshots WHERE id = $1 AND project_id = $2`,
+      [snapshotId, project.id],
+    )
+    : [];
   const hints = resumeHints(session.state, decisionFiles);
   return {
     session: resumed,
@@ -412,6 +433,6 @@ export async function resumeSession(
     nextAction: hints.nextAction,
     nextActionInferred: hints.nextActionInferred,
     lastCheckpoint: session.state.lastCheckpoint,
-    snapshot: null,
+    snapshot: snapshot ?? null,
   };
 }

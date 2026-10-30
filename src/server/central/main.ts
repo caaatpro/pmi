@@ -35,6 +35,8 @@ import {
 } from './identity.js';
 import { migrate } from './migrations.js';
 import { expireLeases } from './sessions-repo.js';
+import { ServerBlobStorage, applyRetention } from './snapshots-repo.js';
+import path from 'node:path';
 
 declare const __MEMORIX_VERSION__: string | undefined;
 const VERSION = typeof __MEMORIX_VERSION__ === 'string' ? __MEMORIX_VERSION__ : 'dev';
@@ -49,6 +51,7 @@ Commands:
   add-member <org> <email> [--role owner|admin|member]
   issue-token <email> [--name N] [--days D]  Print a new personal access token once
   revoke-token <token-id>
+  gc                                        Apply snapshot retention and delete unused blobs
   create-team <org> <name>
   add-team-member <org> <team> <email>
   grant <org>/<project> (--user EMAIL | --team NAME) --role maintainer|developer|viewer|none
@@ -57,7 +60,7 @@ Organization owners/admins have full access to every project of their
 organization; everyone else needs a project grant (directly or via a team).
 
 Environment: PMI_DATABASE_URL (required), PMI_HOST (default 127.0.0.1), PMI_PORT (default 7420),
-PMI_LEASE_TTL (session lease seconds, default 600)`;
+PMI_LEASE_TTL (session lease seconds, default 600), PMI_BLOB_DIR (large snapshot blobs, default ./data/blobs)`;
 
 type Role = 'owner' | 'admin' | 'member';
 
@@ -120,6 +123,14 @@ export async function runServerCli(argv: string[]): Promise<number> {
         expireLeases(db).catch((error: Error) => console.error(`[pmi-server] lease expiry failed: ${error.message}`));
       }, 30_000);
       leaseJob.unref();
+      // Snapshot retention and blob GC (WORKSPACE_RECOVERY.md §7) every 6 hours.
+      const blobStorage = new ServerBlobStorage(process.env.PMI_BLOB_DIR ?? path.resolve('data', 'blobs'));
+      const retentionJob = setInterval(() => {
+        applyRetention(db, blobStorage)
+          .then((report) => console.log(JSON.stringify({ at: new Date().toISOString(), msg: 'snapshot retention', ...report })))
+          .catch((error: Error) => console.error(`[pmi-server] snapshot retention failed: ${error.message}`));
+      }, 6 * 3_600_000);
+      retentionJob.unref();
       await new Promise<void>((resolve) => server.listen(port, host, resolve));
       console.log(JSON.stringify({ at: new Date().toISOString(), msg: 'pmi-server listening', host, port, version: VERSION }));
       await new Promise<void>((resolve) => {
@@ -175,6 +186,11 @@ export async function runServerCli(argv: string[]): Promise<number> {
       const revoked = await withDatabase((db) => revokeToken(db, id));
       console.log(revoked ? `Revoked ${id}` : `No active token ${id}`);
       return revoked ? 0 : 1;
+    }
+    case 'gc': {
+      const report = await withDatabase((db) => applyRetention(db, new ServerBlobStorage(process.env.PMI_BLOB_DIR ?? path.resolve('data', 'blobs'))));
+      console.log(`Removed ${report.snapshots} snapshot(s), ${report.projectBlobs} unused project blob claim(s), ${report.blobs} blob(s)`);
+      return 0;
     }
     case 'create-team': {
       const [org, name] = rest;

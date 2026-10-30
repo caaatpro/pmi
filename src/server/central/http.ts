@@ -5,6 +5,7 @@
  * `db.asUser()`, where Postgres row-level security applies as well.
  */
 import http from 'node:http';
+import path from 'node:path';
 import { z } from 'zod';
 
 import { MEMORY_CATEGORIES, MEMORY_CONFIDENCE, MEMORY_STATUSES } from '../../domain/memory.js';
@@ -13,6 +14,7 @@ import { syncNamespace } from '../../sync/namespace.js';
 import type { ChangeBatch } from '../../sync/types.js';
 import type { Database } from './db.js';
 import { sanitizeCredentials } from '../../memory/secret-filter.js';
+import { audit } from './identity.js';
 import {
   HttpError,
   authenticate,
@@ -54,9 +56,13 @@ import {
   upsertSession,
   type SessionRow,
 } from './sessions-repo.js';
+import { ServerBlobStorage, addProjectBlob, getSnapshot, listSnapshots, missingBlobs, registerSnapshot } from './snapshots-repo.js';
+import { isSha256 } from '../../workspace-snapshot/blob-store.js';
+import type { SnapshotManifest } from '../../workspace-snapshot/snapshot.js';
 import { SESSION_STATUSES, CHECKPOINT_TRIGGERS, RESUMABLE_STATUSES, type SessionState } from '../../domain/session.js';
 
-const MAX_BODY_BYTES = 2 * 1024 * 1024;
+// Snapshot manifests of large working copies are the biggest JSON bodies.
+const MAX_BODY_BYTES = 16 * 1024 * 1024;
 
 export interface CentralServerOptions {
   db: Database;
@@ -65,12 +71,15 @@ export interface CentralServerOptions {
   leaseTtlSeconds?: number;
   /** How long an addressed handoff is reserved for its recipient. Default 24 h. */
   handoffReserveHours?: number;
+  /** Directory for blobs of 256 KiB and more. Default PMI_BLOB_DIR or ./data/blobs. */
+  blobDir?: string;
   log?: (line: Record<string, unknown>) => void;
 }
 
 interface RequestContext {
   req: http.IncomingMessage;
   res: http.ServerResponse;
+  raw: (limit: number) => Promise<Buffer>;
   url: URL;
   params: Record<string, string>;
   body: () => Promise<unknown>;
@@ -185,6 +194,28 @@ const resumeSchema = z.object({
   model: z.string().max(100).optional(),
   model_provider: z.string().max(100).optional(),
 });
+const MAX_BLOB_BYTES = 64 * 1024 * 1024;
+const missingSchema = z.object({ sha256: z.array(z.string().regex(/^[a-f0-9]{64}$/)).max(20_000) });
+const snapshotRegisterSchema = z.object({
+  device_id: deviceIdSchema,
+  manifest_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  pinned: z.boolean().optional(),
+  manifest: z.object({
+    schema: z.literal(1),
+    id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/),
+    projectId: z.string(),
+    files: z.array(z.object({ path: z.string().min(1).max(4096) }).passthrough()).max(100_000),
+    git: z.object({ head: z.string().regex(/^[a-f0-9]{40,64}$/) }).passthrough(),
+    totals: z.object({ files: z.number(), bytes: z.number() }),
+  }).passthrough(),
+});
+const restoredSchema = z.object({
+  mode: z.enum(['worktree', 'in-place']),
+  verified: z.boolean(),
+  written: z.number().int().min(0),
+  conflicts: z.number().int().min(0),
+});
+
 const sessionListSchema = z.object({
   status: z.string().optional(),
   resumable: z.enum(['true', 'false']).optional(),
@@ -427,6 +458,80 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
       return { body: pkg };
     }),
 
+    route('POST', '/v1/projects/:id/blobs/missing', async (ctx) => {
+      const user = await ctx.user();
+      const project = await authorize(db, user, ctx.params.id, 'snapshot.write');
+      const input = parse(missingSchema, await ctx.body());
+      return { body: { missing: await db.asUser(user.id, (tx) => missingBlobs(tx, project.id, input.sha256)) } };
+    }),
+
+    route('PUT', '/v1/projects/:id/blobs/:sha', async (ctx) => {
+      const user = await ctx.user();
+      const project = await authorize(db, user, ctx.params.id, 'snapshot.write');
+      const sha = ctx.params.sha;
+      if (!isSha256(sha)) throw new HttpError(400, 'invalid_blob_id', 'blob id must be a lowercase SHA-256');
+      const data = await ctx.raw(MAX_BLOB_BYTES);
+      await blobStorage.put(db, sha, data);
+      await db.asUser(user.id, (tx) => addProjectBlob(tx, project.id, user, sha));
+      return { status: 201, body: { sha256: sha, size: data.length } };
+    }),
+
+    route('GET', '/v1/projects/:id/blobs/:sha', async (ctx) => {
+      const user = await ctx.user();
+      const project = await authorize(db, user, ctx.params.id, 'snapshot.read');
+      const sha = ctx.params.sha;
+      if (!isSha256(sha)) throw new HttpError(400, 'invalid_blob_id', 'blob id must be a lowercase SHA-256');
+      const [claimed] = await db.asUser(user.id, (tx) => missingBlobs(tx, project.id, [sha]));
+      if (claimed) throw new HttpError(404, 'blob_not_found', 'blob not found');
+      const data = await blobStorage.get(db, sha);
+      ctx.res.writeHead(200, { 'content-type': 'application/octet-stream', 'content-length': data.length, 'cache-control': 'no-store' });
+      ctx.res.end(data);
+      return { raw: true, status: 200 };
+    }),
+
+    route('POST', '/v1/projects/:id/snapshots', async (ctx) => {
+      const user = await ctx.user();
+      const project = await authorize(db, user, ctx.params.id, 'snapshot.write');
+      const input = parse(snapshotRegisterSchema, await ctx.body());
+      const result = await db.asUser(user.id, (tx) => registerSnapshot(tx, project, user, {
+        deviceId: input.device_id,
+        manifest: input.manifest as unknown as SnapshotManifest,
+        manifestSha256: input.manifest_sha256,
+        pinned: Boolean(input.pinned),
+      }));
+      return { status: result.created ? 201 : 200, body: result };
+    }),
+
+    route('GET', '/v1/projects/:id/snapshots', async (ctx) => {
+      const user = await ctx.user();
+      const project = await authorize(db, user, ctx.params.id, 'snapshot.read');
+      const sessionId = ctx.url.searchParams.get('session_id') ?? undefined;
+      return { body: { snapshots: await db.asUser(user.id, (tx) => listSnapshots(tx, project.id, sessionId)) } };
+    }),
+
+    route('GET', '/v1/snapshots/:snap', async (ctx) => {
+      const user = await ctx.user();
+      const id = decodeURIComponent(ctx.params.snap);
+      const snapshot = await db.asUser(user.id, (tx) => getSnapshot(tx, id));
+      if (!snapshot) throw new HttpError(404, 'snapshot_not_found', 'snapshot not found');
+      await authorize(db, user, snapshot.projectId, 'snapshot.read');
+      return { body: { snapshot } };
+    }),
+
+    route('POST', '/v1/snapshots/:snap/restored', async (ctx) => {
+      const user = await ctx.user();
+      const id = decodeURIComponent(ctx.params.snap);
+      const snapshot = await db.asUser(user.id, (tx) => getSnapshot(tx, id));
+      if (!snapshot) throw new HttpError(404, 'snapshot_not_found', 'snapshot not found');
+      const project = await authorize(db, user, snapshot.projectId, 'snapshot.read');
+      const input = parse(restoredSchema, await ctx.body());
+      await db.asUser(user.id, (tx) => audit(tx, {
+        action: 'snapshot.restore', actorUserId: user.id, orgId: project.orgId, projectId: project.id,
+        targetType: 'snapshot', targetId: id, detail: input,
+      }));
+      return { body: { ok: true } };
+    }),
+
     route('POST', '/mcp', async (ctx) => {
       const user = await ctx.user();
       await handleMcpRequest(db, user, options.version, ctx.req, ctx.res, await ctx.body());
@@ -434,6 +539,7 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
     }),
   ];
 
+  const blobStorage = new ServerBlobStorage(options.blobDir ?? process.env.PMI_BLOB_DIR ?? path.resolve('data', 'blobs'));
   const leaseTtl = options.leaseTtlSeconds ?? (Number(process.env.PMI_LEASE_TTL) || 600);
   const handoffReserveHours = options.handoffReserveHours ?? 24;
 
@@ -500,6 +606,7 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
       url,
       params,
       body: () => readJson(req),
+      raw: (limit) => readRaw(req, limit),
       user: async () => {
         user ??= await authenticate(db, req.headers.authorization);
         return user;
@@ -523,6 +630,24 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
         send(500, { error: { code: 'internal', message: 'internal server error' } });
       },
     );
+  });
+}
+
+function readRaw(req: http.IncomingMessage, limit: number): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    req.on('data', (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > limit) {
+        reject(new HttpError(413, 'payload_too_large', `request body exceeds ${limit} bytes`));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
   });
 }
 

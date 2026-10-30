@@ -55,6 +55,9 @@ export default defineCommand({
     failed: { type: 'boolean', description: 'PMI finish: mark the session failed' },
     force: { type: 'boolean', description: 'PMI resume: take over a live session (maintainer)' },
     all: { type: 'boolean', description: 'PMI list: every status, not only resumable ones' },
+    worktree: { type: 'string', description: 'PMI resume: restore the working copy into this new worktree path' },
+    'in-place': { type: 'boolean', description: 'PMI resume: restore into this working copy (clean, same HEAD only)' },
+    'no-restore': { type: 'boolean', description: 'PMI resume: take over the session without restoring files' },
     json: { type: 'boolean', description: 'Emit machine-readable JSON output' },
   },
   run: async ({ args }) => {
@@ -238,7 +241,7 @@ export default defineCommand({
               emitError('usage: pmi session resume <session-id> [--agent codex --model gpt-5] [--force]', asJson);
               return;
             }
-            const { pkg, local } = await service.resumeSession(store, {
+            const { pkg, local, restore, restoreError } = await service.resumeSession(store, {
               projectId: project.id,
               projectRoot: project.rootPath,
               sessionId,
@@ -246,7 +249,11 @@ export default defineCommand({
               model: args.model as string | undefined,
               modelProvider: args.modelProvider as string | undefined,
               force: Boolean(args.force),
+              restore: args['no-restore']
+                ? { mode: 'none' }
+                : args['in-place'] ? { mode: 'in-place' } : { mode: 'worktree', ...(args.worktree ? { worktreePath: String(args.worktree) } : {}) },
             });
+            const { renderRestore } = await import('./workspace.js');
             await startSession(dataDir, project.id, { sessionId: local.id, agent: (args.agent as string | undefined) ?? local.state.agent ?? undefined, reader });
             const { ensureDaemon, currentCliPath } = await import('../../session/daemon.js');
             if (service.connectedProject(project.rootPath)) ensureDaemon(dataDir, currentCliPath());
@@ -258,9 +265,16 @@ export default defineCommand({
               pkg.brief,
               ...(pkg.decisions.length ? ['', '## Decision details', ...pkg.decisions.map((d) => `- ${d.title} [${d.confidence}]: ${d.summary}`)] : []),
               '',
-              'Workspace files are not restored yet (Workspace Recovery, Phase 7): check out the branch above before continuing.',
+              restore
+                ? `${renderRestore(restore)}\nContinue in: ${restore.target}`
+                : restoreError
+                  ? `Working copy NOT restored: ${restoreError}\nRetry with: pmi workspace restore ${pkg.snapshot?.id} [--worktree <path>]`
+                  : pkg.snapshot
+                    ? `Working copy not restored (--no-restore). Restore later with: pmi workspace restore ${pkg.snapshot.id}`
+                    : 'No uncommitted work to restore: the session\'s changes are in git (check out the branch above).',
             ].join('\n');
-            emitResult({ project: project.id, sessionId: local.id, ...pkg }, text, asJson);
+            emitResult({ project: project.id, sessionId: local.id, ...pkg, restore: restore ?? null, restoreError: restoreError ?? null }, text, asJson);
+            if (restoreError || (restore && !restore.verified)) process.exitCode = 2;
             return;
           }
 
@@ -381,7 +395,7 @@ export default defineCommand({
           console.log('  pmi session checkpoint [--done "a; b"] [--pending "c"] [--next "..."] [--progress "..."]');
           console.log('  pmi session handoff [--next "..."] [--to user@example.com]');
           console.log('  pmi session list [--all]');
-          console.log('  pmi session resume <session-id> [--agent codex --model gpt-5] [--force]');
+          console.log('  pmi session resume <session-id> [--agent codex --model gpt-5] [--worktree <path> | --in-place | --no-restore] [--force]');
           console.log('  pmi session finish [--failed] [--summary "..."]');
           console.log('  pmi session show [--sessionId <id>]');
           console.log('');

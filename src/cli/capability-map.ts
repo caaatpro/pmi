@@ -19,6 +19,8 @@ export const CLI_NATIVE_PARITY: Record<string, string> = Object.freeze({
   session_list: 'pmi session list',
   session_resume: 'pmi session resume',
   session_finish: 'pmi session finish',
+  workspace_snapshot: 'pmi workspace snapshot',
+  workspace_restore: 'pmi workspace restore',
   memorix_store_reasoning: 'memorix reasoning store',
   memorix_search_reasoning: 'memorix reasoning search',
   memorix_transfer: 'memorix transfer export|import',

@@ -12,7 +12,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { openDatabase, type Database } from '../../src/server/central/db.js';
 import { createCentralServer } from '../../src/server/central/http.js';
 import { addTeamMember, createOrganization, createTeam, createUser, issueToken } from '../../src/server/central/identity.js';
-import { migrate } from '../../src/server/central/migrations.js';
+import { PG_MIGRATIONS, migrate } from '../../src/server/central/migrations.js';
 import { contentHash } from '../../src/sync/journal.js';
 import { syncNamespace } from '../../src/sync/namespace.js';
 import type { ChangeBatch, ChangeEntry } from '../../src/sync/types.js';
@@ -298,7 +298,7 @@ describe.skipIf(!pgAvailable)('upgrade from the Phase 4 schema', () => {
         "INSERT INTO core.projects (org_id, slug, name, legacy_project_ids) VALUES ($1, 'app', 'app', ARRAY['acme/app']) RETURNING id",
         [org.id],
       );
-      expect((await migrate(legacyDb)).applied).toEqual(['0002-rbac-rls', '0003-sessions']);
+      expect((await migrate(legacyDb)).applied).toEqual(PG_MIGRATIONS.slice(1).map((migration) => migration.id));
       const [role] = await legacyDb.query<{ role: string }>('SELECT core.project_role_of($1, $2) AS role', [project.id, member.id]);
       expect(role.role).toBe('developer');
     } finally {

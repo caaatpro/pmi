@@ -15,8 +15,8 @@ PMI is a fork of [Memorix](https://github.com/AVIDS2/memorix) (Apache-2.0) that 
 | Confirm / deprecate knowledge (people only; agents cannot confirm) | Working (Phase 5), REST |
 | MCP over HTTP on the central server with per-user tokens | Working (Phase 5): `project_list`, `memory_search`, `memory_get` |
 | Peer-to-peer sync of memory records (fs / S3 / GitHub / Postgres relay) | Working (inherited), `pmi sync store push/pull` |
-| Session state, automatic checkpoints (daemon), handoff, `session list` / `session resume <id>` across users, agents and machines | Working (Phase 6); files of the working copy are not transferred yet |
-| Workspace snapshots (uncommitted changes across machines) | Planned: Phase 7 |
+| Session state, automatic checkpoints (daemon), handoff, `session list` / `session resume <id>` across users, agents and machines | Working (Phase 6) |
+| Workspace snapshots: uncommitted and unpushed work restored byte for byte on another machine (new worktree by default) | Working (Phase 7) |
 | L1/L2/L3 context engine, token metrics | Planned: Phase 8 |
 | Incremental git intelligence | Planned: Phase 9 |
 
@@ -109,8 +109,10 @@ pmi session checkpoint --done "Cart model; Tax rules" --pending "Discount codes"
 pmi session handoff --next "Validate discount codes in cart.ts"
 # another developer, another machine:
 pmi session list
-pmi session resume <session-id> --agent codex --model gpt-5
+pmi session resume <session-id> --agent codex --model gpt-5   # restores the uncommitted work into a new worktree
 ```
+
+Uncommitted work also moves on its own: `pmi workspace snapshot` on one machine, `pmi workspace restore <id>` on another. Restores go into a new git worktree unless you pass `--in-place`, which works only on a clean working copy; a file that differs from the snapshot's base is never overwritten. Files that look like secrets (`.env`, keys) are left out and listed.
 
 Agents do the same over MCP (`session_checkpoint`, `session_handoff`, `session_list`, `session_resume`). In Connected mode the PMI daemon starts automatically: it checkpoints file changes and commits without the agent, and when the agent process dies it saves a final checkpoint and frees the session for others. If the whole machine is lost, the server frees the session after its lease (`PMI_LEASE_TTL`, 10 minutes) expires.
 

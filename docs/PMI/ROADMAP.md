@@ -152,6 +152,27 @@ Snapshot builder, blob store (локальный и серверный), инк�
 
 TEST 3 + негативные тесты из WORKSPACE_RECOVERY.md §10.
 
+### Итог Phase 7 (ветка `pmi/phase-7-workspace`)
+
+| Пункт | Результат | Проверка |
+|---|---|---|
+| Snapshot | `src/workspace-snapshot/snapshot.ts`: манифест + полные тела всех изменённых, удалённых, переименованных и неотслеживаемых файлов (SHA‑256, content‑addressed), staged‑содержимое из индекса (по `git status --porcelain=v2`, без применения патчей), права и симлинки, `git bundle` незапушенных коммитов, патчи для просмотра. Секреты (по имени и содержимому) и файлы > 50 MiB исключаются и перечисляются; исключённое не попадает и в патчи. Рабочая копия не меняется | `tests/workspace-snapshot/snapshot-restore.test.ts` |
+| Restore | `src/workspace-snapshot/restore.ts`: сначала проверяются все blobs; импорт base и незапушенных коммитов из bundle; по умолчанию новый worktree (своя ветка, если исходная уже есть у получателя); in place — только чистая копия на том же HEAD; файл, отличающийся от base snapshot, не перезаписывается (версия snapshot рядом, `.pmi-<id>`); точный индекс; пересчёт SHA‑256 каждого файла; пути вне рабочей копии и в `.git` отклоняются | там же |
+| Локально | Миграция `pmi-3-workspace-snapshots`, blobs в `<data>/blobs` (gzip); одинаковый snapshot сессии не создаётся повторно; retention и GC | там же |
+| Сервер | Миграция `0004-workspace-snapshots`: `work.blobs` (< 256 KiB в Postgres, больше — том `PMI_BLOB_DIR`), `work.project_blobs` (blob виден проекту только после загрузки его участником — нет оракула «есть ли у кого‑то такой хэш»), `work.snapshots`, `work.snapshot_blobs`; RLS (developer+); регистрация проверяет хэш манифеста и наличие всех blobs (412); retention §7 и GC (`pmi-server gc`, каждые 6 ч); restore пишется в аудит | `tests/central/workspace-recovery.test.ts` |
+| Сессии | Checkpoints с триггерами `timer/fs_change/commit/manual/exit/handoff` прикладывают snapshot (если есть незакоммиченное или незапушенное); handoff‑snapshot закреплён; загрузка инкрементальная через outbox перед checkpoint; Resume Package содержит snapshot; `pmi session resume` и MCP `session_resume` восстанавливают в новый worktree, daemon дальше следит за ним | там же, `tests/session/daemon.test.ts` |
+| CLI / MCP | `pmi workspace snapshot|restore|list|show [--patch]|upload|gc`; MCP `workspace_snapshot`, `workspace_restore`; коды 2 — отказ/конфликты (ничего не перезаписано), 3 — сервер недоступен | |
+| **TEST 3** | 3 изменённых файла, удалённый, неотслеживаемый, бинарный, переименование, staged + unstaged в одном файле, исполняемый, симлинк, незапушенный коммит, игнорируемый артефакт, `.env` с ключом → snapshot → чистый клон Боба с отдельным каталогом данных: все пути совпадают побайтно, совпадают HEAD, `git status`, `git diff --cached`, `git diff`; рабочая копия Боба не тронута; `.env` исключён | ✔ (модуль и e2e) |
+| Негативные (§10) | Повторный snapshot после изменения одного файла загружает 2 blob (файл + патч); испорченный на сервере blob → отказ, на диске ничего; `--in-place` в грязную копию → код 2, файлы целы; конфликт с base → файл получателя цел, `.pmi-<id>` создан; `.env` исключён; большой файл в томе восстанавливается точно; чужой проект — 404, viewer — 403/404 | ✔ |
+
+**Отличия от проекта** (с обоснованием):
+- **Индекс восстанавливается по содержимому, а не патчем** (`git update-index --cacheinfo` со staged‑телами): patch не применяется при расхождениях, тела — всегда. Патчи сохраняются для просмотра.
+- **Сжатие gzip, а не zstd**: zstd в Node появился только в 23.8, проект поддерживает 22.18.
+- **Нет таблицы `blobs_index`**: наличие blob — это файл в хранилище, загрузку отслеживает сервер (`blobs/missing`).
+- **Страховочный snapshot перед `--in-place` не нужен**: in place разрешён только на чистой копии на том же HEAD, её состояние полностью в git.
+- **Workspace lease `branch:<repo>/<branch>` и `--via-branch`** не сделаны: restore по умолчанию идёт в новый worktree со своей веткой, а in place требует чистую копию, поэтому перезаписи чужой ветки не бывает. Шифрование blobs — Phase 10.
+- **Viewer получает 404 на детали snapshot** (RLS скрывает строку) и 403 на blobs проекта (проверка роли) — оба запрещают доступ к содержимому.
+
 ## Phase 8 — Context engine
 
 L1 overview + кэш, серверный hybrid search (tsvector + pgvector + RRF), ранжирование с учётом сессии/файлов/git, упаковка в бюджет, L3, метрики и `/metrics`, оценка экономии токенов + бенчмарк.

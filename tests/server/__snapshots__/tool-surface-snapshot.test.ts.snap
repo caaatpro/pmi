@@ -272,6 +272,7 @@ exports[`MCP tool surface > keeps the full-profile tool names and input fields s
     "agent?",
     "model?",
     "modelProvider?",
+    "restore?",
     "sessionId",
   ],
   "team_file_lock": [
@@ -316,6 +317,15 @@ exports[`MCP tool surface > keeps the full-profile tool names and input fields s
     "result?",
     "status?",
     "taskId?",
+  ],
+  "workspace_restore": [
+    "dryRun?",
+    "in_place?",
+    "snapshotId",
+    "worktreePath?",
+  ],
+  "workspace_snapshot": [
+    "sessionId?",
   ],
 }
 `;

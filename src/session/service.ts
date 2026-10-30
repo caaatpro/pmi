@@ -18,6 +18,13 @@ import {
   type Step,
 } from '../domain/session.js';
 import { readWorkspace } from './git-state.js';
+import { LocalSnapshots } from '../workspace-snapshot/local.js';
+import { downloadSnapshot, reportRestore, uploadSnapshot } from '../workspace-snapshot/remote.js';
+import { restoreSnapshot, type RestoreReport } from '../workspace-snapshot/restore.js';
+import { workspaceHasState } from '../workspace-snapshot/snapshot.js';
+
+/** Checkpoints that capture the working copy (SESSION_CONTINUITY.md §4); decisions and compactions carry state only. */
+const SNAPSHOT_TRIGGERS: ReadonlySet<CheckpointTrigger> = new Set(['timer', 'fs_change', 'commit', 'manual', 'exit', 'handoff']);
 import { LocalSessionStore, newSessionId, type LocalCheckpoint, type LocalSession } from './local-store.js';
 
 export interface SessionUpdate {
@@ -128,11 +135,37 @@ export function checkpointSession(
   const session = store.get(sessionId);
   if (!session) throw new Error(`[pmi] unknown session ${sessionId}`);
   const reading = session.workspaceRoot ? readWorkspace(session.workspaceRoot) : undefined;
+  const snapshotId = SNAPSHOT_TRIGGERS.has(trigger) && session.workspaceRoot
+    ? takeSessionSnapshot(store, session.workspaceRoot, session.projectId, sessionId, trigger === 'handoff')
+    : undefined;
   return store.checkpoint(sessionId, trigger, {
-    mutate: (state) => ({ ...applyUpdate(state, update), ...(reading ? { git: reading.git } : {}) }),
+    mutate: (state) => ({
+      ...applyUpdate(state, update),
+      ...(reading ? { git: reading.git } : {}),
+      ...(snapshotId !== undefined ? { workspaceSnapshotId: snapshotId } : {}),
+    }),
     fingerprint: reading?.fingerprint ?? null,
     status: options.status,
   });
+}
+
+/**
+ * Snapshot the working copy for a checkpoint and queue its upload ahead of
+ * the checkpoint. Returns null for a clean, fully pushed working copy (git
+ * alone restores it) and undefined when the snapshot could not be taken —
+ * the checkpoint still records state; nothing about the work is lost.
+ */
+function takeSessionSnapshot(store: LocalSessionStore, root: string, projectId: string, sessionId: string, pinned: boolean): string | null | undefined {
+  try {
+    if (!workspaceHasState(root)) return null;
+    const snapshots = new LocalSnapshots(store.dataDir);
+    const { snapshot, reused } = snapshots.take({ root, projectId, sessionId, pinned });
+    // A reused snapshot is already queued or uploaded; a handoff re-registers it to pin it on the server.
+    if (!reused || pinned) store.enqueue(sessionId, 'snapshot', { snapshotId: snapshot.id });
+    return snapshot.id;
+  } catch {
+    return undefined;
+  }
 }
 
 export interface HandoffResult {
@@ -221,6 +254,9 @@ export async function flushOutbox(store: LocalSessionStore, env: NodeJS.ProcessE
       switch (op.kind) {
         case 'session.upsert':
           await api.post(`/v1/projects/${link.projectId}/sessions`, { device_id: deviceId, state: op.payload.state });
+          break;
+        case 'snapshot':
+          await uploadSnapshot(api, link.projectId, new LocalSnapshots(store.dataDir), String(op.payload.snapshotId));
           break;
         case 'checkpoint':
           await api.post(`/v1/sessions/${encodeURIComponent(op.sessionId)}/checkpoints`, {
@@ -336,8 +372,10 @@ export interface ResumePackage {
   nextAction: string | null;
   nextActionInferred: boolean;
   lastCheckpoint: SessionState['lastCheckpoint'];
-  snapshot: null;
+  snapshot: { id: string; manifestSha256: string; baseCommit: string; branch: string | null; fileCount: number; totalBytes: number } | null;
 }
+
+export type RestoreChoice = { mode: 'worktree'; worktreePath?: string } | { mode: 'in-place' } | { mode: 'none' };
 
 /**
  * Resume a session from the server and make it this device's live session.
@@ -345,9 +383,20 @@ export interface ResumePackage {
  */
 export async function resumeSession(
   store: LocalSessionStore,
-  input: { projectId: string; projectRoot: string | null; sessionId: string; agent?: string; model?: string; modelProvider?: string; force?: boolean; agentPid?: number | null },
+  input: {
+    projectId: string;
+    projectRoot: string | null;
+    sessionId: string;
+    agent?: string;
+    model?: string;
+    modelProvider?: string;
+    force?: boolean;
+    agentPid?: number | null;
+    /** Restore the session's working copy snapshot; default a new worktree. */
+    restore?: RestoreChoice;
+  },
   env: NodeJS.ProcessEnv = process.env,
-): Promise<{ pkg: ResumePackage; local: LocalSession }> {
+): Promise<{ pkg: ResumePackage; local: LocalSession; restore?: RestoreReport; restoreError?: string }> {
   const connection = connectedProject(input.projectRoot, env);
   if (!connection) {
     const local = store.get(input.sessionId);
@@ -375,14 +424,37 @@ export async function resumeSession(
     ...(input.model ? { model: input.model } : {}),
     ...(input.modelProvider ? { model_provider: input.modelProvider } : {}),
   });
+  // The working copy first: if the restore is refused, the session is still taken over and the
+  // refusal is reported, so the user can retry with another target without losing the lease.
+  let restore: RestoreReport | undefined;
+  let restoreError: string | undefined;
+  let workspaceRoot = input.projectRoot;
+  const choice = input.restore ?? { mode: 'worktree' };
+  if (pkg.snapshot && input.projectRoot && choice.mode !== 'none') {
+    try {
+      const snapshots = new LocalSnapshots(store.dataDir);
+      const snapshot = await downloadSnapshot(connection.api, connection.link.projectId, snapshots, pkg.snapshot.id);
+      restore = restoreSnapshot(snapshot.manifest, {
+        repoRoot: input.projectRoot,
+        mode: choice.mode,
+        ...(choice.mode === 'worktree' && choice.worktreePath ? { worktreePath: choice.worktreePath } : {}),
+        expectedManifestSha256: snapshot.manifestSha256,
+        getBlob: (sha) => snapshots.blobs.get(sha),
+      });
+      await reportRestore(connection.api, restore).catch(() => undefined);
+      workspaceRoot = restore.target;
+    } catch (error) {
+      restoreError = (error as Error).message;
+    }
+  }
   const state: SessionState = { ...pkg.session.state, projectId: input.projectId, status: 'in_progress' };
   // The server already holds this state; store it locally without queueing it back.
-  const local = store.put({ state, workspaceRoot: input.projectRoot, agentPid: input.agentPid ?? null }, false);
-  const reading = input.projectRoot ? readWorkspace(input.projectRoot) : undefined;
+  const local = store.put({ state, workspaceRoot, agentPid: input.agentPid ?? null }, false);
+  const reading = workspaceRoot ? readWorkspace(workspaceRoot) : undefined;
   if (reading) store.db.prepare('UPDATE pmi_sessions SET last_fingerprint = ? WHERE id = ?').run(reading.fingerprint, local.id);
   if (pkg.resumedFrom !== local.id) {
     const previous = store.get(pkg.resumedFrom);
     if (previous && previous.status !== 'completed') store.setStatus(previous.id, 'completed');
   }
-  return { pkg, local: store.get(local.id)! };
+  return { pkg, local: store.get(local.id)!, ...(restore ? { restore } : {}), ...(restoreError ? { restoreError } : {}) };
 }

@@ -36,6 +36,9 @@ services:
       PMI_DATABASE_URL: postgres://pmi:${POSTGRES_PASSWORD}@postgres:5432/pmi
       PMI_HOST: 0.0.0.0
       PMI_PORT: "7420"
+      PMI_BLOB_DIR: /data/blobs
+    volumes:
+      - blob-data:/data
     # `serve` applies pending migrations under an advisory lock before listening.
     entrypoint: ["node", "dist/server/central/main.js"]
     command: ["serve"]
@@ -66,6 +69,7 @@ services:
 
 volumes:
   pg-data:
+  blob-data:
   caddy-data:
   caddy-config:
 

@@ -430,3 +430,12 @@ CREATE TABLE work.metrics_events (
 | `work.checkpoints.snapshot_id` | Нет (Phase 7); добавлены `orphan`, `device_id`, `created_by_user`, `received_at` | Checkpoint от устройства, потерявшего сессию, сохраняется, но не меняет state |
 | `work.session_events` | Не создана | Шаги/решения/проблемы — в state каждого checkpoint (см. ROADMAP, итог Phase 6) |
 
+### Phase 7
+
+| Черновик | Реализация | Причина |
+|---|---|---|
+| `work.blobs.sha256 bytea`, `ref_count` | `sha256 text`, без `ref_count`; `work.project_blobs (project_id, sha256)` | Владение blob — на уровне проекта (нет оракула существования хэша); счётчик заменён проверкой ссылок при GC |
+| `work.snapshot_blobs (snapshot_id, sha256)` | + `project_id`, внешний ключ на `project_blobs` | Snapshot может ссылаться только на blobs своего проекта |
+| `storage: inline|fs|s3` | `inline|fs` | S3 — через тот же интерфейс позже |
+| SQLite `snapshots`, `snapshot_blobs`, `blobs_index` | `workspace_snapshots` (манифест целиком), blobs — файлы `<data>/blobs` | Манифест уже содержит список blobs |
+

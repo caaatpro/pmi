@@ -48,7 +48,7 @@ export interface LocalCheckpoint {
   createdAt: string;
 }
 
-export type OutboxKind = 'session.upsert' | 'checkpoint' | 'handoff' | 'finish' | 'release';
+export type OutboxKind = 'session.upsert' | 'snapshot' | 'checkpoint' | 'handoff' | 'finish' | 'release';
 
 export interface OutboxOp {
   id: number;

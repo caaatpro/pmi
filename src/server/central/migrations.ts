@@ -414,6 +414,79 @@ CREATE POLICY checkpoints_insert ON work.checkpoints FOR INSERT TO pmi_app
   WITH CHECK (core.can((SELECT s.project_id FROM work.sessions s WHERE s.id = session_id), 'developer'));
 `,
   },
+  {
+    // Phase 7: workspace snapshots and content-addressed blobs (WORKSPACE_RECOVERY.md §4).
+    // Blob bodies are shared and deduplicated, but each project must upload
+    // (prove possession of) a blob before it may reference or read it.
+    id: '0004-workspace-snapshots',
+    sql: `
+CREATE TABLE work.blobs (
+  sha256 text PRIMARY KEY CHECK (sha256 ~ '^[a-f0-9]{64}$'),
+  size bigint NOT NULL,
+  storage text NOT NULL CHECK (storage IN ('inline','fs')),
+  data bytea,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE work.project_blobs (
+  project_id uuid NOT NULL REFERENCES core.projects ON DELETE CASCADE,
+  sha256 text NOT NULL REFERENCES work.blobs,
+  uploaded_by uuid,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (project_id, sha256)
+);
+
+CREATE TABLE work.snapshots (
+  id text PRIMARY KEY,
+  project_id uuid NOT NULL REFERENCES core.projects ON DELETE CASCADE,
+  session_id text REFERENCES work.sessions ON DELETE SET NULL,
+  parent_snapshot_id text,
+  base_commit text NOT NULL,
+  branch text,
+  manifest jsonb NOT NULL,
+  manifest_sha256 text NOT NULL,
+  total_bytes bigint NOT NULL,
+  file_count int NOT NULL,
+  pinned boolean NOT NULL DEFAULT false,
+  created_by_user uuid NOT NULL,
+  device_id text NOT NULL,
+  created_at timestamptz NOT NULL,
+  registered_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX snapshots_session ON work.snapshots (session_id, created_at DESC);
+CREATE INDEX snapshots_project ON work.snapshots (project_id, created_at DESC);
+
+CREATE TABLE work.snapshot_blobs (
+  snapshot_id text NOT NULL REFERENCES work.snapshots ON DELETE CASCADE,
+  project_id uuid NOT NULL,
+  sha256 text NOT NULL,
+  PRIMARY KEY (snapshot_id, sha256),
+  FOREIGN KEY (project_id, sha256) REFERENCES work.project_blobs (project_id, sha256)
+);
+
+ALTER TABLE work.checkpoints ADD COLUMN snapshot_id text;
+
+GRANT SELECT, INSERT ON work.project_blobs, work.snapshots, work.snapshot_blobs TO pmi_app;
+GRANT UPDATE (pinned) ON work.snapshots TO pmi_app;
+
+-- Snapshot contents are working-copy code: developer and above only.
+ALTER TABLE work.project_blobs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY project_blobs_read ON work.project_blobs FOR SELECT TO pmi_app USING (core.can(project_id, 'developer'));
+CREATE POLICY project_blobs_insert ON work.project_blobs FOR INSERT TO pmi_app WITH CHECK (core.can(project_id, 'developer'));
+ALTER TABLE work.snapshots ENABLE ROW LEVEL SECURITY;
+CREATE POLICY snapshots_read ON work.snapshots FOR SELECT TO pmi_app USING (core.can(project_id, 'developer'));
+CREATE POLICY snapshots_insert ON work.snapshots FOR INSERT TO pmi_app WITH CHECK (core.can(project_id, 'developer'));
+CREATE POLICY snapshots_update ON work.snapshots FOR UPDATE TO pmi_app USING (core.can(project_id, 'developer'));
+ALTER TABLE work.snapshot_blobs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY snapshot_blobs_read ON work.snapshot_blobs FOR SELECT TO pmi_app USING (core.can(project_id, 'developer'));
+CREATE POLICY snapshot_blobs_insert ON work.snapshot_blobs FOR INSERT TO pmi_app WITH CHECK (core.can(project_id, 'developer'));
+
+CREATE FUNCTION work.snapshot_project(p_id text) RETURNS uuid
+  LANGUAGE sql STABLE SECURITY DEFINER SET search_path = work, pg_temp AS $f$
+  SELECT project_id FROM work.snapshots WHERE id = p_id
+$f$;
+`,
+  },
 ];
 
 const MIGRATION_LOCK_KEY = 74_201_001;

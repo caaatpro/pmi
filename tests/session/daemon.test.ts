@@ -118,7 +118,8 @@ describe('daemon tick (no agent help)', () => {
     expect(after.status).toBe('resumable');
     expect(after.state.completedSteps.map((step) => step.text)).toEqual(['refund table']);
     expect(store.checkpoints(session.id).at(-1)!.state.git?.modifiedFiles.map((f) => f.path)).toEqual(['refund.ts']);
-    expect(store.pendingOps().map((op) => op.kind)).toEqual(['session.upsert', 'checkpoint', 'release']);
+    expect(store.pendingOps().map((op) => op.kind)).toEqual(['session.upsert', 'snapshot', 'checkpoint', 'release']);
+    expect(after.state.workspaceSnapshotId).toMatch(/^snap_/);
   });
 
   it('releases an idle session without a checkpoint as interrupted', async () => {
@@ -144,8 +145,10 @@ describe('outbox', () => {
     const result = handoffSession(store, session.id, { next: 'b' });
     expect(result.brief).toContain('## Next action\nb');
     const flush = await flushOutbox(store, env);
-    expect(flush).toMatchObject({ sent: 0, pending: 4 });
-    expect(store.pendingOps().map((op) => op.kind)).toEqual(['session.upsert', 'checkpoint', 'checkpoint', 'handoff']);
+    expect(flush).toMatchObject({ sent: 0, pending: 6 });
+    // The repository has no remote, so its commit counts as unpushed and is snapshotted once;
+    // the handoff re-registers the same snapshot to pin it.
+    expect(store.pendingOps().map((op) => op.kind)).toEqual(['session.upsert', 'snapshot', 'checkpoint', 'snapshot', 'checkpoint', 'handoff']);
     expect(store.checkpoints(session.id).map((c) => c.seq)).toEqual([1, 2]);
   });
 

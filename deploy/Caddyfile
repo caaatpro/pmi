@@ -3,7 +3,7 @@
 {$PMI_DOMAIN} {
 	encode zstd gzip
 	request_body {
-		max_size 4MB
+		max_size 80MB
 	}
 	reverse_proxy pmi-server:7420
 }

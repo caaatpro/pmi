@@ -141,19 +141,22 @@ export function registerSessionTools(server: McpServer, ctx: SessionToolContext)
     description:
       'Continue a session someone else (or you, elsewhere) started: returns the Resume Package — handoff brief, decisions, ' +
       'files to read first, completed steps not to redo and the next action — and makes it this connection\'s session. ' +
-      'Files are not restored yet: check out the recorded branch before editing.',
+      'Uncommitted work from the session is restored into a NEW git worktree by default (your current files are never touched); ' +
+      'continue the work in the returned `workspace` path. restore="none" skips it.',
     inputSchema: {
       sessionId: z.string().min(1),
+      restore: z.enum(['worktree', 'none']).optional().describe('worktree (default): restore uncommitted work into a new worktree; none: state only'),
       agent: z.string().max(100).optional().describe('Your agent name, e.g. codex'),
       model: z.string().max(100).optional(),
       modelProvider: z.string().max(100).optional(),
     },
-  }, async ({ sessionId, agent, model, modelProvider }) => {
+  }, async ({ sessionId, agent, model, modelProvider, restore: restoreMode }) => {
     try {
       const project = ctx.project();
       const local = store();
-      const { pkg, local: resumed } = await service.resumeSession(local, {
+      const { pkg, local: resumed, restore, restoreError } = await service.resumeSession(local, {
         projectId: project.id, projectRoot: project.rootPath, sessionId, agent, model, modelProvider, agentPid: ctx.agentPid,
+        restore: restoreMode === 'none' ? { mode: 'none' } : { mode: 'worktree' },
       });
       await ctx.openMemorixSession(resumed.id, agent ?? resumed.state.agent ?? undefined);
       ctx.setConnectionSessionId(resumed.id);
@@ -163,6 +166,12 @@ export function registerSessionTools(server: McpServer, ctx: SessionToolContext)
         '',
         pkg.brief,
         ...(pkg.decisions.length ? ['', '## Decision details', ...pkg.decisions.map((d) => `- ${d.title} [${d.confidence}] (${d.id}): ${d.summary}`)] : []),
+        '',
+        restore
+          ? `Uncommitted work restored into ${restore.target} (branch ${restore.branch ?? 'detached'}, ${restore.written.length} file(s)${restore.conflicts.length ? `, ${restore.conflicts.length} conflict(s)` : ''}). Work there.`
+          : restoreError
+            ? `Uncommitted work NOT restored: ${restoreError}`
+            : pkg.snapshot ? 'Uncommitted work not restored (restore="none").' : 'No uncommitted work: everything is in git on the recorded branch.',
       ];
       return text(lines.join('\n'), {
         sessionId: resumed.id,
@@ -176,6 +185,9 @@ export function registerSessionTools(server: McpServer, ctx: SessionToolContext)
         filesToRead: pkg.filesToRead,
         decisions: pkg.decisions,
         git: state.git,
+        workspace: restore?.target ?? null,
+        restore: restore ? { target: restore.target, branch: restore.branch, written: restore.written.length, conflicts: restore.conflicts, verified: restore.verified } : null,
+        restoreError: restoreError ?? null,
       });
     } catch (error) {
       return failure(error);
