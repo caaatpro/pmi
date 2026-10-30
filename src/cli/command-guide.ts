@@ -132,21 +132,6 @@ const GUIDES: Record<string, CliCommandGuide> = {
     usage: ['memorix formation metrics'],
     notes: ['Metrics are empty until the formation pipeline has processed observations.'],
   },
-  media: {
-    summary: 'Import, inspect, derive, embed, and clean controlled local media assets.',
-    usage: [
-      'memorix media import --path ./diagram.png',
-      'memorix media attach --asset <asset-id> --title "Architecture diagram"',
-      'memorix media list --kind image',
-      'memorix media show --asset <asset-id>',
-      'memorix media derive-pdf|derive-audio --asset <asset-id> [--attach]',
-      'memorix media embed|similar --asset <asset-id>',
-      'memorix media generate image|video --prompt "..."',
-      'memorix media status|cancel --job <media-job-id>',
-      'memorix media cleanup [--max-bytes <limit>]',
-    ],
-    notes: ['Media generation is explicit and provider-gated; importing a file does not automatically send it to a model.'],
-  },
   reasoning: {
     summary: 'Capture and retrieve engineering decision rationale.',
     usage: [
@@ -232,12 +217,8 @@ const GUIDES: Record<string, CliCommandGuide> = {
     notes: ['Store sync is opt-in and never copies the live SQLite database. Default scope is the current Git project; `--scope user` relays every local project.'],
   },
   ingest: {
-    summary: 'Ingest Git and image evidence into project memory.',
-    usage: ['memorix ingest commit [--ref HEAD]', 'memorix ingest log [--count 10]', 'memorix ingest image --path ./diagram.png'],
-  },
-  workbench: {
-    summary: 'Open the interactive terminal memory control plane.',
-    usage: ['memorix workbench'],
+    summary: 'Ingest Git evidence into project memory.',
+    usage: ['memorix ingest commit [--ref HEAD]', 'memorix ingest log [--count 10]'],
   },
 };
 

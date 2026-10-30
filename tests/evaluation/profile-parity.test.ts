@@ -26,7 +26,6 @@ const MICRO_TOOLS = [
   'memorix_codegraph_status',
   'memorix_resolve',
   'memorix_session_start',
-  'memorix_media',
 ];
 
 describe('profile parity exam', () => {
@@ -43,18 +42,18 @@ describe('profile parity exam', () => {
     expect(stdio.command).toBe('memorix');
   });
 
-  it('micro stays the documented 9-tool default surface', () => {
-    expect(countToolsInProfile('micro')).toBe(9);
+  it('micro stays the documented 8-tool default surface', () => {
+    expect(countToolsInProfile('micro')).toBe(8);
     for (const name of MICRO_TOOLS) {
       expect(isToolInProfile(name, 'micro'), name).toBe(true);
     }
   });
 
   it('keeps profile descriptions tied to the actual profile map', () => {
-    expect(describeProfile('micro')).toContain('9 tools');
-    expect(describeProfile('lite')).toContain('21 tools');
-    expect(describeProfile('team')).toContain('29 tools');
-    expect(describeProfile('full')).toContain('48 tools');
+    expect(describeProfile('micro')).toContain('8 tools');
+    expect(describeProfile('lite')).toContain('20 tools');
+    expect(describeProfile('team')).toContain('28 tools');
+    expect(describeProfile('full')).toContain('46 tools');
   });
 
   it('keeps packaged memory skills aware of the reachable lite surface', () => {
@@ -65,7 +64,6 @@ describe('profile parity exam', () => {
       );
       expect(content, `${agent} memory skill`).toContain('memorix_evidence');
       expect(content, `${agent} memory skill`).toContain('memorix_feedback');
-      expect(content, `${agent} memory skill`).toContain('memorix_media');
     }
   });
 
@@ -74,7 +72,7 @@ describe('profile parity exam', () => {
     const { packagePath } = await installPiPackage({ packageDir: path.join(sandbox, 'memorix') });
     const content = readFileSync(path.join(packagePath, 'skills', 'memorix-memory', 'SKILL.md'), 'utf-8');
     expect(content).toBe(OFFICIAL_MEMORIX_SKILLS.find(skill => skill.name === 'memorix-memory')?.content);
-    for (const tool of ['memorix_evidence', 'memorix_feedback', 'memorix_media']) {
+    for (const tool of ['memorix_evidence', 'memorix_feedback']) {
       expect(content).toContain(tool);
       expect(isToolInProfile(tool, 'lite'), `${tool} must be reachable`).toBe(true);
     }

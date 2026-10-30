@@ -234,16 +234,6 @@ export function createProjectMaintenanceHandler(
       return { action: 'reschedule', delayMs: VECTOR_RETRY_DELAY_MS };
     }
 
-    if (job.kind === 'media-video-generation') {
-      const { runMiniMaxVideoGenerationJob } = await import('../media/video-jobs.js');
-      return runMiniMaxVideoGenerationJob(job, { dataDir: projectDir, projectId });
-    }
-
-    if (job.kind === 'media-audio-transcription') {
-      const { runAudioTranscriptionJob } = await import('../media/audio-jobs.js');
-      return runAudioTranscriptionJob(job, { dataDir: projectDir, projectId });
-    }
-
     if (job.kind === 'retention-archive') {
       const { archiveExpiredBatch } = await import('../memory/retention.js');
       const limit = retentionBatchSize(job.payload);

@@ -164,7 +164,6 @@ describe('OpenCode integration files', () => {
       expect(skill).toContain('CLI fallback');
       expect(skill).toContain('memorix_evidence');
       expect(skill).toContain('memorix_feedback');
-      expect(skill).toContain('memorix_media');
       expect(skill).not.toContain("project's shared memory layer");
       expect(result.generated.skillPath).toBe(skillPath);
       expect(result.generated.skillPaths).toHaveLength(OFFICIAL_SKILL_NAMES.length);

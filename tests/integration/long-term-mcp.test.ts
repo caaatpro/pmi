@@ -81,7 +81,7 @@ describe('long-term memory through the MCP micro profile', () => {
       undefined,
       { toolProfile: 'micro' } as any,
     );
-    expect(Object.keys((server as any)._registeredTools ?? {})).toHaveLength(9);
+    expect(Object.keys((server as any)._registeredTools ?? {})).toHaveLength(8);
     const store = getHandler(server as any, 'memorix_store');
     const projectContext = getHandler(server as any, 'memorix_project_context');
     const detail = getHandler(server as any, 'memorix_detail');

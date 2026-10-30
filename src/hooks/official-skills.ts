@@ -41,7 +41,6 @@ export const OFFICIAL_MEMORIX_SKILLS: OfficialMemorixSkill[] = [
       '| Check source and freshness for a memory | `memorix_evidence` | `memorix evidence list|get|events` |',
       '| Record whether a memory helped, conflicted, or was corrected | `memorix_feedback` | `memorix feedback record|show|audit` |',
       '| Track task requirements, decisions, verification, and outcome | `memorix_continuity` | `memorix continuity start|record|show|close` |',
-      '| Inspect or import controlled media | `memorix_media` | `memorix media import|attach|list|show|status` |',
       '| Learned reusable project knowledge | `memorix_store` | `memorix memory store --type <type> --entity <name> --title "<title>" "<text>"` |',
       '| Task or bug is complete/outdated | `memorix_resolve` | `memorix memory resolve --ids <ids>` |',
       '',

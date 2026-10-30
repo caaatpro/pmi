@@ -6,7 +6,7 @@
  * tools/list time causes cognitive overload.
  *
  * We provide four profiles:
- *   - "micro" (stdio default): Agent-ready project context + bounded recovery/media controls — 9 tools.
+ *   - "micro" (stdio default): Agent-ready project context + bounded recovery controls — 8 tools.
  *     Suitable for normal MCP clients where every tool schema costs context tokens.
  *   - "lite": Core memory CRUD, sessions, reasoning, continuity, retention, backup — 21 tools.
  *     Suitable for solo users who want the full memory surface without team tools.
@@ -36,12 +36,10 @@ export const TOOL_PROFILES: Record<string, ReadonlyArray<ToolProfile>> = Object.
   memorix_codegraph_status:   ['micro', 'lite', 'team', 'full'],
   memorix_resolve:            ['micro', 'lite', 'team', 'full'],
   // A fail-closed stdio server needs an explicit recovery path when a client
-  // did not launch it from the workspace. The unified media tool keeps
-  // multimodal support to one additional schema rather than enabling lite.
+  // did not launch it from the workspace.
   memorix_session_start:      ['micro', 'lite', 'team', 'full'],
-  memorix_media:              ['micro', 'lite', 'team', 'full'],
   // Evidence and feedback are deliberate operator/context-control surfaces;
-  // keep the default micro profile at its nine-tool token budget.
+  // keep the default micro profile at its eight-tool token budget.
   memorix_evidence:           ['lite', 'team', 'full'],
   memorix_feedback:           ['lite', 'team', 'full'],
   memorix_continuity:         ['lite', 'team', 'full'],
@@ -76,7 +74,6 @@ export const TOOL_PROFILES: Record<string, ReadonlyArray<ToolProfile>> = Object.
   memorix_promote:            ['full'],
   memorix_rules_sync:         ['full'],
   memorix_workspace_sync:     ['full'],
-  memorix_ingest_image:       ['full'],
   memorix_compaction_checkpoint: ['full'],
 
   // ── MCP Official Memory Server compatibility (KG tools) ──────────
@@ -145,7 +142,7 @@ export function resolveToolProfile(opts: ResolveToolProfileOpts): ToolProfile {
 export function describeProfile(profile: ToolProfile): string {
   const count = countToolsInProfile(profile);
   switch (profile) {
-    case 'micro': return `micro (agent-ready context + bounded recovery/media, ${count} tools)`;
+    case 'micro': return `micro (agent-ready context + bounded recovery, ${count} tools)`;
     case 'lite': return `lite (core memory + sessions, ${count} tools)`;
     case 'team': return `team (lite + coordination tools + dashboard + knowledge workspace, ${count} tools)`;
     case 'full': return `full (all tools including advanced / KG-compat, ${count} tools)`;

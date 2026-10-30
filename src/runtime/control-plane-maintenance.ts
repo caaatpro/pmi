@@ -8,8 +8,6 @@ import { runMaintenanceInChildProcess } from './isolated-maintenance.js';
 import { MaintenanceTargetStore } from './maintenance-targets.js';
 
 export const CONTROL_PLANE_MAINTENANCE_KINDS: readonly MaintenanceJobKind[] = [
-  'media-video-generation',
-  'media-audio-transcription',
   'retention-archive',
   'consolidation',
   'codegraph-refresh',

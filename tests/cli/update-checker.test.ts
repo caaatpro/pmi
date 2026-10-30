@@ -211,7 +211,7 @@ describe('Auto-Update', () => {
       expect(src).toContain('update-checker');
     });
 
-    it('index.ts (TUI/workbench) contains checkForUpdates() call', () => {
+    it('index.ts (usage fallback) contains checkForUpdates() call', () => {
       const src = readFileSync(
         join(__dirname, '../../src/cli/index.ts'),
         'utf-8',

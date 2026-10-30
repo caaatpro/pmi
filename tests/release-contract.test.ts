@@ -3,21 +3,8 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const repoRoot = path.resolve(__dirname, '..');
-const internalWorkspaces = [
-  'packages/ai/package.json',
-  'packages/agent-core/package.json',
-  'packages/tui/package.json',
-  'packages/memcode/package.json',
-];
 
 describe('release contract', () => {
-  it('keeps implementation workspaces private', async () => {
-    for (const workspace of internalWorkspaces) {
-      const manifest = JSON.parse(await readFile(path.join(repoRoot, workspace), 'utf-8')) as { private?: boolean };
-      expect(manifest.private, workspace).toBe(true);
-    }
-  });
-
   it('publishes only the supported root package', async () => {
     const workflow = await readFile(path.join(repoRoot, '.github', 'workflows', 'publish.yml'), 'utf-8');
     expect(workflow).toContain('npm publish --provenance --access public');

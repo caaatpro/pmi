@@ -5,8 +5,8 @@ export interface CliInteractivity {
 
 /**
  * MCP hosts start package commands with piped stdio, while a human terminal
- * has TTYs on both streams. Keep the friendly memcode default for humans and
- * make the package safe for registry probes and generic MCP launchers.
+ * has TTYs on both streams. Humans get the usage summary, while piped
+ * launches (registry probes, generic MCP launchers) start the MCP server.
  */
 export function shouldDefaultToMcp(options: CliInteractivity = {}): boolean {
   const stdinIsTTY = options.stdinIsTTY ?? process.stdin.isTTY;

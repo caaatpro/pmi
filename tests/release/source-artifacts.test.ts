@@ -8,7 +8,6 @@ const allowedTrackedSourceArtifacts = new Set([
   'src/embedding/fastembed.d.ts',
   'src/embedding/transformers.d.ts',
   'src/globals.d.ts',
-  'src/types/memcode.d.ts',
 ]);
 
 function siblingSourceForArtifact(file: string): string {

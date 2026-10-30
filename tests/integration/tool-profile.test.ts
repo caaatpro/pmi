@@ -114,7 +114,6 @@ describe('Tool profile registration', () => {
       'memorix_codegraph_status',
       'memorix_context_pack',
       'memorix_detail',
-      'memorix_media',
       'memorix_project_context',
       'memorix_resolve',
       'memorix_search',

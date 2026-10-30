@@ -7,7 +7,6 @@ import identityCommand from '../../src/cli/commands/identity.js';
 import memoryCommand from '../../src/cli/commands/memory.js';
 import sessionCommand from '../../src/cli/commands/session.js';
 import taskCommand from '../../src/cli/commands/task.js';
-import { getRecentMemories, searchMemories } from '../../src/cli/tui/data.js';
 import { closeAllDatabases } from '../../src/store/sqlite-db.js';
 import { resetObservationStore } from '../../src/store/obs-store.js';
 import { resetSessionStore } from '../../src/store/session-store.js';
@@ -112,8 +111,13 @@ describe('CLI identity control plane', () => {
       visibility: 'personal',
       createdByAgentId: agent.agent_id,
     });
-    expect(await searchMemories('credential rotation')).toHaveLength(1);
-    expect((await getRecentMemories()).map((entry) => entry.id)).toContain(privateObservation.id);
+    const ownerSearch = await runCommand(memoryCommand, {
+      _: ['search'],
+      query: 'credential rotation',
+      json: true,
+    });
+    expect(ownerSearch.exitCode).toBe(0);
+    expect(JSON.parse(ownerSearch.stdout).entries).toHaveLength(1);
 
     const unsafePromotion = await runCommand(memoryCommand, {
       _: ['promote'],
@@ -141,7 +145,6 @@ describe('CLI identity control plane', () => {
     });
     expect(hidden.exitCode).toBe(0);
     expect(JSON.parse(hidden.stdout).entries).toHaveLength(0);
-    expect(await searchMemories('credential rotation')).toHaveLength(0);
 
     const restored = await runCommand(identityCommand, {
       _: ['use'],

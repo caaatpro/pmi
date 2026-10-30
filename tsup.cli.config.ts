@@ -2,7 +2,7 @@ import { defineConfig } from 'tsup';
 import { cliBanner, cliExternal, cliNoExternal, define } from './tsup.shared.js';
 
 export default defineConfig({
-  entry: { 'cli/index': 'src/cli/index.ts', 'cli/memcode': 'src/cli/memcode.ts' },
+  entry: { 'cli/index': 'src/cli/index.ts' },
   format: ['esm'],
   target: 'node20',
   dts: true,
@@ -19,5 +19,5 @@ export default defineConfig({
   esbuildOptions(options) {
     options.jsx = 'automatic';
   },
-  onSuccess: 'node scripts/copy-static.cjs && node scripts/copy-memcode-runtime.cjs',
+  onSuccess: 'node scripts/copy-static.cjs',
 });

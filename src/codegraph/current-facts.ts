@@ -132,7 +132,6 @@ function detectStaleProgressNotes(input: {
     'ACTIVE_WORK.md',
     'progress.txt',
     'docs/dev-log/progress.txt',
-    'docs/memcode/dev-log/progress.txt',
   ];
   const notes: ProjectStaleNote[] = [];
 

@@ -18,7 +18,6 @@ export const CLI_NATIVE_PARITY: Record<string, string> = Object.freeze({
   memorix_search_reasoning: 'memorix reasoning search',
   memorix_transfer: 'memorix transfer export|import',
   memorix_retention: 'memorix retention status|archive|stale',
-  memorix_media: 'memorix media import|attach|list|show|generate|status',
   memorix_evidence: 'memorix evidence list|get|sync|stale|events',
   memorix_feedback: 'memorix feedback record|show|audit',
   memorix_continuity: 'memorix continuity start|record|show|list|close',
@@ -37,7 +36,6 @@ export const CLI_NATIVE_PARITY: Record<string, string> = Object.freeze({
   memorix_promote: 'memorix memory promote',
   memorix_rules_sync: 'memorix sync rules',
   memorix_workspace_sync: 'memorix sync workspace',
-  memorix_ingest_image: 'memorix ingest image',
 });
 
 export const MCP_ONLY_COMPATIBILITY_TOOLS = Object.freeze([

@@ -16,12 +16,7 @@ export const cliExternal = [
   'fastembed',
   '@huggingface/transformers',
   'better-sqlite3',
-  'ink',
-  'react',
-  'react/jsx-runtime',
-  'yoga-wasm-web',
   '@silvia-odwyer/photon-node',
-  '@memorix/memcode',
   '@modelcontextprotocol/server',
   '@modelcontextprotocol/server/stdio',
   '@modelcontextprotocol/node',
@@ -29,5 +24,5 @@ export const cliExternal = [
 ];
 
 export const cliNoExternal = [
-  /^(?!(?:fastembed|@huggingface\/transformers|better-sqlite3|ink|react|yoga-wasm-web|@silvia-odwyer\/photon-node|@memorix\/memcode|@modelcontextprotocol\/(?:server|node)|typescript))/,
+  /^(?!(?:fastembed|@huggingface\/transformers|better-sqlite3|@silvia-odwyer\/photon-node|@modelcontextprotocol\/(?:server|node)|typescript))/,
 ];
