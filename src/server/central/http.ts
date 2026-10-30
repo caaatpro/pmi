@@ -44,6 +44,7 @@ import {
 import { pendingMigrations } from './migrations.js';
 import { buildServerContext, getOverview, hybridSearch, recordMetric, type ServerEmbeddings } from './context-repo.js';
 import { createMetrics } from './metrics.js';
+import { applyReconcile, getCursor, postCommits, relatedFiles, resolveRepository, type PostedCommit } from './git-repo.js';
 import { timingSafeEqual } from 'node:crypto';
 import {
   addCheckpoint,
@@ -236,6 +237,51 @@ const restoredSchema = z.object({
   verified: z.boolean(),
   written: z.number().int().min(0),
   conflicts: z.number().int().min(0),
+});
+
+const shaSchema = z.string().regex(/^[0-9a-f]{40,64}$/);
+const cursorQuerySchema = z.object({ root_commit: shaSchema, branch: z.string().min(1).max(255) });
+const changeSchema = z.object({
+  path: z.string().max(4096),
+  status: z.enum(['A', 'M', 'D', 'R', 'C', 'T']),
+  oldPath: z.string().max(4096).optional(),
+  additions: z.number().int().min(0),
+  deletions: z.number().int().min(0),
+});
+const proposalSchema = z.object({
+  topicKey: z.string().max(300),
+  category: z.enum(MEMORY_CATEGORIES),
+  confidence: z.enum(['observed', 'inferred']),
+  title: z.string().max(300),
+  content: z.string().max(20_000),
+  facts: z.array(z.string().max(1000)).max(200),
+  files: z.array(z.string().max(4096)).max(500),
+  commit: shaSchema,
+  component: z.string().max(200),
+});
+const commitsSchema = z.object({
+  root_commit: shaSchema,
+  branch: z.string().min(1).max(255),
+  legacy_project_id: z.string().min(1).max(512),
+  expected_cursor: shaSchema.nullable(),
+  new_cursor: shaSchema,
+  rewritten: z.boolean().default(false),
+  commits: z.array(z.object({
+    sha: shaSchema,
+    parents: z.array(shaSchema).max(16),
+    author: z.string().max(300),
+    committedAt: z.string().max(64),
+    subject: z.string().max(2000),
+    changes: z.array(changeSchema).max(5000),
+    classification: z.record(z.any()),
+    proposals: z.array(proposalSchema).max(20),
+  })).max(100),
+});
+const reconcileSchema = z.object({
+  root_commit: shaSchema,
+  branch: z.string().min(1).max(255),
+  head: shaSchema,
+  findings: z.array(z.object({ id: z.string().max(1024), missing: z.array(z.string().max(4096)).max(500) })).max(20_000),
 });
 
 const sessionListSchema = z.object({
@@ -613,6 +659,43 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
       ctx.res.writeHead(200, { 'content-type': 'text/plain; version=0.0.4; charset=utf-8', 'cache-control': 'no-store' });
       ctx.res.end(text);
       return { raw: true, status: 200 };
+    }),
+
+    route('GET', '/v1/projects/:id/git/cursor', async (ctx) => {
+      const user = await ctx.user();
+      const project = await authorize(db, user, ctx.params.id, 'memory.read');
+      const query = parse(cursorQuerySchema, Object.fromEntries(ctx.url.searchParams));
+      const repositoryId = await resolveRepository(db, project.id, query.root_commit);
+      const cursor = await db.asUser(user.id, (tx) => getCursor(tx, repositoryId, query.branch));
+      return { body: { repositoryId, ...cursor } };
+    }),
+
+    route('POST', '/v1/projects/:id/git/commits', async (ctx) => {
+      const user = await ctx.user();
+      const project = await authorize(db, user, ctx.params.id, 'git.analyze');
+      const input = parse(commitsSchema, await ctx.body());
+      const report = await db.asUser(user.id, (tx) => postCommits(tx, db, project, user, {
+        rootCommit: input.root_commit, branch: input.branch, legacyProjectId: input.legacy_project_id,
+        expectedCursor: input.expected_cursor, newCursor: input.new_cursor, rewritten: input.rewritten,
+        commits: input.commits as unknown as PostedCommit[],
+      }));
+      metrics.inc('pmi_git_commits_analyzed_total', {}, report.analyzed);
+      return { body: report };
+    }),
+
+    route('GET', '/v1/projects/:id/git/related-files', async (ctx) => {
+      const user = await ctx.user();
+      const project = await authorize(db, user, ctx.params.id, 'memory.read');
+      return { body: { memories: await db.asUser(user.id, (tx) => relatedFiles(tx, project.id)) } };
+    }),
+
+    route('POST', '/v1/projects/:id/git/reconcile', async (ctx) => {
+      const user = await ctx.user();
+      const project = await authorize(db, user, ctx.params.id, 'git.analyze');
+      const input = parse(reconcileSchema, await ctx.body());
+      return { body: await db.asUser(user.id, (tx) => applyReconcile(tx, db, project, user, {
+        rootCommit: input.root_commit, branch: input.branch, head: input.head, findings: input.findings,
+      })) };
     }),
 
     route('POST', '/mcp', async (ctx) => {

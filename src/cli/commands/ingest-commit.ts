@@ -70,6 +70,16 @@ export default defineCommand({
     const auto = !!args.auto;
     const force = !!args.force;
 
+    // Hooks call `ingest commit --auto`: that is incremental analysis now, so
+    // commits the hook missed (pull, rebase, another machine) are caught up too.
+    if (auto && !args.ref) {
+      const { getGitConfig } = await import('../../config.js');
+      if (getGitConfig().ingestOnCommit === false) process.exit(0);
+      const { runGitAnalyze } = await import('./git.js');
+      await runGitAnalyze({ cwd, auto: true, json: false, full: false });
+      return;
+    }
+
     if (!auto) p.intro(`Ingest commit: ${ref}`);
 
     try {

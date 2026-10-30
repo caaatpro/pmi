@@ -22,7 +22,7 @@ PMI (Project Memory Infrastructure) is a TypeScript/Node fork of Memorix. The ta
 - `src/server/central/` — `pmi-server`: Postgres schema, HTTP API, tokens
 - `src/client/` — Connected-mode client config (`~/.pmi`, `.pmi/project.json`) and API client
 - `src/sync/` — replication of memory records (PMI server, fs/S3/GitHub/Postgres relays)
-- `src/git/` — commit ingest and git hooks
+- `src/git/` — incremental git analysis (pipeline, classifiers, local sink), commit ingest and hooks
 - `src/hooks/`, `src/workspace/` — agent hook normalization and MCP config installers
 - `src/workspace-snapshot/` — git worktree helpers (Workspace Recovery, Phase 7)
 - `src/cli/` — `pmi` / `memorix` CLI

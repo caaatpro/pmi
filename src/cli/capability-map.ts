@@ -20,6 +20,7 @@ export const CLI_NATIVE_PARITY: Record<string, string> = Object.freeze({
   memory_get: 'pmi memory detail',
   memory_save: 'pmi memory store',
   decision_log: 'pmi reasoning store',
+  git_analyze: 'pmi git analyze',
   session_checkpoint: 'pmi session checkpoint',
   session_handoff: 'pmi session handoff',
   session_list: 'pmi session list',

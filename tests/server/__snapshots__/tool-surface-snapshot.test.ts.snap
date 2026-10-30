@@ -20,6 +20,9 @@ exports[`MCP tool surface > keeps the full-profile tool names and input fields s
     "query?",
     "title?",
   ],
+  "git_analyze": [
+    "full?",
+  ],
   "memorix_audit_project": [
     "threshold?",
   ],

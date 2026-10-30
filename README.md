@@ -19,7 +19,7 @@ PMI is a fork of [Memorix](https://github.com/AVIDS2/memorix) (Apache-2.0) that 
 | Workspace snapshots: uncommitted and unpushed work restored byte for byte on another machine (new worktree by default) | Working (Phase 7) |
 | Context engine: L1 overview, task-ranked L2 within a token budget, L3 history on request; hybrid search (keyword + pgvector, RRF); Prometheus metrics and token-savings estimate | Working (Phase 8) |
 | PMI MCP tools: `context_build`, `project_overview`, `memory_search/get/save`, `decision_log`, `session_*`, `workspace_*` | Working; `memorix_*` tools remain |
-| Incremental git intelligence | Planned: Phase 9 |
+| Incremental git intelligence: only new commits are read; dependency, API, structure, deletion, fix and constraint changes become memories; knowledge about changed files is marked for review; one shared cursor per team | Working (Phase 9): `pmi git analyze`, `pmi git-hook` |
 
 The design lives in [docs/PMI](docs/PMI):
 [AUDIT](docs/PMI/AUDIT.md) ·

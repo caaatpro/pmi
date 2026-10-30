@@ -28,6 +28,8 @@ export interface ProjectLink {
   slug: string;
   legacyProjectId: string;
   linkedAt: string;
+  /** Optional: path prefixes holding business logic, for git analysis (`business_logic` memories). */
+  domainPaths?: string[];
 }
 
 export function pmiHome(env: NodeJS.ProcessEnv = process.env): string {

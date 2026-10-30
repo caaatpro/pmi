@@ -55,6 +55,7 @@ export type ProjectAction =
   | 'session.force'
   | 'snapshot.read'
   | 'snapshot.write'
+  | 'git.analyze'
   | 'project.manage';
 
 const ROLE_RANK: Record<ProjectRole, number> = { viewer: 1, developer: 2, maintainer: 3, admin: 4 };
@@ -71,6 +72,7 @@ export const ACTION_MIN_ROLE: Record<ProjectAction, ProjectRole> = {
   // Snapshots carry working-copy code (WORKSPACE_RECOVERY.md, SESSION_CONTINUITY.md §8).
   'snapshot.read': 'developer',
   'snapshot.write': 'developer',
+  'git.analyze': 'developer',
   'project.manage': 'maintainer',
 };
 

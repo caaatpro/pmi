@@ -68,6 +68,7 @@ export function createMetrics(): Metrics {
   metrics.describe('pmi_context_build_ms_sum', 'counter', 'Total time spent building context packages');
   metrics.describe('pmi_context_cache_hits_total', 'counter', 'Context builds served from the cached L1 overview');
   metrics.describe('pmi_memory_retrieval_total', 'counter', 'Memory search and get calls');
+  metrics.describe('pmi_git_commits_analyzed_total', 'counter', 'Commits analyzed by incremental git analysis');
   metrics.describe('pmi_memories', 'gauge', 'Live memories by category');
   metrics.describe('pmi_sessions', 'gauge', 'Sessions by status');
   metrics.describe('pmi_session_recovery_total', 'gauge', 'Session resumes by result');

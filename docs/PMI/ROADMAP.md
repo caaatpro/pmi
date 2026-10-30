@@ -204,6 +204,25 @@ TEST 6, существующие evaluation‑гейты не деградиру
 
 TEST 5.
 
+### Итог Phase 9 (ветка `pmi/phase-9-git`)
+
+| Пункт | Результат | Проверка |
+|---|---|---|
+| Конвейер | `src/git/pipeline.ts`: читается только `cursor..HEAD` (`rev-list --reverse --topo-order`); переписанная история (rebase, force push, reset) — от merge‑base с пометкой `rewritten`; первый запуск — окно последних `PMI_GIT_INITIAL_COMMITS` (50) коммитов; один `git log --raw -M --numstat` на 50 коммитов; diff манифестов и дерево верхнего уровня родителя — только для коммитов, которым они нужны; root commit вычисляется один раз и кэшируется; git‑раннер внедряемый | `tests/git/analyze-local.test.ts` (перехват всех вызовов git) |
+| Классификаторы | `src/git/classify.ts`, без LLM: зависимости (npm, pip, go, cargo, pyproject, composer, gem — добавлено/удалено/обновлено), API/контракты, структура (новые части верхнего уровня, Docker/CI/сборка), удалённые файлы, исправления (conventional `fix:`, `fixes #N`), ограничения рантайма, бизнес‑логика по `domainPaths` из `.pmi/project.json`; merge‑коммиты не классифицируются повторно | там же |
+| Знания | На каждый коммит — `git_history` (observed); на каждый сработавший класс — `inferred`‑запись нужной категории, связь `derived_from` с коммитом; topic key на коммит — повторный анализ обновляет, а не дублирует | там же, `tests/central/git-analyze.test.ts` |
+| Устаревание | Коммит изменил, переименовал или удалил связанные файлы → `observed/inferred` знание получает пометку review (статус PMI `needs_review`, хранится отдельно от статуса Memorix — `observations.review`, локальная миграция `pmi-4-git-intelligence`; снимается при перезаписи памяти); удалены все файлы → «рассмотреть deprecate»; `confirmed` не меняется — создаётся задача review (`active_task`); записи моложе 24 ч до коммита (о самом изменении) не помечаются | оба теста |
+| Полная сверка | `pmi git analyze --full`: все `related_files` активного знания проверяются в дереве HEAD; отсутствующие → review; отметка `last_full_reconcile_at` | оба теста |
+| Connected mode | Миграция `0006-git-intelligence`: `work.git_cursors` (общий курсор на репозиторий и ветку), `work.git_commits`; RLS. Клиент анализирует диапазон и отправляет результат; сервер атомарно (ожидаемый курсор, иначе `409 cursor_moved` и повтор) записывает коммиты, сам создаёт записи (writer `pmi-server`, клиенты получают их через sync), помечает устаревшее, двигает курсор, пишет аудит. `GET /v1/projects/:id/git/cursor`, `POST .../git/commits`, `GET .../git/related-files`, `POST .../git/reconcile` | `tests/central/git-analyze.test.ts` |
+| Запуск | `pmi git analyze [--full] [--auto] [--json]`; хуки `post-commit`, `post-merge`, `post-checkout` (`pmi git-hook`) вызывают `memorix git analyze --auto` в фоне; ранее установленный `ingest commit --auto` стал обёрткой над тем же анализом; daemon анализирует рабочие копии живых сессий в Connected mode перед синхронизацией памяти; MCP `git_analyze`; метрика `pmi_git_commits_analyzed_total` | `tests/git/hooks.test.ts` |
+| **TEST 5** | 5 коммитов (зависимость, API, удаление, fix, rename): обработано ровно 5, курсор сдвинут, записи по классам, связанная запись о переименованном файле — needs_review, повтор — 0 коммитов; git вызывается только для коммитов `cursor..HEAD` (перехват раннера). В Connected mode две машины запускают анализ одновременно — суммарно 5, без повторов; знание и пометка доходят до второй машины через sync | ✔ (оба режима) |
+
+**Отличия и перенос** (с обоснованием):
+- **Сигнатуры экспортируемых символов через codegraph** для класса API не используются: правило — пути роутинга/контрактов. Подключение codegraph к анализу коммитов — после разрезки `server.ts` (отдельная сессия), где живёт инициализация codegraph.
+- **LLM‑обобщение коммитов (`PMI_GIT_LLM`)** не делалось — опция ТЗ, без неё анализ полностью детерминирован.
+- **Плановая еженедельная сверка на сервере** не нужна в виде джоба: сервер не видит рабочую копию; сверку запускает клиент (`--full`), сервер хранит `last_full_reconcile_at`.
+- **В Local mode daemon не анализирует коммиты** (это делают хуки, CLI и MCP): локальная запись памяти требует инициализации хранилища наблюдений в процессе daemon.
+
 ## Phase 10 — Hardening
 
 Security review (auth, RLS, path traversal в restore, zip‑slip в bundle, размеры тел), шифрование blobs, TLS‑конфигурация, нагрузочный тест (100k записей, 20 клиентов), backup/restore drill, чек‑лист эксплуатации, полная документация пользователя и оператора, финальный прогон всех 10 acceptance‑тестов в Docker Compose‑окружении.

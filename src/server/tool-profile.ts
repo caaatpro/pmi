@@ -1,16 +1,16 @@
 /**
  * Tool Profile System — Progressive Disclosure for MCP tools
  *
- * The full tool set contains 50 tools, but most users only ever
+ * The full tool set contains 51 tools, but most users only ever
  * use a small subset (store / search / detail). Exposing all of them at
  * tools/list time causes cognitive overload.
  *
  * We provide four profiles:
  *   - "micro" (stdio default): Agent-ready project context + bounded recovery controls — 8 tools.
  *     Suitable for normal MCP clients where every tool schema costs context tokens.
- *   - "lite": Core memory CRUD, sessions, reasoning, continuity, retention, backup, PMI context, sessions and workspace recovery — 33 tools.
+ *   - "lite": Core memory CRUD, sessions, reasoning, continuity, retention, backup, PMI context, git, sessions and workspace recovery — 34 tools.
  *     Suitable for solo users who want the full memory surface without team tools.
- *   - "team" (HTTP default): lite + coordination tools, dashboard, and Knowledge Workspace — 41 tools.
+ *   - "team" (HTTP default): lite + coordination tools, dashboard, and Knowledge Workspace — 42 tools.
  *     Suitable when an operator explicitly wants task/message/lock surfaces.
  *   - "full": Everything, including niche / advanced tools (consolidate, dedup,
  *     formation metrics, skills, rules/workspace sync).
@@ -61,6 +61,7 @@ export const TOOL_PROFILES: Record<string, ReadonlyArray<ToolProfile>> = Object.
   memory_get:                 ['lite', 'team', 'full'],
   memory_save:                ['lite', 'team', 'full'],
   decision_log:               ['lite', 'team', 'full'],
+  git_analyze:                ['lite', 'team', 'full'],
   // PMI session continuity (src/mcp/tools/session.ts)
   session_checkpoint:         ['lite', 'team', 'full'],
   session_handoff:            ['lite', 'team', 'full'],

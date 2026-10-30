@@ -522,6 +522,47 @@ ALTER TABLE work.metrics_events ENABLE ROW LEVEL SECURITY;
 CREATE POLICY metrics_insert ON work.metrics_events FOR INSERT TO pmi_app WITH CHECK (project_id IS NULL OR core.can(project_id, 'viewer'));
 `,
   },
+  {
+    // Phase 9: incremental git analysis shared by every client of a project (CONTEXT_ENGINE.md §7).
+    id: '0006-git-intelligence',
+    sql: `
+CREATE TABLE work.git_cursors (
+  repository_id uuid NOT NULL REFERENCES core.repositories ON DELETE CASCADE,
+  project_id uuid NOT NULL REFERENCES core.projects ON DELETE CASCADE,
+  branch text NOT NULL,
+  last_analyzed_commit text NOT NULL,
+  last_full_reconcile_at timestamptz,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (repository_id, branch)
+);
+
+CREATE TABLE work.git_commits (
+  repository_id uuid NOT NULL REFERENCES core.repositories ON DELETE CASCADE,
+  project_id uuid NOT NULL REFERENCES core.projects ON DELETE CASCADE,
+  sha text NOT NULL,
+  parents text[] NOT NULL,
+  author text NOT NULL,
+  committed_at timestamptz NOT NULL,
+  subject text NOT NULL,
+  changes jsonb NOT NULL,
+  classification jsonb NOT NULL,
+  rewritten boolean NOT NULL DEFAULT false,
+  analyzed_at timestamptz NOT NULL DEFAULT now(),
+  analyzed_by uuid,
+  PRIMARY KEY (repository_id, sha)
+);
+
+GRANT SELECT, INSERT, UPDATE ON work.git_cursors TO pmi_app;
+GRANT SELECT, INSERT ON work.git_commits TO pmi_app;
+ALTER TABLE work.git_cursors ENABLE ROW LEVEL SECURITY;
+CREATE POLICY git_cursors_read ON work.git_cursors FOR SELECT TO pmi_app USING (core.can(project_id, 'viewer'));
+CREATE POLICY git_cursors_write ON work.git_cursors FOR INSERT TO pmi_app WITH CHECK (core.can(project_id, 'developer'));
+CREATE POLICY git_cursors_update ON work.git_cursors FOR UPDATE TO pmi_app USING (core.can(project_id, 'developer'));
+ALTER TABLE work.git_commits ENABLE ROW LEVEL SECURITY;
+CREATE POLICY git_commits_read ON work.git_commits FOR SELECT TO pmi_app USING (core.can(project_id, 'viewer'));
+CREATE POLICY git_commits_insert ON work.git_commits FOR INSERT TO pmi_app WITH CHECK (core.can(project_id, 'developer'));
+`,
+  },
 ];
 
 const MIGRATION_LOCK_KEY = 74_201_001;

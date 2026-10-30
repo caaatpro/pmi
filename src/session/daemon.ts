@@ -168,7 +168,19 @@ export async function runDaemon(dataDir: string, env: NodeJS.ProcessEnv = proces
         lastMemorySync = Date.now();
         const roots = new Set(store.list({ statuses: LIVE_STATUSES, deviceOnly: true }).map((session) => session.workspaceRoot).filter((root): root is string => Boolean(root)));
         const { syncProjectMemory } = await import('./memory-sync.js');
+        const { analyzeProject } = await import('../git/analyze.js');
+        const { readProjectLink } = await import('../client/config.js');
         for (const root of roots) {
+          try {
+            // New commits first (Connected mode: the server writes their memories), then sync pulls them in.
+            const link = readProjectLink(root);
+            if (link) {
+              const git = await analyzeProject({ dataDir, projectId: link.legacyProjectId, root, env });
+              if (git.commitsAnalyzed) log({ at: new Date().toISOString(), msg: 'commits analyzed', root, commits: git.commitsAnalyzed, memories: git.memoriesWritten, review: git.staleMarked });
+            }
+          } catch (error) {
+            if (!(error as { offline?: boolean }).offline) log({ at: new Date().toISOString(), level: 'warn', msg: 'git analysis failed', root, error: (error as Error).message });
+          }
           try {
             const sync = await syncProjectMemory(dataDir, root, env);
             if (sync && (sync.pushed || sync.applied || sync.tombstoned)) log({ at: new Date().toISOString(), msg: 'memory synced', root, pushed: sync.pushed, applied: sync.applied });
