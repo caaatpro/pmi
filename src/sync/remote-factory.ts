@@ -8,28 +8,49 @@
  */
 
 import type { SyncRemote } from './types.js';
+import type { ProjectLink } from '../client/config.js';
 
-export type SyncProvider = 'fs' | 'github' | 's3' | 'postgres';
+export type SyncProvider = 'fs' | 'github' | 's3' | 'postgres' | 'pmi';
 
 export interface SyncConfig {
   enabled: boolean;
   provider?: SyncProvider;
 }
 
-export function resolveSyncConfig(env: NodeJS.ProcessEnv = process.env): SyncConfig {
+/**
+ * An explicit `MEMORIX_SYNC_PROVIDER` wins; otherwise a working copy linked
+ * with `pmi project link` syncs with its PMI server.
+ */
+export function resolveSyncConfig(env: NodeJS.ProcessEnv = process.env, link?: ProjectLink): SyncConfig {
   const provider = env.MEMORIX_SYNC_PROVIDER as SyncProvider | undefined;
-  if (!provider) return { enabled: false };
-  if (provider !== 'fs' && provider !== 'github' && provider !== 's3' && provider !== 'postgres') {
-    throw new Error(`[memorix] unknown MEMORIX_SYNC_PROVIDER "${provider}" (expected fs|github|s3|postgres)`);
+  if (!provider) return link ? { enabled: true, provider: 'pmi' } : { enabled: false };
+  if (provider !== 'fs' && provider !== 'github' && provider !== 's3' && provider !== 'postgres' && provider !== 'pmi') {
+    throw new Error(`[memorix] unknown MEMORIX_SYNC_PROVIDER "${provider}" (expected fs|github|s3|postgres|pmi)`);
   }
   return { enabled: true, provider };
+}
+
+export interface RemoteContext {
+  /** `.pmi/project.json` of the working copy; required by the pmi provider. */
+  link?: ProjectLink;
 }
 
 export async function createRemote(
   provider: SyncProvider,
   namespace: string,
   env: NodeJS.ProcessEnv = process.env,
+  context: RemoteContext = {},
 ): Promise<SyncRemote> {
+  if (provider === 'pmi') {
+    const link = context.link;
+    if (!link) throw new Error('[pmi] this working copy is not linked; run `pmi project link` first');
+    const { tokenFor } = await import('../client/config.js');
+    const token = tokenFor(link.server, env);
+    if (!token) throw new Error(`[pmi] no token for ${link.server}; run \`pmi login ${link.server}\``);
+    const { createApiClient } = await import('../client/api.js');
+    const { PmiServerRemote } = await import('./adapters/pmi-server.js');
+    return new PmiServerRemote(createApiClient(link.server, token), link.projectId, link.legacyProjectId, namespace);
+  }
   if (provider === 'fs') {
     const root = env.MEMORIX_SYNC_FS_ROOT;
     if (!root) throw new Error('[memorix] fs sync requires MEMORIX_SYNC_FS_ROOT');

@@ -85,6 +85,22 @@ export default defineCommand({
       await storeCmd.run!({ args: { ...args, _: rest } } as never);
       return;
     }
+
+    // PMI shorthand: `pmi sync push|pull|status`, and bare `pmi sync` in a
+    // linked working copy, replicate memory with the PMI server.
+    if (section === 'push' || section === 'pull' || section === 'status' || (section === '' && await isLinkedWorkingCopy())) {
+      const storeCmd = (await import('./sync-store.js')).default;
+      const action = section === 'status' || section === 'pull' ? section : 'push';
+      await storeCmd.run!({
+        args: {
+          ...args,
+          _: [action],
+          'push-only': section === 'push' || Boolean(args['push-only']),
+          'pull-only': section === 'pull' || Boolean(args['pull-only']),
+        },
+      } as never);
+      return;
+    }
     const asJson = !!args.json;
 
     if (section === 'rules' || section === 'workspace') {
@@ -284,3 +300,10 @@ export default defineCommand({
     p.outro(`Synced ${files.length} rule(s) to ${target} format`);
   },
 });
+
+async function isLinkedWorkingCopy(): Promise<boolean> {
+  const { detectProject } = await import('../../project/detector.js');
+  const { readProjectLink } = await import('../../client/config.js');
+  const project = detectProject(process.cwd());
+  return Boolean(project && readProjectLink(project.rootPath));
+}

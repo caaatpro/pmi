@@ -143,6 +143,9 @@ const main = defineCommand({
     'serve-http': () => import('./commands/serve-http.js').then(m => m.default),
     status: () => import('./commands/status.js').then(m => m.default),
     sync: () => import('./commands/sync.js').then(m => m.default),
+    login: () => import('./commands/connect.js').then(m => m.login),
+    logout: () => import('./commands/connect.js').then(m => m.logout),
+    project: () => import('./commands/connect.js').then(m => m.projectCommand),
     hook: () => import('./commands/hook.js').then(m => m.default),
     hooks: () => import('./commands/hooks.js').then(m => m.default),
     ingest: () => import('./commands/ingest.js').then(m => m.default),
@@ -175,7 +178,7 @@ const main = defineCommand({
       'init', 'setup', 'integrate', 'memory', 'context', 'resume', 'explain', 'codegraph', 'checkpoint', 'knowledge', 'reasoning', 'retention', 'formation', 'audit', 'transfer', 'skills', 'identity',
       'session', 'team', 'task', 'message', 'lock', 'handoff', 'poll', 'evidence', 'feedback', 'continuity',
       'receipt',
-      'serve', 'serve-http', 'status', 'sync',
+      'serve', 'serve-http', 'status', 'sync', 'login', 'logout', 'project',
       'hook', 'hooks', 'ingest', 'git-hook', 'git-hook-uninstall',
       'background', 'bg', 'bs', 'doctor', 'repair', 'dashboard', 'cleanup', 'purge', 'uninstall'];
     if (firstArg && knownSubs.includes(firstArg)) return;
@@ -196,6 +199,9 @@ const main = defineCommand({
     console.error('Usage: pmi <command>   (alias: memorix)\n');
     console.error('Commands:');
     console.error('  help       Show action-oriented help (`memorix memory --help`)');
+    console.error('  login      Save a token for a PMI server (Connected mode)');
+    console.error('  project    Link this working copy to a server project');
+    console.error('  sync       Sync memory with the PMI server (push/pull/status); rules/workspace sync');
     console.error('  background Start/stop/status background control plane');
     console.error('  session    Start/end/context for coding sessions');
     console.error('  memory     Search/store/detail/timeline/resolve observations');
@@ -234,8 +240,7 @@ const main = defineCommand({
     console.error('  hooks      Install, inspect, or remove agent hooks');
     console.error('  cleanup    Remove old memories');
     console.error('  purge      Retire all memories (project by default, --all for everything)');
-    console.error('  sync       Rules/workspace sync plus interactive wizard');
-    console.error('  ingest     Ingest commit, log, or image knowledge');
+    console.error('  ingest     Ingest commit or log knowledge');
   },
 });
 

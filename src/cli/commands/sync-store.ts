@@ -17,6 +17,9 @@ import { resolveSyncConfig, createRemote } from '../../sync/remote-factory.js';
 import { USER_SYNC_SCOPE_ID } from '../../sync/namespace.js';
 import type { SyncScope } from '../../sync/policy.js';
 import type { SyncReport } from '../../sync/types.js';
+import { readProjectLink, type ProjectLink } from '../../client/config.js';
+import type { PmiServerRemote } from '../../sync/adapters/pmi-server.js';
+import type { PmiApiError } from '../../client/api.js';
 
 function parseScope(raw: unknown): SyncScope {
   const value = String(raw || 'project').toLowerCase();
@@ -24,7 +27,7 @@ function parseScope(raw: unknown): SyncScope {
   throw new Error('--scope must be one of: project, user');
 }
 
-async function openSyncStore(scope: SyncScope) {
+async function openSyncStore(scope: SyncScope): Promise<{ projectId: string; syncStore: ReturnType<typeof createSqliteSyncStore>; link?: ProjectLink }> {
   if (scope === 'user') {
     const dataDir = await getProjectDataDir(USER_SYNC_SCOPE_ID);
     await initObservationStore(dataDir);
@@ -35,10 +38,24 @@ async function openSyncStore(scope: SyncScope) {
   }
   const { project, dataDir } = await getCliProjectContext();
   await initObservationStore(dataDir);
+  const link = readProjectLink(project.rootPath);
+  if (link && link.legacyProjectId !== project.id) {
+    throw new Error(`.pmi/project.json links Memorix project ${link.legacyProjectId}, but this working copy resolves to ${project.id}; run \`pmi project link\` again`);
+  }
   return {
     projectId: project.id,
     syncStore: createSqliteSyncStore(dataDir, getObservationStore(), project.id),
+    link,
   };
+}
+
+/** Lines explaining what a PMI server refused, so nothing is dropped silently. */
+function serverNotes(remote: unknown): string[] {
+  const pmi = remote as Partial<PmiServerRemote>;
+  if (!Array.isArray(pmi.rejected)) return [];
+  const lines = pmi.rejected.map((item) => `- Server refused ${item.syncKey}: ${item.reason ?? 'rejected'} (kept locally)`);
+  if (pmi.conflicts) lines.push(`- Server recorded ${pmi.conflicts} concurrent-edit conflict(s); see \`pmi memory conflicts\``);
+  return lines;
 }
 
 function renderReport(report: SyncReport): string {
@@ -110,9 +127,11 @@ export default defineCommand({
       return;
     }
 
+    let opened: Awaited<ReturnType<typeof openSyncStore>>;
     let config;
     try {
-      config = resolveSyncConfig();
+      opened = await openSyncStore(scope);
+      config = resolveSyncConfig(process.env, opened.link);
     } catch (err) {
       emitError((err as Error).message, asJson);
       process.exitCode = 2;
@@ -122,13 +141,19 @@ export default defineCommand({
     if (!config.enabled || !config.provider) {
       emitResult(
         { enabled: false },
-        'Store sync is disabled. Set MEMORIX_SYNC_PROVIDER=fs|github|s3|postgres to enable it.',
+        'Store sync is disabled. Run `pmi project link` to sync with a PMI server, or set MEMORIX_SYNC_PROVIDER=fs|github|s3|postgres.',
         asJson,
       );
       return;
     }
+    if (config.provider === 'pmi' && scope !== 'project') {
+      emitError('the PMI server replicates one project at a time; use --scope project', asJson);
+      process.exitCode = 2;
+      return;
+    }
 
-    const { projectId, syncStore } = await openSyncStore(scope);
+    const { projectId, syncStore, link } = opened;
+    const remoteFor = () => createRemote(config.provider!, syncStore.namespace(), process.env, { link });
 
     if (action === 'compact') {
       if (!args.yes && !args.dry) {
@@ -155,7 +180,7 @@ export default defineCommand({
       }
       let remote;
       try {
-        remote = await createRemote(config.provider, syncStore.namespace());
+        remote = await remoteFor();
       } catch (err) {
         emitError((err as Error).message, asJson);
         process.exitCode = 1;
@@ -177,7 +202,7 @@ export default defineCommand({
     if (action === 'status') {
       let remote;
       try {
-        remote = await createRemote(config.provider, syncStore.namespace());
+        remote = await remoteFor();
       } catch (err) {
         emitError((err as Error).message, asJson);
         process.exitCode = 1;
@@ -190,10 +215,22 @@ export default defineCommand({
           push: true,
           pull: true,
         });
-        emitResult({ project: projectId, ...report }, renderReport(report), asJson);
+        emitResult({ project: projectId, offline: false, ...report }, renderReport(report), asJson);
       } catch (err) {
-        emitError((err as Error).message, asJson);
-        process.exitCode = 1;
+        if (!(err as PmiApiError).offline) {
+          emitError((err as Error).message, asJson);
+          process.exitCode = 1;
+          return;
+        }
+        // Server unreachable: still report what is waiting locally.
+        const report = await runSync(syncStore, await remoteFor(), {
+          deviceId: syncStore.deviceId(),
+          dryRun: true,
+          push: true,
+          pull: false,
+        });
+        emitResult({ project: projectId, offline: true, ...report }, `${renderReport(report)}\n- Server unreachable: ${(err as Error).message}`, asJson);
+        process.exitCode = 3;
       }
       return;
     }
@@ -203,7 +240,7 @@ export default defineCommand({
 
     let remote;
     try {
-      remote = await createRemote(config.provider, syncStore.namespace());
+      remote = await remoteFor();
     } catch (err) {
       emitError((err as Error).message, asJson);
       process.exitCode = 1;
@@ -217,10 +254,16 @@ export default defineCommand({
         push: doPush,
         pull: doPull,
       });
-      emitResult({ project: projectId, ...report }, renderReport(report), asJson);
+      const notes = serverNotes(remote);
+      emitResult(
+        { project: projectId, ...report, ...(notes.length ? { serverNotes: notes } : {}) },
+        [renderReport(report), ...notes].join('\n'),
+        asJson,
+      );
     } catch (err) {
       emitError((err as Error).message, asJson);
-      process.exitCode = 1;
+      // Exit code 3: the server is unreachable; local changes stay buffered.
+      process.exitCode = (err as PmiApiError).offline ? 3 : 1;
     }
   },
 });

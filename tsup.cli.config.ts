@@ -2,7 +2,7 @@ import { defineConfig } from 'tsup';
 import { cliBanner, cliExternal, cliNoExternal, define } from './tsup.shared.js';
 
 export default defineConfig({
-  entry: { 'cli/index': 'src/cli/index.ts' },
+  entry: { 'cli/index': 'src/cli/index.ts', 'server/central/main': 'src/server/central/main.ts' },
   format: ['esm'],
   target: 'node20',
   dts: true,

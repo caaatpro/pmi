@@ -7,7 +7,8 @@
   "sideEffects": false,
   "bin": {
     "pmi": "dist/cli/index.js",
-    "memorix": "dist/cli/index.js"
+    "memorix": "dist/cli/index.js",
+    "pmi-server": "dist/server/central/main.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
