@@ -239,13 +239,13 @@ export async function createPgSqlClient(env: NodeJS.ProcessEnv = process.env): P
     };
   }
 
-  // pg is optional by design, so a static import would make every install require it.
+  // Loaded lazily so local-only installs never open the driver.
   const packageName = 'pg';
   let pg: PgModule;
   try {
     pg = await import(packageName) as PgModule;
   } catch (cause) {
-    throw new Error('Postgres sync requires the optional "pg" package; install it in your application', { cause });
+    throw new Error('Postgres sync could not load the "pg" driver; reinstall dependencies (npm ci)', { cause });
   }
 
   const Pool = pg.Pool ?? pg.default?.Pool;

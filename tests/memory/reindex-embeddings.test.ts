@@ -1,4 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+
+// Some writes are not mocked, so the fake project must live in a temp dir
+// rather than a Windows-style path that becomes a relative directory elsewhere.
+const TEST_PROJECT_DIR = path.join(tmpdir(), `pmi-reindex-embeddings-${process.pid}`);
+afterAll(() => rmSync(TEST_PROJECT_DIR, { recursive: true, force: true }));
 
 const mockResetDb = vi.fn();
 const mockBatchGenerateEmbeddings = vi.fn();
@@ -139,7 +148,7 @@ describe('reindexObservations', () => {
 
     const { initObservations, reindexObservations } = await import('../../src/memory/observations.js');
 
-    await initObservations('E:/tmp/project');
+    await initObservations(TEST_PROJECT_DIR);
     const count = await reindexObservations();
 
     expect(count).toBe(2);

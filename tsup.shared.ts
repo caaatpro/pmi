@@ -16,6 +16,8 @@ export const cliExternal = [
   'fastembed',
   '@huggingface/transformers',
   'better-sqlite3',
+  'pg',
+  'pg-native',
   '@silvia-odwyer/photon-node',
   '@modelcontextprotocol/server',
   '@modelcontextprotocol/server/stdio',
@@ -24,5 +26,5 @@ export const cliExternal = [
 ];
 
 export const cliNoExternal = [
-  /^(?!(?:fastembed|@huggingface\/transformers|better-sqlite3|@silvia-odwyer\/photon-node|@modelcontextprotocol\/(?:server|node)|typescript))/,
+  /^(?!(?:fastembed|@huggingface\/transformers|better-sqlite3|pg|pg-native|@silvia-odwyer\/photon-node|@modelcontextprotocol\/(?:server|node)|typescript))/,
 ];

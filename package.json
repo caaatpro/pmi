@@ -121,16 +121,17 @@
   "dependencies": {
     "@clack/prompts": "^0.9.1",
     "@modelcontextprotocol/node": "^2.0.0",
-    "@modelcontextprotocol/server": "^2.0.0",
     "@modelcontextprotocol/sdk": "^1.32.1",
-    "brace-expansion": "^5.0.12",
+    "@modelcontextprotocol/server": "^2.0.0",
     "@orama/orama": "^3.1.0",
+    "brace-expansion": "^5.0.12",
     "citty": "^0.1.6",
     "dotenv": "^17.3.1",
     "gpt-tokenizer": "^2.8.0",
+    "pg": "^8.23.1",
+    "typescript": "^5.7.0",
     "unpdf": "^1.8.0",
     "yaml": "2.9.0",
-    "typescript": "^5.7.0",
     "zod": "^3.24.0"
   },
   "optionalDependencies": {
@@ -162,6 +163,7 @@
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.0",
     "@types/node": "^22.0.0",
+    "@types/pg": "^8.23.1",
     "tsup": "^8.4.0",
     "vitest": "5.0.3"
   }

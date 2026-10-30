@@ -17,5 +17,5 @@ export default defineConfig({
   splitting: false,
   shims: true,
   define,
-  external: ['fastembed', '@huggingface/transformers', 'better-sqlite3', 'typescript'],
+  external: ['fastembed', '@huggingface/transformers', 'better-sqlite3', 'pg', 'pg-native', 'typescript'],
 });
