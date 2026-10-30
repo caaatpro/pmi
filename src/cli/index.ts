@@ -1,7 +1,7 @@
 /**
- * Memorix CLI
+ * PMI CLI (`pmi`, alias `memorix`)
  *
- * Command-line interface for Memorix management.
+ * Command-line interface for Project Memory Infrastructure.
  * Built with: citty (1.1K stars, zero-deps) + @clack/prompts (7.4K stars)
  *
  * Commands:
@@ -43,7 +43,7 @@ async function runMemoryShortcut(action: string, args: Record<string, unknown>):
 
 const main = defineCommand({
   meta: {
-    name: 'memorix',
+    name: 'pmi',
     version: getCliVersion(),
     description: 'Local-first memory control plane for AI coding agents through CLI, MCP, and local workflows',
   },
@@ -192,8 +192,8 @@ const main = defineCommand({
     if (process.stdout.isTTY) {
       import('./update-checker.js').then(m => m.checkForUpdates()).catch(() => {});
     }
-    console.error(`Memorix v${getCliVersion()} — Local-first memory control plane\n`);
-    console.error('Usage: memorix <command>\n');
+    console.error(`PMI v${getCliVersion()} — Project Memory Infrastructure\n`);
+    console.error('Usage: pmi <command>   (alias: memorix)\n');
     console.error('Commands:');
     console.error('  help       Show action-oriented help (`memorix memory --help`)');
     console.error('  background Start/stop/status background control plane');
