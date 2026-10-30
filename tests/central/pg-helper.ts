@@ -58,6 +58,35 @@ async function waitForPostgres(url: string, timeoutMs = 60_000): Promise<void> {
   throw new Error(`Postgres did not become ready: ${(lastError as Error)?.message}`);
 }
 
+/**
+ * Remove containers left by test processes that died before their cleanup
+ * ran (timeouts, killed workers). The owner's pid is part of the name.
+ */
+function sweepOrphans(): void {
+  let names: string[] = [];
+  try {
+    names = execFileSync('docker', ['ps', '-a', '--filter', 'name=pmi-test-pg-', '--format', '{{.Names}}'], { encoding: 'utf8' }).split('\n').filter(Boolean);
+  } catch {
+    return;
+  }
+  for (const name of names) {
+    const pid = Number(/^pmi-test-pg-(\d+)-/.exec(name)?.[1]);
+    if (!pid || pid === process.pid) continue;
+    try {
+      process.kill(pid, 0);
+    } catch {
+      try { execFileSync('docker', ['rm', '-f', name], { stdio: 'pipe' }); } catch { /* already gone */ }
+    }
+  }
+}
+
+const started = new Set<string>();
+process.once('exit', () => {
+  for (const name of started) {
+    try { execFileSync('docker', ['rm', '-f', name], { stdio: 'pipe' }); } catch { /* already gone */ }
+  }
+});
+
 export async function startPostgres(): Promise<TestPostgres> {
   const shared = process.env.PMI_TEST_PG_URL;
   if (shared) {
@@ -71,7 +100,9 @@ export async function startPostgres(): Promise<TestPostgres> {
     };
   }
 
+  sweepOrphans();
   const container = `pmi-test-pg-${process.pid}-${randomBytes(3).toString('hex')}`;
+  started.add(container);
   execFileSync('docker', [
     'run', '-d', '--rm', '--name', container,
     '-e', 'POSTGRES_PASSWORD=pmi', '-e', 'POSTGRES_USER=pmi', '-e', 'POSTGRES_DB=pmi',
@@ -80,6 +111,7 @@ export async function startPostgres(): Promise<TestPostgres> {
   ], { stdio: 'pipe' });
   const stop = async () => {
     try { execFileSync('docker', ['rm', '-f', container], { stdio: 'pipe' }); } catch { /* already gone */ }
+    started.delete(container);
   };
   try {
     const mapping = execFileSync('docker', ['port', container, '5432/tcp'], { encoding: 'utf8' }).trim().split('\n')[0];

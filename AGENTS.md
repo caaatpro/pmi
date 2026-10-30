@@ -35,6 +35,8 @@ npm run lint        # tsc --noEmit
 npm test            # full vitest suite
 npx vitest run tests/<path>
 npx vitest run tests/central   # needs Docker or PMI_TEST_PG_URL
+deploy/acceptance.sh           # all acceptance suites against the Compose deployment
+PMI_LOAD_TEST=1 npx vitest run tests/load
 ```
 
 ## Project memory

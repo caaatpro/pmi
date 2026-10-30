@@ -1,0 +1,6 @@
+# Test-only overlay: publishes Postgres on loopback so the acceptance suite
+# (tests/central) can run against the deployment's database. Never use in production.
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:${PMI_PG_PORT:-55433}:5432"

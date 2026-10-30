@@ -21,6 +21,8 @@ PMI is a fork of [Memorix](https://github.com/AVIDS2/memorix) (Apache-2.0) that 
 | PMI MCP tools: `context_build`, `project_overview`, `memory_search/get/save`, `decision_log`, `session_*`, `workspace_*` | Working; `memorix_*` tools remain |
 | Incremental git intelligence: only new commits are read; dependency, API, structure, deletion, fix and constraint changes become memories; knowledge about changed files is marked for review; one shared cursor per team | Working (Phase 9): `pmi git analyze`, `pmi git-hook` |
 
+Operators: [OPERATIONS](docs/PMI/OPERATIONS.md) · [SECURITY](docs/PMI/SECURITY.md) · [LOAD_TEST](docs/PMI/LOAD_TEST.md). Users: [USER_GUIDE](docs/PMI/USER_GUIDE.md).
+
 The design lives in [docs/PMI](docs/PMI):
 [AUDIT](docs/PMI/AUDIT.md) ·
 [ARCHITECTURE](docs/PMI/ARCHITECTURE.md) ·
@@ -138,7 +140,7 @@ npm run lint      # tsc --noEmit
 npm test          # vitest
 ```
 
-Central-server tests start a throwaway `pgvector/pgvector:pg17` container (Docker required) or use `PMI_TEST_PG_URL`; without either they are skipped with a message. TEST 8 also needs `npm run build`.
+Central-server tests start a throwaway `pgvector/pgvector:pg17` container (Docker required) or use `PMI_TEST_PG_URL`; without either they are skipped with a message. End-to-end tests need `npm run build`. `deploy/acceptance.sh` runs every acceptance suite against the Docker Compose deployment, including a backup/restore drill; `PMI_LOAD_TEST=1 npx vitest run tests/load` runs the 100k-memory load test.
 
 Work happens on one branch per phase (`pmi/phase-N-*`) with small commits; see [AGENTS.md](AGENTS.md).
 

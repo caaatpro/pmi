@@ -81,6 +81,20 @@ jobs:
       - run: npm run build
       - run: npx vitest run tests/central
 
+  compose-acceptance:
+    # All acceptance suites against the Docker Compose deployment, plus the
+    # deployed server over HTTPS and a backup -> destroy -> restore drill.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: deploy/acceptance.sh
+
   docker-control-plane:
     runs-on: ubuntu-latest
     steps:

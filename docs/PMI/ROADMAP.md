@@ -227,6 +227,38 @@ TEST 5.
 
 Security review (auth, RLS, path traversal в restore, zip‑slip в bundle, размеры тел), шифрование blobs, TLS‑конфигурация, нагрузочный тест (100k записей, 20 клиентов), backup/restore drill, чек‑лист эксплуатации, полная документация пользователя и оператора, финальный прогон всех 10 acceptance‑тестов в Docker Compose‑окружении.
 
+### Итог Phase 10 (ветка `pmi/phase-10-hardening`)
+
+| Пункт | Результат | Проверка |
+|---|---|---|
+| Security review | [SECURITY.md](SECURITY.md): модель угроз, соответствие ТЗ §14, 7 находок с исправлениями. Главные: запись вне рабочей копии через симлинк при restore; `PMI_TOKEN` отправлялся на сервер из чужого `.pmi/project.json`; нет защиты от подбора токенов и slow‑loris | `tests/workspace-snapshot/snapshot-restore.test.ts`, `tests/client/config.test.ts`, `tests/central/security.test.ts` |
+| Шифрование blobs | AES‑256‑GCM (`PMI_BLOB_KEY`), адрес по содержимому не меняется, старые открытые blobs читаются, ротация (`PMI_BLOB_KEYS_OLD`, `reencrypt-blobs`), `verify-blobs` | `tests/central/security.test.ts`, Compose‑прогон |
+| TLS | Caddy (Let's Encrypt / локальный CA), клиент не шлёт токен по HTTP на нелокальный адрес; `PMI_TRUST_PROXY` для адреса клиента | Compose‑прогон (всё по HTTPS) |
+| Нагрузочный тест | 100 000 записей, 20 клиентов: найдены и устранены три узких места (RLS на каждую строку, кандидаты контекста, блокировка счётчика ленты); итог p95 — context 358 мс, search 156 мс, push 253 мс, feed 57 мс, 0 ошибок ([LOAD_TEST.md](LOAD_TEST.md)) | `tests/load/central-load.test.ts` (`PMI_LOAD_TEST=1`) |
+| Backup/restore | `deploy/backup.sh` / `restore.sh` (pg_dump + том blobs + MANIFEST с SHA‑256, `pre-restore.dump`, проверка каждого blob); `pmi backup` / `pmi restore` для локального хранилища | `tests/cli/backup.test.ts`, учения в Compose‑прогоне |
+| Документация | [OPERATIONS.md](OPERATIONS.md) (развёртывание, конфигурация, доступ, резервные копии, обновление, ротация ключей, мониторинг, чек‑лист), [USER_GUIDE.md](USER_GUIDE.md), [SECURITY.md](SECURITY.md), [LOAD_TEST.md](LOAD_TEST.md) | |
+| **Финальный прогон** | `deploy/acceptance.sh`: стек Compose собирается и стартует; все приёмочные наборы `tests/central` (TEST 1–10 и тесты RBAC, сессий, снимков, контекста, git, безопасности) на Postgres развёртывания; затем `tests/compose` — контейнерный `pmi-server` за Caddy по HTTPS с шифрованием, две машины с реальным CLI, учения backup → удаление томов → restore → восстановление рабочей копии на новой машине. В CI — задача `compose-acceptance` | ✔ (74 + 5 тестов) |
+
+### Приёмочные тесты ТЗ — сводка
+
+| Тест | Что проверяет | Где | Статус |
+|---|---|---|---|
+| TEST 1 | Решение агента одного пользователя доходит до агента другого без поиска по файлам | `tests/central/cross-user-context.test.ts` (memorix‑ и PMI‑инструменты, без ручного sync) | ✔ |
+| TEST 2 | Handoff из CLI другому пользователю: шаги, next action, файлы | `tests/central/session-continuity.test.ts` | ✔ |
+| TEST 3 | Незакоммиченная работа восстанавливается побайтно на другой машине | `tests/workspace-snapshot/snapshot-restore.test.ts`, `tests/central/workspace-recovery.test.ts`, Compose | ✔ |
+| TEST 4 | Агент убит без handoff (и машина потеряна) — работа продолжается с автоматического checkpoint | `tests/central/session-continuity.test.ts` | ✔ |
+| TEST 5 | Инкрементальный git‑анализ: ровно новые коммиты, классы, устаревание, повтор — 0 | `tests/git/analyze-local.test.ts`, `tests/central/git-analyze.test.ts`, Compose | ✔ |
+| TEST 6 | 500 записей и 200 сессий — контекст ≤ 2300 токенов без истории | `tests/central/context.test.ts`, `tests/server/pmi-context-tools.test.ts`, Compose | ✔ |
+| TEST 7 | Параллельные сессии разных пользователей не мешают друг другу | `tests/central/session-continuity.test.ts`, `tests/central/sessions.test.ts` | ✔ |
+| TEST 8 | Офлайн‑запись копится и доставляется после восстановления сервера | `tests/central/offline-sync.test.ts`, Compose | ✔ |
+| TEST 9 | Без гранта — 404 везде, прямой SQL под пользователем — 0 строк | `tests/central/rbac.test.ts`, Compose | ✔ |
+| TEST 10 | Реальные адаптеры Claude Code и Codex: handoff и resume через MCP | `tests/central/session-continuity.test.ts` | ✔ |
+
+**Что остаётся за рамками** (с обоснованием):
+- **Экономия токенов на живых агентах не измерена**: в этой среде нельзя запускать агентов с учётом их токенов. Есть оценка в каждом receipt (`estimatedSavings`) и проверка на фикстуре. Бенчмарк «с PMI / без PMI» на реальной модели — следующий шаг эксплуатации.
+- **Ручной чек‑лист на живых агентах** (Claude Code, Codex в настоящем IDE) не проводился; TEST 10 запускает MCP‑серверы ровно по конфигам `pmi setup`, но клиент MCP — тестовый.
+- **Разрезка `src/server.ts` и перенос mini‑skills**: выполнялись отдельной сессией (ветка `claude/optimistic-murdock-11167f`: разрезка закоммичена, перенос mini‑skills не завершён), в фазовые ветки не слиты.
+
 ## Риски
 
 | Риск | Митигирующее действие |
