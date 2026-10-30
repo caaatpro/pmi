@@ -421,3 +421,12 @@ CREATE TABLE work.metrics_events (
 | SQLite `outbox`, `sync_cursors` | Не созданы: используются существующие `sync_outbox`, `sync_meta` (курсор `applied['pmi-server'] = seq`) и `sync_row_state` | Без дублирования механизмов (правило 4) |
 | SQLite `observations` + `category`, `confidence` | Добавлены; `NULL` = значение по умолчанию для типа (`src/domain/memory.ts`) | Существующие строки не переписываются; смена типа не оставляет устаревшую категорию |
 
+### Phase 6
+
+| Черновик | Реализация | Причина |
+|---|---|---|
+| SQLite `sessions` + колонки state | Отдельная `pmi_sessions` (id = id сессии Memorix), `session_checkpoints`, `session_outbox` | Memorix пишет `sessions` через `INSERT OR REPLACE`, лишние колонки стирались бы |
+| `work.sessions.lease_owner_device` | `lease_device`, `lease_user`, `lease_expires_at`, плюс `continued_by`, `handoff_to`, `handoff_reserved_until`, `handoff_brief`, `summary` | Продолжение другим пользователем и адресный handoff |
+| `work.checkpoints.snapshot_id` | Нет (Phase 7); добавлены `orphan`, `device_id`, `created_by_user`, `received_at` | Checkpoint от устройства, потерявшего сессию, сохраняется, но не меняет state |
+| `work.session_events` | Не создана | Шаги/решения/проблемы — в state каждого checkpoint (см. ROADMAP, итог Phase 6) |
+

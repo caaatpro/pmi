@@ -148,6 +148,13 @@ export async function runDaemon(dataDir: string, env: NodeJS.ProcessEnv = proces
   process.once('SIGINT', stop);
 
   while (!stopping) {
+    // The pid file is the daemon's claim on this data directory. If it was
+    // removed (data dir deleted, `daemon stop` racing) or another daemon took
+    // over, this one steps down instead of running unsupervised.
+    if (runningDaemonPid(dataDir) !== process.pid) {
+      log({ at: new Date().toISOString(), msg: 'pmi daemon stepping down: pid file is gone or owned by another daemon' });
+      break;
+    }
     try {
       const report = await daemonTick(store, settings, env);
       if (report.checkpoints.length || report.released.length || report.flush.sent || report.flush.rejected.length) {
@@ -156,9 +163,13 @@ export async function runDaemon(dataDir: string, env: NodeJS.ProcessEnv = proces
     } catch (error) {
       log({ at: new Date().toISOString(), level: 'error', error: (error as Error).message });
     }
+    // A referenced timer: it is what keeps the daemon process alive between ticks.
     await new Promise<void>((resolve) => {
-      wake = resolve;
-      setTimeout(resolve, settings.tickMs).unref();
+      const timer = setTimeout(resolve, settings.tickMs);
+      wake = () => {
+        clearTimeout(timer);
+        resolve();
+      };
     });
   }
   await daemonShutdown(store, env);

@@ -298,7 +298,7 @@ describe.skipIf(!pgAvailable)('upgrade from the Phase 4 schema', () => {
         "INSERT INTO core.projects (org_id, slug, name, legacy_project_ids) VALUES ($1, 'app', 'app', ARRAY['acme/app']) RETURNING id",
         [org.id],
       );
-      expect((await migrate(legacyDb)).applied).toEqual(['0002-rbac-rls']);
+      expect((await migrate(legacyDb)).applied).toEqual(['0002-rbac-rls', '0003-sessions']);
       const [role] = await legacyDb.query<{ role: string }>('SELECT core.project_role_of($1, $2) AS role', [project.id, member.id]);
       expect(role.role).toBe('developer');
     } finally {

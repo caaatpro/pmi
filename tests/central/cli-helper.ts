@@ -4,7 +4,7 @@
  * `pmi` CLI (and its stdio MCP server) as a separate process.
  */
 import { execFileSync, spawn } from 'node:child_process';
-import { existsSync, mkdirSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
@@ -38,7 +38,22 @@ export function createRepoPair(root: string, origin: string): [string, string] {
   return [repoA, repoB];
 }
 
-export function machine(root: string, name: string, repo: string): Machine {
+/**
+ * `pmi` and `memorix` executables on PATH that run the built CLI, so agent
+ * configs written by `pmi setup` (command "memorix") start this build.
+ */
+export function installCliShims(root: string): string {
+  const bin = path.join(root, 'bin');
+  mkdirSync(bin, { recursive: true });
+  for (const name of ['pmi', 'memorix']) {
+    const file = path.join(bin, name);
+    writeFileSync(file, `#!/bin/sh\nexec "${process.execPath}" "${CLI}" "$@"\n`);
+    chmodSync(file, 0o755);
+  }
+  return bin;
+}
+
+export function machine(root: string, name: string, repo: string, extraEnv: Record<string, string> = {}): Machine {
   const home = path.join(root, name);
   mkdirSync(home, { recursive: true });
   return {
@@ -53,6 +68,7 @@ export function machine(root: string, name: string, repo: string): Machine {
       PMI_HOME: path.join(home, '.pmi'),
       MEMORIX_AUTO_UPDATE: 'off',
       MEMORIX_SYNC_DEVICE_FINGERPRINT: `test|${name}`,
+      ...extraEnv,
     },
   };
 }
@@ -97,6 +113,31 @@ export async function connectAgent(m: Machine, agent: string): Promise<Client> {
   return client;
 }
 
+/** Launch an MCP server the way an agent would, from the command/args in its config. */
+export async function connectAgentWithCommand(m: Machine, agent: string, command: string, args: string[]): Promise<{ client: Client; pid: () => number | null }> {
+  const transport = new StdioClientTransport({ command, args, cwd: m.repo, env: m.env, stderr: 'ignore' });
+  const client = new Client({ name: agent, version: '1.0.0' });
+  await client.connect(transport);
+  return { client, pid: () => transport.pid };
+}
+
 export function toolText(result: unknown): string {
   return ((result as { content?: Array<{ text?: string }> })?.content ?? []).map((item) => item.text ?? '').join('\n');
 }
+
+/**
+ * Stop the daemons agents start automatically in Connected mode. Run in every
+ * end-to-end afterAll so no background process outlives the test.
+ */
+export async function stopDaemons(machines: Array<Machine | undefined>): Promise<void> {
+  for (const m of machines) {
+    if (!m) continue;
+    await pmi(m, 'daemon', 'stop');
+    const pidFile = path.join(m.env.MEMORIX_DATA_DIR, 'pmi-daemon.pid');
+    try {
+      const pid = Number(JSON.parse(readFileSync(pidFile, 'utf8')).pid);
+      if (pid) process.kill(pid, 'SIGKILL');
+    } catch { /* not running */ }
+  }
+}
+

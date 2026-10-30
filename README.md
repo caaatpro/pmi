@@ -15,7 +15,7 @@ PMI is a fork of [Memorix](https://github.com/AVIDS2/memorix) (Apache-2.0) that 
 | Confirm / deprecate knowledge (people only; agents cannot confirm) | Working (Phase 5), REST |
 | MCP over HTTP on the central server with per-user tokens | Working (Phase 5): `project_list`, `memory_search`, `memory_get` |
 | Peer-to-peer sync of memory records (fs / S3 / GitHub / Postgres relay) | Working (inherited), `pmi sync store push/pull` |
-| Session checkpoints, handoff, `session resume <id>` | Planned: Phase 6 |
+| Session state, automatic checkpoints (daemon), handoff, `session list` / `session resume <id>` across users, agents and machines | Working (Phase 6); files of the working copy are not transferred yet |
 | Workspace snapshots (uncommitted changes across machines) | Planned: Phase 7 |
 | L1/L2/L3 context engine, token metrics | Planned: Phase 8 |
 | Incremental git intelligence | Planned: Phase 9 |
@@ -100,6 +100,19 @@ pmi sync                                 # upload local memory, pull the team's
 ```
 
 For a local trial with `PMI_DOMAIN=localhost`, Caddy serves a certificate from its own CA; point Node at it before `pmi login` (`docker compose -f deploy/compose.yaml cp caddy:/data/caddy/pki/authorities/local/root.crt ./caddy-root.crt`, then `export NODE_EXTRA_CA_CERTS=$PWD/caddy-root.crt`).
+
+Hand work over between people, agents and machines:
+
+```bash
+pmi session start --agent claude-code --task "Cart totals" --objective "tax and discounts included"
+pmi session checkpoint --done "Cart model; Tax rules" --pending "Discount codes"
+pmi session handoff --next "Validate discount codes in cart.ts"
+# another developer, another machine:
+pmi session list
+pmi session resume <session-id> --agent codex --model gpt-5
+```
+
+Agents do the same over MCP (`session_checkpoint`, `session_handoff`, `session_list`, `session_resume`). In Connected mode the PMI daemon starts automatically: it checkpoints file changes and commits without the agent, and when the agent process dies it saves a final checkpoint and frees the session for others. If the whole machine is lost, the server frees the session after its lease (`PMI_LEASE_TTL`, 10 minutes) expires.
 
 `pmi sync` keeps working offline: changes stay in the local SQLite store and are sent on the next successful run (exit code 3 means the server was unreachable). `.pmi/project.json` holds no secrets and can be committed; tokens live in `~/.pmi/credentials.json` (mode 0600). Memories containing credential-like values are refused by the server and stay on the machine that wrote them.
 

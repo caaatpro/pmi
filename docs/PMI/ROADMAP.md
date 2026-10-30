@@ -122,6 +122,30 @@ Session State, статусы, lease, checkpoints, `session_events` (+ мигр�
 
 TEST 2, 4, 7, 10. Для TEST 10 — два реальных адаптера (Claude Code hooks/MCP config и Codex MCP config из `src/workspace/mcp-adapters`) в e2e с симулированными MCP‑клиентами; ручная проверка на живых агентах описывается в чек‑листе.
 
+### Итог Phase 6 (ветка `pmi/phase-6-sessions`)
+
+| Пункт | Результат | Проверка |
+|---|---|---|
+| Session State, статусы | `src/domain/session.ts`: `SessionState` (SESSION_CONTINUITY.md §2), 8 статусов, переходы, ограничение 64 KiB со сворачиванием длинных списков, детерминированный Handoff Brief через secret‑filter | `tests/domain/session.test.ts` |
+| Локальное хранение | Миграция `pmi-2-session-continuity`: `pmi_sessions`, `session_checkpoints` (неизменяемые), `session_outbox` (упорядоченная доставка) | `tests/session/daemon.test.ts` |
+| Сервер | Миграция `0003-sessions`: `work.sessions`, `work.checkpoints` с RLS (state — только developer+); lease с продлением; истечение lease → `resumable` (`interrupted` без checkpoint) периодически и перед list/resume; handoff с адресным резервом на 24 ч; resume: тот же пользователь — та же сессия, другой — дочерняя (`parent_session_id`), родитель закрывается как продолженный; `--force` — maintainer, в аудит; checkpoint от устройства, потерявшего сессию, сохраняется как `orphan` | `tests/central/sessions.test.ts` |
+| Daemon | `pmi daemon run|start|stop|status`, автозапуск в Connected mode из `session start`/`resume` и MCP. Без участия агента: `fs_change` (изменения улеглись `PMI_CHECKPOINT_DEBOUNCE_MS`), `commit` (сдвинулся HEAD), `timer` (непрерывные изменения дольше `PMI_CHECKPOINT_INTERVAL_MS`); агент умер (pid процесса MCP‑сервера) или молчит `PMI_AGENT_IDLE_MS` → `exit` checkpoint и освобождение; SIGTERM → `exit` checkpoint; продление lease, доставка outbox | `tests/session/daemon.test.ts`, TEST 4 |
+| CLI | `pmi session start --task --objective --model`, `checkpoint`, `handoff [--to]`, `list [--all]`, `resume <id>`, `finish [--failed]`, `show`; код 3 — сервер недоступен, данные в очереди | TEST 2 |
+| MCP | `session_checkpoint`, `session_handoff`, `session_list`, `session_resume`, `session_finish` (`src/mcp/tools/session.ts` — первый модуль инструментов вне `server.ts`, с явным контекстом); `memorix_session_start` принимает `task/objective/model` и показывает сессии, ждущие продолжения; любой вызов инструмента — активность агента | TEST 10 |
+| **TEST 2** | CLI: Alice (claude-code) start → 2 checkpoint → handoff; Bob (codex, другой пользователь и устройство) list → resume получает выполненные шаги, pending, next action, objective, изменённые файлы | ✔ |
+| **TEST 10** | Конфиги, записанные `pmi setup` для Claude Code (`.claude/settings.json`) и Codex (`~/.codex/config.toml`), запускают MCP‑сервер; Claude Code передаёт сессию через `session_handoff`, Codex видит её в `memorix_session_start`, продолжает через `session_resume` | ✔ |
+| **TEST 4** | Агент убит `kill -9` без handoff: daemon уже сделал checkpoint по изменениям файлов, освободил сессию; Bob продолжает с шагами и файлами. Вариант «машина потеряна»: убиты агент и daemon, сервер по истечении lease делает сессию `resumable` | ✔ (оба) |
+| **TEST 7** | Агенты двух пользователей одновременно в одном проекте: обе сессии активны, у каждой свои checkpoints и шаги | ✔ |
+
+**Отличия от проекта и перенос** (с обоснованием):
+- **PMI‑состояние сессии в отдельной таблице `pmi_sessions`**, а не в колонках `sessions`: Memorix переписывает `sessions` через `INSERT OR REPLACE`, что стирало бы добавленные колонки. Связь 1:1 по id.
+- **Отдельный outbox для сессий** (`session_outbox`), а не sync‑движок памяти: checkpoints — неизменяемые события, а lease/handoff/resume требуют ответа сервера; построчный diff с LWW к ним не подходит. Память по‑прежнему идёт через sync‑движок.
+- **Daemon опрашивает рабочую копию** (`git status` + mtime/size), а не подписывается на события файловой системы: одинаково на всех ОС, без зависимостей; триггеры те же. Git‑хуки → IPC не нужны: сдвиг HEAD виден в следующем тике (по умолчанию 5 с).
+- **Содержимое файлов при resume не переносится** — это Phase 7 (Workspace Recovery). Resume Package уже содержит ветку, HEAD, список изменённых файлов и `snapshot: null`; CLI и MCP прямо об этом сообщают.
+- **`session_events` не выделены в таблицу**: шаги, решения, проблемы и наблюдения живут в state и в каждом checkpoint; миграция `task_continuity_events` — вместе с переносом continuity‑инструментов при разрезке `server.ts`.
+- **Path‑leases и замена `team_*`** — не сделаны; параллельная работа обеспечивается сессионными lease (TEST 7). Замена `team_file_lock` общими path‑leases — следующий шаг после Phase 7, когда restore начнёт писать в рабочие копии.
+- **TEST 9 для сессий**: RLS и роли проверены в `sessions.test.ts` (viewer видит список без state, не может читать детали и писать; чужие сессии недоступны для записи). Полное расширение TEST 9 на snapshots — в Phase 7.
+
 ## Phase 7 — Workspace recovery
 
 Snapshot builder, blob store (локальный и серверный), инкрементальная загрузка, restore в worktree / in‑place, проверки конфликтов, страховочные snapshot, retention/GC, исключение секретов.

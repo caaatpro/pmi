@@ -15,7 +15,9 @@ PMI (Project Memory Infrastructure) is a TypeScript/Node fork of Memorix. The ta
 - `src/server.ts`, `src/server/` — MCP server and tool profiles
 - `src/memory/`, `src/store/` — observations, sessions, SQLite schema and migrations
 - `src/knowledge/`, `src/compact/`, `src/codegraph/` — context briefs (Workset), progressive disclosure, code index
-- `src/domain/` — PMI memory model (categories, confidence, transitions)
+- `src/domain/` — PMI memory model and session state (pure rules)
+- `src/session/` — session continuity client: local store, service, daemon, git state
+- `src/mcp/tools/` — MCP tools split out of `src/server.ts` (session continuity so far)
 - `src/server/central/` — `pmi-server`: Postgres schema, HTTP API, tokens
 - `src/client/` — Connected-mode client config (`~/.pmi`, `.pmi/project.json`) and API client
 - `src/sync/` — replication of memory records (PMI server, fs/S3/GitHub/Postgres relays)

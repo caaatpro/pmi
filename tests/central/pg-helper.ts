@@ -12,10 +12,11 @@ import { randomBytes } from 'node:crypto';
 
 export const PG_IMAGE = 'pgvector/pgvector:pg17';
 
+/** Docker that can run Linux images (Windows runners report Windows containers). */
 function dockerAvailable(): boolean {
   try {
-    execFileSync('docker', ['info', '--format', '{{.ServerVersion}}'], { stdio: 'pipe', timeout: 10_000 });
-    return true;
+    const osType = execFileSync('docker', ['info', '--format', '{{.OSType}}'], { encoding: 'utf8', stdio: 'pipe', timeout: 10_000 }).trim();
+    return osType === 'linux';
   } catch {
     return false;
   }

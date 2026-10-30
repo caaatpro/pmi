@@ -63,7 +63,7 @@ describe.skipIf(!pgAvailable)('central server (real Postgres)', () => {
   beforeAll(async () => {
     pg = await startPostgres();
     db = await openDatabase(pg.url);
-    expect((await migrate(db)).applied).toEqual(['0001-core-memory', '0002-rbac-rls']);
+    expect((await migrate(db)).applied).toEqual(['0001-core-memory', '0002-rbac-rls', '0003-sessions']);
     await createOrganization(db, 'acme', 'Acme');
     await createOrganization(db, 'other', 'Other');
     await createUser(db, { email: 'lead@acme.test', displayName: 'Lead', orgSlug: 'acme', role: 'admin' });

@@ -194,9 +194,12 @@ export interface ResumeHints {
   nextActionInferred: boolean;
 }
 
+/** Agent and PMI configuration directories: changed, but not the task's work. */
+const TOOLING_PATH = /^\.(pmi|claude|codex|cursor|windsurf|memorix|gemini|kiro|vscode|idea)\//;
+
 export function resumeHints(state: SessionState, decisionFiles: string[] = []): ResumeHints {
   const files = [
-    ...(state.git?.modifiedFiles ?? []).filter((file) => file.status !== 'D').map((file) => file.path),
+    ...(state.git?.modifiedFiles ?? []).filter((file) => file.status !== 'D' && !TOOLING_PATH.test(file.path)).map((file) => file.path),
     ...decisionFiles,
   ];
   const nextAction = state.nextAction ?? state.pendingSteps[0]?.text ?? null;

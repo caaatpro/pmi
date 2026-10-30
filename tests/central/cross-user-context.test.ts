@@ -21,7 +21,7 @@ import { openDatabase, type Database } from '../../src/server/central/db.js';
 import { createCentralServer } from '../../src/server/central/http.js';
 import { createOrganization, createUser, issueToken } from '../../src/server/central/identity.js';
 import { migrate } from '../../src/server/central/migrations.js';
-import { cliBuilt, connectAgent, createRepoPair, machine, pmi, toolText, type Machine } from './cli-helper.js';
+import { cliBuilt, connectAgent, createRepoPair, machine, pmi, toolText, type Machine, stopDaemons } from './cli-helper.js';
 import { pgAvailable, pgSkipReason, startPostgres, type TestPostgres } from './pg-helper.js';
 
 const DECISION_TITLE = 'Payment webhooks are verified with HMAC-SHA256 before parsing';
@@ -56,11 +56,12 @@ describe.skipIf(!pgAvailable || !cliBuilt)('TEST 1: a decision recorded by one u
   }, 180_000);
 
   afterAll(async () => {
+    await stopDaemons([alice, bob]);
     await new Promise<void>((resolve) => server?.close(() => resolve()));
     await db?.close();
     await pg?.stop();
     if (root) rmSync(root, { recursive: true, force: true });
-  });
+  }, 60_000);
 
   it('connects both users to one project, Bob through an explicit grant', async () => {
     expect((await pmi(alice, 'login', serverUrl, '--token', users.alice.token)).code).toBe(0);

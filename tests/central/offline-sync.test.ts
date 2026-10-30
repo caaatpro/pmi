@@ -17,7 +17,7 @@ import { openDatabase, type Database } from '../../src/server/central/db.js';
 import { createCentralServer } from '../../src/server/central/http.js';
 import { createOrganization, createUser, issueToken } from '../../src/server/central/identity.js';
 import { migrate } from '../../src/server/central/migrations.js';
-import { cliBuilt, createRepoPair, machine, pmi, type Machine } from './cli-helper.js';
+import { cliBuilt, createRepoPair, machine, pmi, type Machine, stopDaemons } from './cli-helper.js';
 import { pgAvailable, pgSkipReason, startPostgres, type TestPostgres } from './pg-helper.js';
 
 let root = '';
@@ -60,11 +60,12 @@ describe.skipIf(!pgAvailable || !cliBuilt)('TEST 8: offline client buffers and c
   }, 180_000);
 
   afterAll(async () => {
+    await stopDaemons([a, b]);
     await stopServer();
     await db?.close();
     await pg?.stop();
     if (root) rmSync(root, { recursive: true, force: true });
-  });
+  }, 60_000);
 
   it('links both clones to one server project', async () => {
     const server = `http://127.0.0.1:${port}`;
