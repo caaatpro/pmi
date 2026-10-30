@@ -15,7 +15,8 @@ import { z } from 'zod';
 
 import type { Database } from './db.js';
 import { HttpError, authorize, listProjects, type AuthUser } from './identity.js';
-import { getMemory, listVersions, searchMemories } from './memory-repo.js';
+import { getMemory, listVersions, memoriesByIds } from './memory-repo.js';
+import { hybridSearch } from './context-repo.js';
 
 type ToolResult = { content: Array<{ type: 'text'; text: string }>; structuredContent?: Record<string, unknown>; isError?: boolean };
 
@@ -58,7 +59,7 @@ export function createUserMcpServer(db: Database, user: AuthUser, version: strin
       const projectIds = project_id
         ? [(await authorize(db, user, project_id, 'memory.read')).id]
         : (await listProjects(db, user.id)).map((p) => p.id);
-      const hits = await db.asUser(user.id, (tx) => searchMemories(tx, projectIds, query, limit ?? 10));
+      const hits = await db.asUser(user.id, async (tx) => memoriesByIds(tx, (await hybridSearch(tx, projectIds, query, { limit: limit ?? 10 })).map((hit) => hit.id)));
       const text = hits.length
         ? hits.map((m) => `- [${m.category}/${m.confidence}] ${m.title} — id ${m.id}`).join('\n')
         : 'No matching memories.';

@@ -38,10 +38,13 @@ import {
   listMemories,
   listVersions,
   readChanges,
-  searchMemories,
+  memoriesByIds,
   setConfidence,
 } from './memory-repo.js';
 import { pendingMigrations } from './migrations.js';
+import { buildServerContext, getOverview, hybridSearch, recordMetric, type ServerEmbeddings } from './context-repo.js';
+import { createMetrics } from './metrics.js';
+import { timingSafeEqual } from 'node:crypto';
 import {
   addCheckpoint,
   expireLeases,
@@ -73,6 +76,12 @@ export interface CentralServerOptions {
   handoffReserveHours?: number;
   /** Directory for blobs of 256 KiB and more. Default PMI_BLOB_DIR or ./data/blobs. */
   blobDir?: string;
+  /** Embedding provider for semantic search; keyword-only search without it. */
+  embeddings?: ServerEmbeddings | null;
+  /** Minimum age of the cached L1 overview before a rebuild (default 600 s). */
+  overviewMinAgeSeconds?: number;
+  /** Bearer token for /metrics; unset disables the endpoint. Default PMI_METRICS_TOKEN. */
+  metricsToken?: string;
   log?: (line: Record<string, unknown>) => void;
 }
 
@@ -90,6 +99,8 @@ interface RequestContext {
 type Handler = (ctx: RequestContext) => Promise<{ status?: number; body: unknown } | { raw: true; status: number }>;
 
 interface Route {
+  /** The path template, used as a low-cardinality metric label. */
+  label: string;
   method: string;
   pattern: RegExp;
   keys: string[];
@@ -102,7 +113,7 @@ function route(method: string, path: string, handler: Handler): Route {
     keys.push(key);
     return '([^/]+)';
   })}$`);
-  return { method, pattern, keys, handler };
+  return { label: path, method, pattern, keys, handler };
 }
 
 const resolveSchema = z.object({
@@ -147,6 +158,17 @@ const changesQuerySchema = z.object({
 const searchSchema = z.object({
   query: z.string().min(1).max(500),
   limit: z.number().int().min(1).max(100).default(20),
+  include_deprecated: z.boolean().optional(),
+});
+
+const contextSchema = z.object({
+  task: z.string().max(2000).optional(),
+  session_id: z.string().max(200).optional(),
+  files: z.array(z.string().max(1024)).max(200).optional(),
+  components: z.array(z.string().max(200)).max(50).optional(),
+  recent_git_files: z.array(z.string().max(1024)).max(500).optional(),
+  budget_tokens: z.number().int().min(200).max(32_000).optional(),
+  levels: z.array(z.enum(['L1', 'L2', 'L3'])).min(1).max(3).optional(),
 });
 
 const confidenceSchema = z.object({ reason: z.string().max(2000).optional() });
@@ -316,7 +338,14 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
       const user = await ctx.user();
       const project = await authorize(db, user, ctx.params.id, 'memory.read');
       const input = parse(searchSchema, await ctx.body());
-      return { body: { results: await db.asUser(user.id, (tx) => searchMemories(tx, [project.id], input.query, input.limit)) } };
+      metrics.inc('pmi_memory_retrieval_total', { kind: 'search' });
+      const results = await db.asUser(user.id, async (tx) => {
+        const hits = await hybridSearch(tx, [project.id], input.query, { limit: input.limit, embeddings, includeDeprecated: input.include_deprecated });
+        const rows = await memoriesByIds(tx, hits.map((hit) => hit.id));
+        const score = new Map(hits.map((hit) => [hit.id, hit]));
+        return rows.map((row) => ({ ...row, relevance: score.get(row.id)!.relevance, keywordRank: score.get(row.id)!.keywordRank, semanticRank: score.get(row.id)!.semanticRank }));
+      });
+      return { body: { results, mode: embeddings ? 'hybrid' : 'keyword' } };
     }),
 
     // Cross-project search over every project the caller can read.
@@ -324,7 +353,13 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
       const user = await ctx.user();
       const input = parse(searchSchema, await ctx.body());
       const projectIds = (await listProjects(db, user.id)).map((project) => project.id);
-      return { body: { results: await db.asUser(user.id, (tx) => searchMemories(tx, projectIds, input.query, input.limit)) } };
+      metrics.inc('pmi_memory_retrieval_total', { kind: 'search' });
+      const results = await db.asUser(user.id, async (tx) => {
+        const hits = await hybridSearch(tx, projectIds, input.query, { limit: input.limit, embeddings, includeDeprecated: input.include_deprecated });
+        const relevance = new Map(hits.map((hit) => [hit.id, hit.relevance]));
+        return (await memoriesByIds(tx, hits.map((hit) => hit.id))).map((row) => ({ ...row, relevance: relevance.get(row.id)! }));
+      });
+      return { body: { results, mode: embeddings ? 'hybrid' : 'keyword' } };
     }),
 
     route('GET', '/v1/projects/:id/conflicts', async (ctx) => {
@@ -532,6 +567,54 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
       return { body: { ok: true } };
     }),
 
+    route('GET', '/v1/projects/:id/overview', async (ctx) => {
+      const user = await ctx.user();
+      const project = await authorize(db, user, ctx.params.id, 'memory.read');
+      const overview = await db.asUser(user.id, (tx) => getOverview(tx, db, project, { minAgeSeconds: overviewMinAge }));
+      if (overview.cacheHit) metrics.inc('pmi_context_cache_hits_total');
+      return { body: { overview: overview.text, memoryIds: overview.ids, tokens: overview.tokens, cacheHit: overview.cacheHit } };
+    }),
+
+    route('POST', '/v1/projects/:id/context', async (ctx) => {
+      const user = await ctx.user();
+      const input = parse(contextSchema, await ctx.body());
+      const project = await authorize(db, user, ctx.params.id, input.session_id ? 'session.write' : 'memory.read');
+      const started = Date.now();
+      const pkg = await db.asUser(user.id, async (tx) => {
+        let session: SessionState | null = null;
+        if (input.session_id) {
+          const row = await getSession(tx, input.session_id);
+          if (!row || row.projectId !== project.id) throw new HttpError(404, 'session_not_found', 'session not found');
+          session = row.state;
+        }
+        const built = await buildServerContext(tx, db, project, {
+          task: input.task, budgetTokens: input.budget_tokens, levels: input.levels, files: input.files,
+          components: input.components, recentGitFiles: input.recent_git_files, session,
+        }, { embeddings, overviewMinAgeSeconds: overviewMinAge });
+        await recordMetric(tx, {
+          projectId: project.id, sessionId: input.session_id, userId: user.id, name: 'context_tokens', value: built.receipt.tokensTotal,
+          labels: { lens: built.receipt.lens, levels: input.levels ?? ['L1', 'L2'], cacheHit: built.receipt.cacheHit },
+        });
+        return built;
+      });
+      metrics.inc('pmi_context_build_ms_sum', {}, Date.now() - started);
+      if (pkg.receipt.cacheHit) metrics.inc('pmi_context_cache_hits_total');
+      return { body: pkg };
+    }),
+
+    route('GET', '/metrics', async (ctx) => {
+      const expected = options.metricsToken ?? process.env.PMI_METRICS_TOKEN;
+      if (!expected) throw new HttpError(404, 'not_found', 'metrics are disabled; set PMI_METRICS_TOKEN');
+      const given = /^Bearer\s+(\S+)$/i.exec(ctx.req.headers.authorization ?? '')?.[1] ?? '';
+      const a = Buffer.from(given);
+      const b = Buffer.from(expected);
+      if (a.length !== b.length || !timingSafeEqual(a, b)) throw new HttpError(401, 'unauthorized', 'metrics token required');
+      const text = await metrics.render(db);
+      ctx.res.writeHead(200, { 'content-type': 'text/plain; version=0.0.4; charset=utf-8', 'cache-control': 'no-store' });
+      ctx.res.end(text);
+      return { raw: true, status: 200 };
+    }),
+
     route('POST', '/mcp', async (ctx) => {
       const user = await ctx.user();
       await handleMcpRequest(db, user, options.version, ctx.req, ctx.res, await ctx.body());
@@ -539,6 +622,9 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
     }),
   ];
 
+  const metrics = createMetrics();
+  const embeddings = options.embeddings ?? null;
+  const overviewMinAge = options.overviewMinAgeSeconds ?? 600;
   const blobStorage = new ServerBlobStorage(options.blobDir ?? process.env.PMI_BLOB_DIR ?? path.resolve('data', 'blobs'));
   const leaseTtl = options.leaseTtlSeconds ?? (Number(process.env.PMI_LEASE_TTL) || 600);
   const handoffReserveHours = options.handoffReserveHours ?? 24;
@@ -581,16 +667,19 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
     const started = Date.now();
     const url = new URL(req.url ?? '/', 'http://localhost');
     let user: AuthUser | undefined;
+    let routeLabel = 'unmatched';
 
     const send = (status: number, body: unknown) => {
       const payload = JSON.stringify(body);
       res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
       res.end(payload);
+      metrics.inc('pmi_http_requests_total', { route: routeLabel, status: String(status) });
       log({ at: new Date().toISOString(), method: req.method, path: url.pathname, status, ms: Date.now() - started, user: user?.id });
     };
 
     const match = routes
       .filter((candidate) => candidate.pattern.test(url.pathname));
+    routeLabel = match[0]?.label ?? 'unmatched';
     const selected = match.find((candidate) => candidate.method === req.method);
     if (!selected) {
       if (match.length > 0) send(405, { error: { code: 'method_not_allowed', message: `${req.method} is not supported here` } });
@@ -616,6 +705,7 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
     selected.handler(ctx).then(
       (result) => {
         if ('raw' in result) {
+          metrics.inc('pmi_http_requests_total', { route: routeLabel, status: String(result.status) });
           log({ at: new Date().toISOString(), method: req.method, path: url.pathname, status: result.status, ms: Date.now() - started, user: user?.id });
           return;
         }

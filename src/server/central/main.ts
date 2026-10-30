@@ -35,6 +35,7 @@ import {
 } from './identity.js';
 import { migrate } from './migrations.js';
 import { expireLeases } from './sessions-repo.js';
+import { EMBEDDING_DIMENSIONS, embedPending, type ServerEmbeddings } from './context-repo.js';
 import { ServerBlobStorage, applyRetention } from './snapshots-repo.js';
 import path from 'node:path';
 
@@ -60,7 +61,8 @@ Organization owners/admins have full access to every project of their
 organization; everyone else needs a project grant (directly or via a team).
 
 Environment: PMI_DATABASE_URL (required), PMI_HOST (default 127.0.0.1), PMI_PORT (default 7420),
-PMI_LEASE_TTL (session lease seconds, default 600), PMI_BLOB_DIR (large snapshot blobs, default ./data/blobs)`;
+PMI_LEASE_TTL (session lease seconds, default 600), PMI_METRICS_TOKEN (enables /metrics),
+MEMORIX_EMBEDDING (fastembed|transformers|api: semantic search, 384 dimensions), PMI_BLOB_DIR (large snapshot blobs, default ./data/blobs)`;
 
 type Role = 'owner' | 'admin' | 'member';
 
@@ -117,7 +119,15 @@ export async function runServerCli(argv: string[]): Promise<number> {
       if (!values['no-migrate']) await migrate(db);
       const host = values.host ?? process.env.PMI_HOST ?? '127.0.0.1';
       const port = Number(values.port ?? process.env.PMI_PORT ?? 7420);
-      const server = createCentralServer({ db, version: VERSION });
+      const embeddings = await loadServerEmbeddings();
+      const server = createCentralServer({ db, version: VERSION, embeddings });
+      if (embeddings) {
+        // Fill vectors for new and edited memories in the background.
+        const embedJob = setInterval(() => {
+          embedPending(db, embeddings).catch((error: Error) => console.error(`[pmi-server] embedding failed: ${error.message}`));
+        }, 10_000);
+        embedJob.unref();
+      }
       // Sessions whose lease ran out become resumable even if nobody asks.
       const leaseJob = setInterval(() => {
         expireLeases(db).catch((error: Error) => console.error(`[pmi-server] lease expiry failed: ${error.message}`));
@@ -238,6 +248,27 @@ export async function runServerCli(argv: string[]): Promise<number> {
       console.error(`Unknown command "${command}"\n\n${USAGE}`);
       return 1;
   }
+}
+
+/**
+ * Semantic search uses the Memorix embedding providers (MEMORIX_EMBEDDING=
+ * fastembed|transformers|api). The column is vector(384); another size is
+ * reported and search stays keyword-only rather than failing.
+ */
+async function loadServerEmbeddings(): Promise<ServerEmbeddings | null> {
+  const mode = process.env.MEMORIX_EMBEDDING?.trim();
+  if (!mode || mode === 'off') return null;
+  const { getEmbeddingProvider } = await import('../../embedding/provider.js');
+  const provider = await getEmbeddingProvider();
+  if (!provider) {
+    console.error('[pmi-server] MEMORIX_EMBEDDING is set but no embedding provider is available; search is keyword-only');
+    return null;
+  }
+  if (provider.dimensions !== EMBEDDING_DIMENSIONS) {
+    console.error(`[pmi-server] embedding provider ${provider.name} has ${provider.dimensions} dimensions, the schema expects ${EMBEDDING_DIMENSIONS}; search is keyword-only`);
+    return null;
+  }
+  return { name: provider.name, dimensions: provider.dimensions, embedBatch: (texts) => provider.embedBatch(texts) };
 }
 
 const invokedDirectly = process.argv[1] && /pmi-server(\.js)?$|central[\\/]main\.(js|ts)$/.test(process.argv[1]);

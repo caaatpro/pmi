@@ -343,9 +343,18 @@ export function buildContext(memories: ContextMemory[], request: ContextRequest,
   }
 
   if (levels.has('L3')) {
+    // Most specific first: superseded knowledge about the task, then version and
+    // session history the caller found, then past session notes that match the task.
+    const byRelevance = (list: ContextMemory[]) => list
+      .map((m) => ({ m, r: m.relevance ?? lexicalRelevance(request.task, m) }))
+      .filter((item) => item.r > 0)
+      .sort((a, b) => b.r - a.r)
+      .slice(0, 10)
+      .map((item) => item.m);
     const items = [
-      ...unique.filter((m) => m.confidence === 'deprecated' || L3_CATEGORIES.includes(m.category)).map((m) => ({ title: `${m.title}${m.confidence === 'deprecated' ? ' (deprecated)' : ''}`, detail: m.content })),
+      ...byRelevance(unique.filter((m) => m.confidence === 'deprecated')).map((m) => ({ title: `${m.title} (deprecated)`, detail: m.content })),
       ...(request.history ?? []),
+      ...byRelevance(unique.filter((m) => m.confidence !== 'deprecated' && L3_CATEGORIES.includes(m.category))).map((m) => ({ title: m.title, detail: m.content })),
     ];
     const header = '## History';
     const lines: string[] = [];

@@ -182,7 +182,9 @@ async function applyEntry(
          related_commits = excluded.related_commits, body = excluded.body, content_hash = excluded.content_hash,
          tokens = excluded.tokens, revision = excluded.revision, writer = excluded.writer,
          version = excluded.version, deleted_at = NULL, updated_at = excluded.updated_at,
-         server_seq = excluded.server_seq`,
+         server_seq = excluded.server_seq,
+         -- New content needs a new vector; the embedding job fills it in.
+         embedding = CASE WHEN memory.memories.content_hash = excluded.content_hash THEN memory.memories.embedding ELSE NULL END`,
       params,
     );
   }
@@ -339,21 +341,15 @@ export async function listConflicts(db: Queryable, projectId: string, state = 'o
   );
 }
 
-export async function searchMemories(
-  db: Queryable,
-  projectIds: string[],
-  query: string,
-  limit: number,
-): Promise<Array<MemoryView & { projectId: string; rank: number }>> {
-  if (projectIds.length === 0) return [];
-  return db.query(
-    `SELECT ${MEMORY_VIEW_COLUMNS}, project_id AS "projectId", ts_rank(search, q) AS rank
-       FROM memory.memories, websearch_to_tsquery('simple', $2) AS q
-      WHERE project_id = ANY ($1::uuid[]) AND deleted_at IS NULL AND search @@ q
-      ORDER BY rank DESC, updated_at DESC
-      LIMIT $3`,
-    [projectIds, query, limit],
+/** Memory views for ids, in the given order (search results). */
+export async function memoriesByIds(db: Queryable, ids: string[]): Promise<Array<MemoryView & { projectId: string }>> {
+  if (ids.length === 0) return [];
+  const rows = await db.query<MemoryView & { projectId: string }>(
+    `SELECT ${MEMORY_VIEW_COLUMNS}, project_id AS "projectId" FROM memory.memories WHERE id = ANY ($1::text[]) AND deleted_at IS NULL`,
+    [ids],
   );
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  return ids.map((id) => byId.get(id)).filter((row): row is MemoryView & { projectId: string } => Boolean(row));
 }
 
 /**

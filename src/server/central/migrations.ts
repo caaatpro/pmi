@@ -487,6 +487,41 @@ CREATE FUNCTION work.snapshot_project(p_id text) RETURNS uuid
 $f$;
 `,
   },
+  {
+    // Phase 8: L1 overview cache and metric events (CONTEXT_ENGINE.md §2, §8).
+    id: '0005-context',
+    sql: `
+CREATE TABLE memory.overviews (
+  project_id uuid PRIMARY KEY REFERENCES core.projects ON DELETE CASCADE,
+  content text NOT NULL,
+  memory_ids jsonb NOT NULL DEFAULT '[]'::jsonb,
+  tokens int NOT NULL,
+  source_max_seq bigint NOT NULL,
+  built_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE work.metrics_events (
+  id bigserial PRIMARY KEY,
+  at timestamptz NOT NULL DEFAULT now(),
+  project_id uuid REFERENCES core.projects ON DELETE CASCADE,
+  session_id text,
+  user_id uuid,
+  name text NOT NULL,
+  value double precision NOT NULL,
+  labels jsonb NOT NULL DEFAULT '{}'::jsonb
+);
+CREATE INDEX metrics_events_name_at ON work.metrics_events (name, at DESC);
+CREATE INDEX metrics_events_session ON work.metrics_events (session_id) WHERE session_id IS NOT NULL;
+
+GRANT SELECT ON memory.overviews TO pmi_app;
+ALTER TABLE memory.overviews ENABLE ROW LEVEL SECURITY;
+CREATE POLICY overviews_read ON memory.overviews FOR SELECT TO pmi_app USING (core.can(project_id, 'viewer'));
+GRANT INSERT ON work.metrics_events TO pmi_app;
+GRANT USAGE ON SEQUENCE work.metrics_events_id_seq TO pmi_app;
+ALTER TABLE work.metrics_events ENABLE ROW LEVEL SECURITY;
+CREATE POLICY metrics_insert ON work.metrics_events FOR INSERT TO pmi_app WITH CHECK (project_id IS NULL OR core.can(project_id, 'viewer'));
+`,
+  },
 ];
 
 const MIGRATION_LOCK_KEY = 74_201_001;
