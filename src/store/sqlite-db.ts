@@ -1203,6 +1203,27 @@ const SCHEMA_MIGRATIONS: SchemaMigration[] = [
     },
   },
   {
+    // PMI workspace snapshots (docs/PMI/WORKSPACE_RECOVERY.md). Blob bodies
+    // live in <dataDir>/blobs; this table holds manifests.
+    id: 'pmi-3-workspace-snapshots',
+    apply: (db) => {
+      db.exec(`CREATE TABLE IF NOT EXISTS workspace_snapshots (
+        id              TEXT PRIMARY KEY,
+        project_id      TEXT NOT NULL,
+        session_id      TEXT,
+        manifest_json   TEXT NOT NULL,
+        manifest_sha256 TEXT NOT NULL,
+        content_key     TEXT NOT NULL,
+        total_bytes     INTEGER NOT NULL,
+        pinned          INTEGER NOT NULL DEFAULT 0,
+        created_at      TEXT NOT NULL,
+        registered_at   TEXT
+      )`);
+      db.exec('CREATE INDEX IF NOT EXISTS idx_workspace_snapshots_session ON workspace_snapshots(session_id, created_at DESC)');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_workspace_snapshots_project ON workspace_snapshots(project_id, created_at DESC)');
+    },
+  },
+  {
     id: '1.9-continuity-v2',
     apply: (db) => {
       addColumnIfMissing(db, 'task_continuity_events', 'event_key', 'event_key TEXT');
