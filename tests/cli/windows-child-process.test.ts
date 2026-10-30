@@ -29,12 +29,6 @@ describe('Windows CLI child process behavior', () => {
     expect(command).toContain('windowsHide: true');
   });
 
-  it('hides verification commands launched by orchestration', () => {
-    const verifyGate = readFileSync(join(process.cwd(), 'src/orchestrate/verify-gate.ts'), 'utf8');
-    expect(verifyGate).toContain('shell: true');
-    expect(verifyGate).toContain('windowsHide: true');
-  });
-
   it('hides the slow-path Git probes used by normal CLI commands', () => {
     const workspace = mkdtempSync(join(tmpdir(), 'memorix-window-hide-'));
     try {

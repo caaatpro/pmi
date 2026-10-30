@@ -43,18 +43,6 @@ export default defineCommand({
           }
 
           const metadata = parseOptionalJsonObject(args.metadata as string | undefined, 'metadata');
-          if (metadata) {
-            const { checkPipelineGuards } = await import('../../orchestrate/planner.js');
-            const guard = checkPipelineGuards({
-              existingTasks: teamStore.listTasks(project.id),
-              newTaskMeta: metadata,
-            });
-            if (!guard.allowed) {
-              emitError(guard.reason, asJson);
-              return;
-            }
-          }
-
           const task = teamStore.createTask({
             projectId: project.id,
             description: args.description as string,

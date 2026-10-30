@@ -4,7 +4,7 @@ import {
   extractTaskIdFromPath,
   cleanupOrphanWorktrees,
   listWorktrees,
-} from '../../src/orchestrate/worktree.js';
+} from '../../src/workspace-snapshot/worktree.js';
 import * as cp from 'node:child_process';
 
 vi.mock('node:child_process', () => ({

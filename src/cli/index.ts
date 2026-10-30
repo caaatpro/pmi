@@ -166,7 +166,6 @@ const main = defineCommand({
     cleanup: () => import('./commands/cleanup.js').then(m => m.default),
     purge: () => import('./commands/purge.js').then(m => m.default),
     uninstall: () => import('./commands/uninstall.js').then(m => m.default),
-    orchestrate: () => import('./commands/orchestrate.js').then(m => m.default),
   },
   async run() {
     // Guard: if citty already resolved a subcommand, its run() was called before this.
@@ -178,7 +177,7 @@ const main = defineCommand({
       'receipt',
       'serve', 'serve-http', 'status', 'sync',
       'hook', 'hooks', 'ingest', 'git-hook', 'git-hook-uninstall',
-      'background', 'bg', 'bs', 'doctor', 'repair', 'dashboard', 'cleanup', 'purge', 'uninstall', 'orchestrate'];
+      'background', 'bg', 'bs', 'doctor', 'repair', 'dashboard', 'cleanup', 'purge', 'uninstall'];
     if (firstArg && knownSubs.includes(firstArg)) return;
 
     // No subcommand provided — piped launches (MCP hosts, registry probes)

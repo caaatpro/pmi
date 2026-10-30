@@ -4968,14 +4968,6 @@ export async function createMemorixServer(
             try { parsedMeta = JSON.parse(metadata); } catch { /* ignore invalid JSON */ }
           }
 
-          // Phase 5: enforce autonomous-pipeline hard guards
-          const { checkPipelineGuards } = await import('./orchestrate/planner.js');
-          const existingTasks = teamStore.listTasks(project.id);
-          const guard = checkPipelineGuards({ existingTasks, newTaskMeta: parsedMeta });
-          if (!guard.allowed) {
-            return { content: [{ type: 'text' as const, text: `[ERROR] ${guard.reason}` }], isError: true };
-          }
-
           const task = teamStore.createTask({
             projectId: project.id,
             description: desc,

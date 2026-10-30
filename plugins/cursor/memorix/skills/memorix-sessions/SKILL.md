@@ -22,4 +22,4 @@ description: Use when resuming work, preparing handoff context, binding an HTTP 
 - For normal memory search/store, do not require session start.
 - In HTTP mode, pass the absolute workspace path as `projectRoot` when available.
 - `projectRoot` is a detection anchor; Git identity is the final project identity.
-- Do not join coordination state unless the user is using tasks, messages, locks, handoff, or `memorix orchestrate`.
+- Do not join coordination state unless the user is using tasks, messages, locks, or handoff.
