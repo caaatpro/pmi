@@ -17,7 +17,8 @@ PMI (Project Memory Infrastructure) is a TypeScript/Node fork of Memorix. The ta
 - `src/knowledge/`, `src/compact/`, `src/codegraph/` — context briefs (Workset), progressive disclosure, code index
 - `src/domain/` — PMI memory model and session state (pure rules)
 - `src/session/` — session continuity client: local store, service, daemon, git state
-- `src/mcp/tools/` — MCP tools split out of `src/server.ts` (session continuity so far)
+- `src/context/` — context engine (L1/L2/L3, ranking, budget) and token-savings estimate
+- `src/mcp/tools/` — PMI MCP tools (context, sessions, workspace), split out of `src/server.ts`
 - `src/server/central/` — `pmi-server`: Postgres schema, HTTP API, tokens
 - `src/client/` — Connected-mode client config (`~/.pmi`, `.pmi/project.json`) and API client
 - `src/sync/` — replication of memory records (PMI server, fs/S3/GitHub/Postgres relays)
@@ -38,4 +39,4 @@ npx vitest run tests/central   # needs Docker or PMI_TEST_PG_URL
 
 ## Project memory
 
-If the PMI/Memorix MCP tools are available, call `memorix_project_context` with the current task before broad file reading, and store durable decisions with `memorix_store` (type `decision`). The CLI fallback is `pmi context --task "<task>"`.
+If the PMI MCP tools are available, call `context_build` with the current task before broad file reading, record architecture decisions with `decision_log`, and other durable knowledge with `memory_save`. The CLI fallback is `pmi context --task "<task>"`.

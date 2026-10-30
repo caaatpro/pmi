@@ -25,6 +25,8 @@ import { checkpointSession, flushOutbox, heartbeatSession, releaseSession, type 
 
 export interface DaemonSettings {
   tickMs: number;
+  /** How often project memory is synced with the server for live sessions' working copies. */
+  memorySyncMs: number;
   debounceMs: number;
   intervalMs: number;
   agentIdleMs: number;
@@ -39,6 +41,7 @@ function envMs(env: NodeJS.ProcessEnv, name: string, fallback: number): number {
 export function daemonSettings(env: NodeJS.ProcessEnv = process.env): DaemonSettings {
   return {
     tickMs: envMs(env, 'PMI_DAEMON_TICK_MS', 5_000),
+    memorySyncMs: envMs(env, 'PMI_MEMORY_SYNC_MS', 60_000),
     debounceMs: envMs(env, 'PMI_CHECKPOINT_DEBOUNCE_MS', 60_000),
     intervalMs: envMs(env, 'PMI_CHECKPOINT_INTERVAL_MS', 300_000),
     agentIdleMs: envMs(env, 'PMI_AGENT_IDLE_MS', 900_000),
@@ -140,6 +143,7 @@ export async function runDaemon(dataDir: string, env: NodeJS.ProcessEnv = proces
 
   let stopping = false;
   let wake: (() => void) | undefined;
+  let lastMemorySync = 0;
   const stop = () => {
     stopping = true;
     wake?.();
@@ -159,6 +163,19 @@ export async function runDaemon(dataDir: string, env: NodeJS.ProcessEnv = proces
       const report = await daemonTick(store, settings, env);
       if (report.checkpoints.length || report.released.length || report.flush.sent || report.flush.rejected.length) {
         log({ at: new Date().toISOString(), ...report });
+      }
+      if (Date.now() - lastMemorySync >= settings.memorySyncMs) {
+        lastMemorySync = Date.now();
+        const roots = new Set(store.list({ statuses: LIVE_STATUSES, deviceOnly: true }).map((session) => session.workspaceRoot).filter((root): root is string => Boolean(root)));
+        const { syncProjectMemory } = await import('./memory-sync.js');
+        for (const root of roots) {
+          try {
+            const sync = await syncProjectMemory(dataDir, root, env);
+            if (sync && (sync.pushed || sync.applied || sync.tombstoned)) log({ at: new Date().toISOString(), msg: 'memory synced', root, pushed: sync.pushed, applied: sync.applied });
+          } catch (error) {
+            if (!(error as { offline?: boolean }).offline) log({ at: new Date().toISOString(), level: 'warn', msg: 'memory sync failed', root, error: (error as Error).message });
+          }
+        }
       }
     } catch (error) {
       log({ at: new Date().toISOString(), level: 'error', error: (error as Error).message });

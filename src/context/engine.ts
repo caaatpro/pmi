@@ -243,7 +243,7 @@ function sessionBlock(session: SessionState): string {
 }
 
 function renderMemory(memory: ContextMemory, form: IncludedEntry['form']): string {
-  const flag = memory.conflicted ? ' ⚠ conflicting' : '';
+  const flag = memory.conflicted ? ' [CONFLICT: under review]' : '';
   const head = `- [${memory.category}${confidenceMark(memory.confidence)}] ${memory.title}${flag} (${memory.id})`;
   if (form === 'title') return head;
   const facts = memory.facts.length ? `\n  ${memory.facts.slice(0, 6).map((fact) => `• ${oneLine(fact, 160)}`).join('\n  ')}` : '';

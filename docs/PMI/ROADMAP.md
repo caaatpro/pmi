@@ -179,6 +179,25 @@ L1 overview + кэш, серверный hybrid search (tsvector + pgvector + RR
 
 TEST 6, существующие evaluation‑гейты не деградируют.
 
+### Итог Phase 8 (ветка `pmi/phase-8-context`)
+
+| Пункт | Результат | Проверка |
+|---|---|---|
+| Ядро | `src/context/engine.ts` (без I/O, общее для сервера и клиента): L1 overview по шаблону (≤ 800 токенов, confirmed/observed первыми, inferred помечены), L2‑ранжирование по формуле §4 (task lens из codegraph, confidence, свежесть, `needs_review` × 0.6, file/component/git‑affinity), упаковка в бюджет с гарантиями §5 и ступенями сжатия full → title + facts → title + id, указатель «+N not shown», дедупликация, пометка [CONFLICT] для конфликтов, L3 только по запросу (упорядочен по релевантности), secret‑filter, receipt | `tests/context/engine.test.ts` |
+| Сервер | Hybrid search: tsvector (`ts_rank_cd`) + pgvector cosine, RRF; без эмбеддингов — keyword без ошибки. Эмбеддинги — провайдеры Memorix (`MEMORIX_EMBEDDING`, 384 измерения), фоновое заполнение, сброс вектора при правке. Миграция `0005-context`: кэш L1 `memory.overviews` (пересборка при изменении overview‑категорий, не чаще раза в 10 минут), `work.metrics_events`. `POST /v1/projects/:id/context`, `GET /v1/projects/:id/overview`; `/v1/.../search` теперь hybrid | `tests/central/context.test.ts` |
+| Метрики | `/metrics` (Prometheus, `PMI_METRICS_TOKEN`): HTTP‑запросы по маршрутам, время и число сборок контекста, токены, попадания в кэш L1, извлечения памяти, память по категориям, сессии по статусам, `session_recovery_total`, `workspace_recovery_total`, blobs; `context_tokens` по сессиям в `work.metrics_events` | там же |
+| Экономия токенов | `src/context/local.ts`: оценка baseline (README, манифесты, файлы задачи и сессии, `git log -n 50 --stat`) и `savings = 1 − delivered / baseline` в каждом receipt `context_build` | `tests/server/pmi-context-tools.test.ts` |
+| MCP | `context_build`, `project_overview`, `memory_search`, `memory_get`, `memory_save`, `decision_log` (`src/mcp/tools/context.ts`). В Connected mode — сервер (вся общая память), иначе тот же движок над локальной памятью. `memory_save`/`decision_log` пишут категорию и confidence (агент — только observed/inferred/proposed; `storeObservation` понижает иное до `proposed`); решение добавляется в state сессии и даёт checkpoint `decision` | там же |
+| Daemon | Синхронизирует память проекта для рабочих копий живых сессий (`PMI_MEMORY_SYNC_MS`, 60 с) под общим с `pmi sync` файловым замком | TEST 1 (PMI‑инструменты) |
+| **TEST 6** | 500 записей и 200 сессий: на сервере (Postgres) и локально (MCP без сервера) `session_start` + `context_build` — receipt ≤ 2300 токенов, нет записей session_history, устаревших знаний и секции History; нужное для задачи (подтверждённое решение, исправление, соглашение, next action) на месте | ✔ (оба режима) |
+| **TEST 1** на PMI‑инструментах | Claude Code Алисы: `decision_log` → daemon сам отправляет → Codex Боба: `context_build` (server) содержит решение, `decision_log list` его находит; без ручного `pmi sync` | ✔ |
+
+**Отличия и перенос** (с обоснованием):
+- **Измеренная экономия на живых агентах** (бенчмарк «с PMI / без PMI» на реальной модели) не выполнена: в этой среде нет запуска агентов с замером их токенов. Есть оценочная цифра в каждом receipt и проверка, что она положительна на фикстуре. Бенчмарк — Phase 10.
+- **Дедупликация похожих записей, эвристика противоречий, устаревание по времени** (CONTEXT_ENGINE.md §6) — не новые механизмы этой фазы: точные дубли схлопываются при упаковке, конфликты одновременной правки помечаются [CONFLICT]; правила устаревания по git — Phase 9.
+- **Офлайн‑поиск** `memory_search` использует лексическое ранжирование движка над локальной памятью, а не BM25/векторный поиск Memorix (`memorix_search` остаётся доступен).
+- **Разрезка `src/server.ts` и миграция mini‑skills в `coding_convention`** по‑прежнему не выполнены. Все новые PMI‑инструменты живут в отдельных модулях `src/mcp/tools/*` с явным контекстом; перенос 37 унаследованных инструментов — отдельная задача без изменения поведения (страховка — snapshot‑тест поверхности).
+
 ## Phase 9 — Git intelligence
 
 Курсоры, конвейер `cursor..HEAD`, `--name-status`/parents, классификаторы, устаревание связанных знаний, полная сверка, хуки post‑merge/post‑checkout.

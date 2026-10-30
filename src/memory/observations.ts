@@ -8,6 +8,7 @@
  * and in the Orama search index (for full-text + vector search).
  */
 
+import { AGENT_WRITABLE_CONFIDENCE, canTransitionConfidence, classifyObservation, type MemoryCategory, type MemoryConfidence } from '../domain/memory.js';
 import type {
   Observation,
   ObservationAttachment,
@@ -508,6 +509,11 @@ function formatAttachmentProvenance(attachments?: ObservationAttachment[]): stri
   ].filter(Boolean).join(' ')).join('\n');
 }
 
+/** Writes through storeObservation are agent or hook writes: they start at most `proposed`. */
+function agentConfidence(confidence: MemoryConfidence): MemoryConfidence {
+  return AGENT_WRITABLE_CONFIDENCE.includes(confidence) ? confidence : 'proposed';
+}
+
 export async function storeObservation(input: {
   entityName: string;
   type: ObservationType;
@@ -533,6 +539,10 @@ export async function storeObservation(input: {
   visibility?: ObservationVisibility;
   sharedWithAgentIds?: string[];
   createdByAgentId?: string;
+  /** PMI category override (src/domain/memory.ts); default comes from `type`. */
+  category?: MemoryCategory;
+  /** PMI confidence for agent writes: observed, inferred or proposed. Never confirmed. */
+  confidence?: MemoryConfidence;
   /** Optional caller-bound write scope for topic-key upserts. */
   visibilityReader?: ObservationReader;
   /**
@@ -670,6 +680,8 @@ export async function storeObservation(input: {
           visibility: input.visibility ?? 'project',
           sharedWithAgentIds: input.sharedWithAgentIds,
           createdByAgentId: input.createdByAgentId,
+          ...(input.category ? { category: input.category } : {}),
+          ...(input.confidence ? { confidence: agentConfidence(input.confidence) } : {}),
           // Predict the generation that atomic() will commit after this callback.
           // bumpGeneration() runs after fn(tx) returns, incrementing by 1.
           writeGeneration: transactionGeneration + 1,
@@ -750,6 +762,8 @@ export async function storeObservation(input: {
         visibility: input.visibility ?? 'project',
         sharedWithAgentIds: input.sharedWithAgentIds,
         createdByAgentId: input.createdByAgentId,
+        ...(input.category ? { category: input.category } : {}),
+        ...(input.confidence ? { confidence: agentConfidence(input.confidence) } : {}),
         writeGeneration: 0,
       };
       observations.push(observation);
@@ -848,6 +862,8 @@ async function upsertObservation(
     admissionReason?: string;
     visibility?: ObservationVisibility;
     sharedWithAgentIds?: string[];
+    category?: MemoryCategory;
+    confidence?: MemoryConfidence;
   },
   now: string,
 ): Promise<Observation> {
@@ -891,6 +907,12 @@ async function upsertObservation(
   if (input.admissionReason !== undefined) existing.admissionReason = sanitizeCredentials(input.admissionReason);
   if (input.visibility !== undefined) existing.visibility = input.visibility;
   if (input.sharedWithAgentIds !== undefined) existing.sharedWithAgentIds = input.sharedWithAgentIds;
+  if (input.category !== undefined) existing.category = input.category;
+  if (input.confidence !== undefined) {
+    // An agent edit never confirms knowledge nor demotes confirmed knowledge.
+    const current = classifyObservation(existing).confidence;
+    if (canTransitionConfidence(current, input.confidence, 'agent').ok) existing.confidence = input.confidence;
+  }
 
   // Re-index in Orama WITHOUT embedding first (non-blocking)
   const doc: MemorixDocument = {

@@ -15,7 +15,7 @@ let root = '';
 let repo = '';
 let store: LocalSessionStore;
 
-const settings: DaemonSettings = { tickMs: 10, debounceMs: 0, intervalMs: 60_000, agentIdleMs: 60_000, heartbeatMs: 60_000 };
+const settings: DaemonSettings = { tickMs: 10, memorySyncMs: 60_000, debounceMs: 0, intervalMs: 60_000, agentIdleMs: 60_000, heartbeatMs: 60_000 };
 const env = { PMI_HOME: '' } as NodeJS.ProcessEnv;
 
 function git(...args: string[]): string {

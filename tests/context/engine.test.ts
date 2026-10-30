@@ -98,7 +98,7 @@ describe('context engine', () => {
     expect(tight.included[0].id).toBe('x');
     expect(tight.included[0].form).not.toBe('full');
     expect(tight.receipt.tokensTotal).toBeLessThanOrEqual(200);
-    expect(tight.text).toContain('⚠ conflicting');
+    expect(tight.text).toContain('[CONFLICT: under review]');
     expect(tight.receipt.truncated).toBe(1);
   });
 

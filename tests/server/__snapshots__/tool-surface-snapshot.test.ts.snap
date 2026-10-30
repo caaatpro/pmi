@@ -2,6 +2,24 @@
 
 exports[`MCP tool surface > keeps the full-profile tool names and input fields stable 1`] = `
 {
+  "context_build": [
+    "budget_tokens?",
+    "components?",
+    "files?",
+    "levels?",
+    "task?",
+  ],
+  "decision_log": [
+    "action?",
+    "alternatives?",
+    "component?",
+    "consequences?",
+    "context?",
+    "decision?",
+    "files?",
+    "query?",
+    "title?",
+  ],
   "memorix_audit_project": [
     "threshold?",
   ],
@@ -233,6 +251,25 @@ exports[`MCP tool surface > keeps the full-profile tool names and input fields s
     "items?",
     "target?",
   ],
+  "memory_get": [
+    "id",
+  ],
+  "memory_save": [
+    "category",
+    "component?",
+    "confidence?",
+    "content",
+    "facts?",
+    "files?",
+    "title",
+    "topicKey?",
+  ],
+  "memory_search": [
+    "category?",
+    "limit?",
+    "query",
+  ],
+  "project_overview": [],
   "session_checkpoint": [
     "completed?",
     "decisions?",

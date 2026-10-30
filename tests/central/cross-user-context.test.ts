@@ -51,8 +51,9 @@ describe.skipIf(!pgAvailable || !cliBuilt)('TEST 1: a decision recorded by one u
     serverUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 
     const [repoA, repoB] = createRepoPair(root, 'https://github.com/acme/payments.git');
-    alice = machine(root, 'alice', repoA);
-    bob = machine(root, 'bob', repoB);
+    const fastDaemon = { PMI_DAEMON_TICK_MS: '250', PMI_MEMORY_SYNC_MS: '500' };
+    alice = machine(root, 'alice', repoA, fastDaemon);
+    bob = machine(root, 'bob', repoB, fastDaemon);
   }, 180_000);
 
   afterAll(async () => {
@@ -146,6 +147,54 @@ describe.skipIf(!pgAvailable || !cliBuilt)('TEST 1: a decision recorded by one u
     expect(pulled.json.applied).toBe(1);
     const again = await pmi(alice, 'sync', '--json');
     expect(again.json).toMatchObject({ pushed: 0, applied: 0 });
+  }, 120_000);
+
+  it('TEST 1 with the PMI tools: decision_log on one machine, context_build on another, no manual sync', async () => {
+    const title = 'Refund amounts are computed server-side only';
+    const claude = await connectAgent(alice, 'claude-code');
+    try {
+      await claude.callTool({ name: 'memorix_session_start', arguments: { agent: 'claude-code', task: 'Refund API' } });
+      const logged = await claude.callTool({
+        name: 'decision_log',
+        arguments: {
+          title,
+          context: 'Clients sent refund amounts and some were tampered with.',
+          decision: 'The refund endpoint takes an order line id; the server computes the amount from the ledger.',
+          alternatives: ['Trust client amounts with a signature'],
+          consequences: 'Partial refunds need explicit line ids.',
+          component: 'payments',
+          files: ['src/payments/refund.ts'],
+        },
+      });
+      expect(logged.isError, toolText(logged)).toBeFalsy();
+      // Alice's daemon pushes the decision on its own.
+      const deadline = Date.now() + 30_000;
+      for (;;) {
+        const [row] = await db.query<{ category: string; confidence: string }>('SELECT category, confidence FROM memory.memories WHERE title = $1', [title]);
+        if (row) {
+          expect(row).toEqual({ category: 'architecture_decision', confidence: 'proposed' });
+          break;
+        }
+        if (Date.now() > deadline) throw new Error('the daemon did not sync the decision');
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+    } finally {
+      await claude.close();
+    }
+
+    const codex = await connectAgent(bob, 'codex');
+    try {
+      await codex.callTool({ name: 'memorix_session_start', arguments: { agent: 'codex', task: 'Partial refunds endpoint' } });
+      const context = await codex.callTool({ name: 'context_build', arguments: { task: 'add partial refunds to the refund endpoint', components: ['payments'] } });
+      expect(context.isError, toolText(context)).toBeFalsy();
+      expect(toolText(context)).toContain(title);
+      expect((context.structuredContent as { receipt: { source: string; tokensTotal: number } }).receipt).toMatchObject({ source: 'server' });
+      expect((context.structuredContent as { receipt: { tokensTotal: number } }).receipt.tokensTotal).toBeLessThanOrEqual(2_300);
+      const list = await codex.callTool({ name: 'decision_log', arguments: { action: 'list', query: 'refund amounts' } });
+      expect(toolText(list)).toContain(title);
+    } finally {
+      await codex.close();
+    }
   }, 120_000);
 });
 

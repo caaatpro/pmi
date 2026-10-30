@@ -1,16 +1,16 @@
 /**
  * Tool Profile System — Progressive Disclosure for MCP tools
  *
- * The full tool set contains 44 tools, but most users only ever
+ * The full tool set contains 50 tools, but most users only ever
  * use a small subset (store / search / detail). Exposing all of them at
  * tools/list time causes cognitive overload.
  *
  * We provide four profiles:
  *   - "micro" (stdio default): Agent-ready project context + bounded recovery controls — 8 tools.
  *     Suitable for normal MCP clients where every tool schema costs context tokens.
- *   - "lite": Core memory CRUD, sessions, reasoning, continuity, retention, backup, PMI sessions and workspace recovery — 27 tools.
+ *   - "lite": Core memory CRUD, sessions, reasoning, continuity, retention, backup, PMI context, sessions and workspace recovery — 33 tools.
  *     Suitable for solo users who want the full memory surface without team tools.
- *   - "team" (HTTP default): lite + coordination tools, dashboard, and Knowledge Workspace — 35 tools.
+ *   - "team" (HTTP default): lite + coordination tools, dashboard, and Knowledge Workspace — 41 tools.
  *     Suitable when an operator explicitly wants task/message/lock surfaces.
  *   - "full": Everything, including niche / advanced tools (consolidate, dedup,
  *     formation metrics, skills, rules/workspace sync).
@@ -54,6 +54,13 @@ export const TOOL_PROFILES: Record<string, ReadonlyArray<ToolProfile>> = Object.
   memorix_search_reasoning:   ['lite', 'team', 'full'],
   memorix_transfer:           ['lite', 'team', 'full'],
   memorix_retention:          ['lite', 'team', 'full'],
+  // PMI context and memory (src/mcp/tools/context.ts)
+  context_build:              ['lite', 'team', 'full'],
+  project_overview:           ['lite', 'team', 'full'],
+  memory_search:              ['lite', 'team', 'full'],
+  memory_get:                 ['lite', 'team', 'full'],
+  memory_save:                ['lite', 'team', 'full'],
+  decision_log:               ['lite', 'team', 'full'],
   // PMI session continuity (src/mcp/tools/session.ts)
   session_checkpoint:         ['lite', 'team', 'full'],
   session_handoff:            ['lite', 'team', 'full'],

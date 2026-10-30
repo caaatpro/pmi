@@ -17,7 +17,8 @@ PMI is a fork of [Memorix](https://github.com/AVIDS2/memorix) (Apache-2.0) that 
 | Peer-to-peer sync of memory records (fs / S3 / GitHub / Postgres relay) | Working (inherited), `pmi sync store push/pull` |
 | Session state, automatic checkpoints (daemon), handoff, `session list` / `session resume <id>` across users, agents and machines | Working (Phase 6) |
 | Workspace snapshots: uncommitted and unpushed work restored byte for byte on another machine (new worktree by default) | Working (Phase 7) |
-| L1/L2/L3 context engine, token metrics | Planned: Phase 8 |
+| Context engine: L1 overview, task-ranked L2 within a token budget, L3 history on request; hybrid search (keyword + pgvector, RRF); Prometheus metrics and token-savings estimate | Working (Phase 8) |
+| PMI MCP tools: `context_build`, `project_overview`, `memory_search/get/save`, `decision_log`, `session_*`, `workspace_*` | Working; `memorix_*` tools remain |
 | Incremental git intelligence | Planned: Phase 9 |
 
 The design lives in [docs/PMI](docs/PMI):
@@ -63,7 +64,7 @@ pmi status
 pmi doctor
 ```
 
-`memorix` is kept as an alias of `pmi` during the transition, and MCP tools keep their `memorix_*` names until the PMI tool set lands (see [API.md](docs/PMI/API.md)).
+`memorix` is kept as an alias of `pmi`. Agents should start with `context_build` (the smallest sufficient context for the task, about 2,300 tokens by default) and fetch details with `memory_get`; architecture decisions go through `decision_log`. The older `memorix_*` tools remain available (see [API.md](docs/PMI/API.md)).
 
 ## Central server (Connected mode)
 

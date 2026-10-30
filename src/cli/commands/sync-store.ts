@@ -248,12 +248,15 @@ export default defineCommand({
     }
 
     try {
-      const report = await runSync(syncStore, remote, {
+      const { withMemorySyncLock } = await import('../../session/memory-sync.js');
+      const { getBaseDataDir } = await import('../../store/persistence.js');
+      // The daemon syncs in the background; never run two syncs on one data directory.
+      const report = await withMemorySyncLock(getBaseDataDir(), () => runSync(syncStore, remote!, {
         deviceId: syncStore.deviceId(),
         dryRun: Boolean(args.dry),
         push: doPush,
         pull: doPull,
-      });
+      }));
       const notes = serverNotes(remote);
       emitResult(
         { project: projectId, ...report, ...(notes.length ? { serverNotes: notes } : {}) },

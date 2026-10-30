@@ -65,6 +65,7 @@ import {
 import { getMcpServerInfo, registerMcpDiscovery } from './server/mcp-compat.js';
 import { registerSessionTools } from './mcp/tools/session.js';
 import { registerWorkspaceTools } from './mcp/tools/workspace.js';
+import { registerContextTools } from './mcp/tools/context.js';
 
 // ── Timeout budgets for LLM-heavy paths ──────────────────────────
 const FORMATION_TIMEOUT_MS = parseFormationTimeoutMs(process.env.MEMORIX_FORMATION_TIMEOUT_MS); // Formation pipeline (extract+resolve+evaluate)
@@ -3899,6 +3900,11 @@ export async function createMemorixServer(
       await startSession(projectDir, project.id, { sessionId, agent, reader: getObservationReader() });
     },
     agentPid: process.pid,
+  });
+  registerContextTools(server, {
+    dataDir: () => projectDir,
+    project: () => ({ id: project.id, rootPath: project.rootPath }),
+    connectionSessionId: () => connectionSessionId,
   });
   registerWorkspaceTools(server, {
     dataDir: () => projectDir,
