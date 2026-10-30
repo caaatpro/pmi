@@ -4,7 +4,7 @@ Rules for project-scoped autonomous-agent coordination via Memorix team tools. T
 
 Only agents that are intentionally participating in team/task/message/lock workflows need this protocol. Memory-only sessions should stay lightweight and do not need a team identity.
 
-For real autonomous multi-agent development, prefer `memorix orchestrate`: it launches and supervises CLI agent workers through Memorix tasks, context, verification, and fix loops. The team tools support that workflow; they should not be interpreted as proof that unrelated IDE conversation windows can autonomously contact each other.
+The team tools are a local coordination aid; they do not make unrelated IDE conversation windows contact each other. Cross-machine handoff between developers is planned as Session Continuity (see `docs/PMI/SESSION_CONTINUITY.md`).
 
 There are 4 team tools, each with an `action` parameter:
 

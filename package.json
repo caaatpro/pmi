@@ -6,6 +6,7 @@
   "type": "module",
   "sideEffects": false,
   "bin": {
+    "pmi": "dist/cli/index.js",
     "memorix": "dist/cli/index.js"
   },
   "main": "./dist/index.js",
@@ -34,17 +35,13 @@
     "!src/**/*.d.ts",
     "!src/**/*.d.ts.map",
     "README.md",
-    "README.zh-CN.md",
-    "assets",
     "docs",
     "!docs/dev-log",
     "plugins",
     "TEAM.md",
     "LICENSE",
     "CHANGELOG.md",
-    "CLAUDE.md",
-    "llms.txt",
-    "llms-full.txt"
+    "AGENTS.md"
   ],
   "scripts": {
     "build:runtime": "tsup --config tsup.runtime.config.ts",

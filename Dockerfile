@@ -40,12 +40,9 @@ COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/dist ./dist
 COPY --from=build --chown=node:node /app/package.json ./package.json
 COPY --from=build --chown=node:node /app/README.md ./README.md
-COPY --from=build --chown=node:node /app/README.zh-CN.md ./README.zh-CN.md
 COPY --from=build --chown=node:node /app/LICENSE ./LICENSE
 COPY --from=build --chown=node:node /app/CHANGELOG.md ./CHANGELOG.md
-COPY --from=build --chown=node:node /app/CLAUDE.md ./CLAUDE.md
-COPY --from=build --chown=node:node /app/llms.txt ./llms.txt
-COPY --from=build --chown=node:node /app/llms-full.txt ./llms-full.txt
+COPY --from=build --chown=node:node /app/AGENTS.md ./AGENTS.md
 
 USER node
 
