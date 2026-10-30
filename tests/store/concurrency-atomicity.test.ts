@@ -120,7 +120,7 @@ describe('Concurrent promoteToMiniSkill — atomic ID allocation', () => {
 // ── Fix 2: Session atomic rollover ──────────────────────────────────
 
 describe('Concurrent startSession — atomic rollover', () => {
-  it('should leave exactly one active session after N concurrent starts', async () => {
+  it('should leave exactly one active session after N concurrent starts of the same agent', async () => {
     await initSessionStore(tmpDir);
     const store = getSessionStore();
 
@@ -133,7 +133,7 @@ describe('Concurrent startSession — atomic rollover', () => {
         projectId: PROJECT_ID,
         startedAt: new Date().toISOString(),
         status: 'active' as const,
-        agent: `agent-${i}`,
+        agent: 'claude-code',
       };
       return store.atomicRolloverInsert(
         session,
@@ -156,6 +156,45 @@ describe('Concurrent startSession — atomic rollover', () => {
     const completedCount = allSessions.filter(s => s.status === 'completed').length;
     expect(activeCount).toBe(1);
     expect(completedCount).toBe(N - 1);
+  });
+
+  it('keeps sessions of different agents active in parallel', async () => {
+    await initSessionStore(tmpDir);
+    const store = getSessionStore();
+
+    const PROJECT_ID = 'org/parallel-agents';
+    const agents = ['claude-code', 'codex', 'cursor'];
+
+    await Promise.all(agents.map((agent) => store.atomicRolloverInsert(
+      {
+        id: `sess-${agent}`,
+        projectId: PROJECT_ID,
+        startedAt: new Date().toISOString(),
+        status: 'active' as const,
+        agent,
+      },
+      [PROJECT_ID],
+      new Date().toISOString(),
+    )));
+
+    const active = await store.loadActive(PROJECT_ID);
+    expect(active.map((session) => session.agent).sort()).toEqual([...agents].sort());
+
+    // A restart of one agent closes only that agent's previous session.
+    const completed = await store.atomicRolloverInsert(
+      {
+        id: 'sess-codex-restart',
+        projectId: PROJECT_ID,
+        startedAt: new Date().toISOString(),
+        status: 'active' as const,
+        agent: 'codex',
+      },
+      [PROJECT_ID],
+      new Date().toISOString(),
+    );
+    expect(completed).toBe(1);
+    const afterRestart = await store.loadActive(PROJECT_ID);
+    expect(afterRestart.map((session) => session.id).sort()).toEqual(['sess-claude-code', 'sess-codex-restart', 'sess-cursor']);
   });
 
   it('should not affect sessions in other projects', async () => {
@@ -181,7 +220,7 @@ describe('Concurrent startSession — atomic rollover', () => {
         projectId: PROJECT_A,
         startedAt: new Date().toISOString(),
         status: 'active' as const,
-        agent: `agent-${i}`,
+        agent: 'windsurf',
       };
       return store.atomicRolloverInsert(session, [PROJECT_A], new Date().toISOString());
     });
@@ -211,12 +250,14 @@ describe('Concurrent startSession — atomic rollover', () => {
       projectId: ALIAS_1,
       startedAt: new Date().toISOString(),
       status: 'active',
+      agent: 'cursor',
     });
     await store.insert({
       id: 'sess-alias-2',
       projectId: ALIAS_2,
       startedAt: new Date().toISOString(),
       status: 'active',
+      agent: 'cursor',
     });
 
     // Rollover with both aliases

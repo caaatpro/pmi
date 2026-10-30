@@ -285,6 +285,20 @@ export async function createMemorixServer(
   let projectResolved = true;
   let projectResolutionError: string | null = null;
   let currentAgentId: string | undefined; // Session-scoped coordination identity for attribution after explicit join
+  // Session opened through this server connection. Several agents may have
+  // active sessions in one project, so attribution prefers this one over the
+  // most recent active session of the project.
+  let connectionSessionId: string | undefined;
+  async function resolveConnectionSessionId(): Promise<string | undefined> {
+    const { getActiveSession } = await import('./memory/session.js');
+    if (connectionSessionId) {
+      const { getSessionStore } = await import('./store/session-store.js');
+      const own = await getSessionStore().getById(connectionSessionId);
+      if (own?.status === 'active') return own.id;
+      connectionSessionId = undefined;
+    }
+    return (await getActiveSession(projectDir, project.id))?.id;
+  }
   let teamStore!: import('./team/team-store.js').TeamStore;
   let initTeamStoreForProject: ((dataDir: string) => Promise<import('./team/team-store.js').TeamStore>) | undefined;
   if (detectedProject) {
@@ -1148,9 +1162,7 @@ export async function createMemorixServer(
       // Auto-associate sessionId from active session
       let sessionId: string | undefined;
       try {
-        const { getActiveSession } = await import('./memory/session.js');
-        const active = await getActiveSession(projectDir, project.id);
-        if (active) sessionId = active.id;
+        sessionId = await resolveConnectionSessionId();
       } catch { /* session module not critical */ }
 
       // ── LLM Narrative Compression (premium quality) ─────────────────
@@ -1485,9 +1497,8 @@ export async function createMemorixServer(
       // redundant result row, never data.
       let surfacedKey = `project:${project.id}`;
       try {
-        const { getActiveSession } = await import('./memory/session.js');
-        const active = await getActiveSession(projectDir, project.id);
-        if (active) surfacedKey = `session:${active.id}`;
+        const activeSessionId = await resolveConnectionSessionId();
+        if (activeSessionId) surfacedKey = `session:${activeSessionId}`;
       } catch { /* fall back to the project key */ }
 
       return withFreshIndex(async () => {
@@ -3777,6 +3788,7 @@ export async function createMemorixServer(
         agent,
         reader: getObservationReader(),
       });
+      connectionSessionId = result.session.id;
       const bindingReceipt = projectBinding.receipt({
         dataDir: projectDir,
         transport: options.bindingTransport,
@@ -3888,6 +3900,7 @@ export async function createMemorixServer(
     async ({ sessionId, summary }) => {
       const { endSession } = await import('./memory/session.js');
       const session = await endSession(projectDir, sessionId, summary);
+      if (session && connectionSessionId === sessionId) connectionSessionId = undefined;
 
       if (!session) {
         return {
