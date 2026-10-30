@@ -8,7 +8,15 @@
  * would reach by itself, and re-pushing a batch is a no-op.
  */
 import type { Observation } from '../../types.js';
-import { classifyObservation, toMemoryStatus, type MemoryCategory, type MemoryConfidence, type MemoryStatus } from '../../domain/memory.js';
+import {
+  canTransitionConfidence,
+  classifyObservation,
+  toMemoryStatus,
+  type MemoryCategory,
+  type MemoryConfidence,
+  type MemoryStatus,
+} from '../../domain/memory.js';
+import { contentHash } from '../../sync/journal.js';
 import { containsCredential } from '../../memory/secret-filter.js';
 import { compareVersion } from '../../sync/merge.js';
 import type { ChangeBatch, ChangeEntry, RowVersion } from '../../sync/types.js';
@@ -40,6 +48,7 @@ interface StoredRow {
   content_hash: string;
   deleted: boolean;
   version: number;
+  confidence: MemoryConfidence;
   body: Observation | null;
 }
 
@@ -87,14 +96,15 @@ async function applyEntry(
     return { result: { syncKey, outcome: 'rejected', reason: 'contains a credential-like value' } };
   }
 
+  const [owner] = await tx.query<{ project_id: string | null }>('SELECT memory.memory_project($1) AS project_id', [syncKey]);
+  if (owner?.project_id && owner.project_id !== project.id) {
+    return { result: { syncKey, outcome: 'rejected', reason: 'the sync key belongs to another project' } };
+  }
   const [stored] = await tx.query<StoredRow>(
-    `SELECT id, project_id, revision, writer, content_hash, deleted_at IS NOT NULL AS deleted, version, body
+    `SELECT id, project_id, revision, writer, content_hash, deleted_at IS NOT NULL AS deleted, version, confidence, body
        FROM memory.memories WHERE id = $1 FOR UPDATE`,
     [syncKey],
   );
-  if (stored && stored.project_id !== project.id) {
-    return { result: { syncKey, outcome: 'rejected', reason: 'the sync key belongs to another project' } };
-  }
 
   let conflict = false;
   if (stored) {
@@ -119,6 +129,8 @@ async function applyEntry(
     }
     if (cmp < 0) return { result: { syncKey, outcome: 'stale', reason: 'the server holds a newer version', conflict } };
   }
+  const protectedReason = confidenceGuard(stored, entry);
+  if (protectedReason) return { result: { syncKey, outcome: 'rejected', reason: protectedReason, conflict } };
 
   const [{ seq }] = await tx.query<{ seq: string }>(
     'UPDATE work.project_seq SET next_seq = next_seq + 1 WHERE project_id = $1 RETURNING next_seq - 1 AS seq',
@@ -185,6 +197,22 @@ async function applyEntry(
     [project.id, serverSeq, syncKey, entry.kind === 'tombstone' ? 'delete' : 'upsert'],
   );
   return { result: { syncKey, outcome: 'applied', conflict }, seq: serverSeq };
+}
+
+/**
+ * Sync carries what agents and hooks wrote, so it is held to the agent rules
+ * of the confidence model: it may not confirm knowledge, and confirmed
+ * knowledge changes only through an explicit, audited human action
+ * (`POST /v1/memories/:id/deprecate`).
+ */
+function confidenceGuard(stored: StoredRow | undefined, entry: ChangeEntry): string | undefined {
+  const live = stored && !stored.deleted ? stored : undefined;
+  if (live?.confidence === 'confirmed') return 'confirmed knowledge changes only through review; deprecate it and save a new memory';
+  if (entry.kind === 'tombstone') return undefined;
+  const incoming = classifyObservation(entry.row!).confidence;
+  const transition = canTransitionConfidence(live?.confidence ?? 'observed', incoming, 'agent');
+  if (!transition.ok) return incoming === 'confirmed' ? 'confirmation requires an explicit confirm by a person' : transition.reason;
+  return undefined;
 }
 
 function hasCredential(row: Observation): boolean {
@@ -310,3 +338,80 @@ export async function listConflicts(db: Queryable, projectId: string, state = 'o
     [projectId, state],
   );
 }
+
+export async function searchMemories(
+  db: Queryable,
+  projectIds: string[],
+  query: string,
+  limit: number,
+): Promise<Array<MemoryView & { projectId: string; rank: number }>> {
+  if (projectIds.length === 0) return [];
+  return db.query(
+    `SELECT ${MEMORY_VIEW_COLUMNS}, project_id AS "projectId", ts_rank(search, q) AS rank
+       FROM memory.memories, websearch_to_tsquery('simple', $2) AS q
+      WHERE project_id = ANY ($1::uuid[]) AND deleted_at IS NULL AND search @@ q
+      ORDER BY rank DESC, updated_at DESC
+      LIMIT $3`,
+    [projectIds, query, limit],
+  );
+}
+
+/**
+ * A person confirms or deprecates a memory. The server authors a new
+ * revision (writer `pmi-server`) with the new confidence in the body, so
+ * every client receives it through the changes feed like any other edit.
+ */
+export async function setConfidence(
+  tx: Queryable,
+  project: { id: string; orgId: string },
+  user: AuthUser,
+  memoryId: string,
+  to: 'confirmed' | 'deprecated',
+  reason?: string,
+): Promise<MemoryView | undefined> {
+  const [stored] = await tx.query<StoredRow>(
+    `SELECT id, project_id, revision, writer, content_hash, deleted_at IS NOT NULL AS deleted, version, confidence, body
+       FROM memory.memories WHERE id = $1 AND project_id = $2 FOR UPDATE`,
+    [memoryId, project.id],
+  );
+  if (!stored || stored.deleted || !stored.body) return undefined;
+  if (stored.confidence !== to) {
+    const transition = canTransitionConfidence(stored.confidence, to, 'human');
+    if (!transition.ok) throw new Error(transition.reason);
+    const body: Observation = { ...stored.body, confidence: to };
+    const [{ seq }] = await tx.query<{ seq: string }>(
+      'UPDATE work.project_seq SET next_seq = next_seq + 1 WHERE project_id = $1 RETURNING next_seq - 1 AS seq',
+      [project.id],
+    );
+    const version = stored.version + 1;
+    await tx.query(
+      `UPDATE memory.memories
+          SET confidence = $2::text::memory.confidence, body = $3::jsonb, content_hash = $4, revision = revision + 1, writer = $5,
+              version = $6, updated_at = now(), server_seq = $7,
+              confirmed_by = CASE WHEN $2::text = 'confirmed' THEN $8::uuid ELSE confirmed_by END,
+              confirmed_at = CASE WHEN $2::text = 'confirmed' THEN now() ELSE confirmed_at END
+        WHERE id = $1`,
+      [memoryId, to, JSON.stringify(body), contentHash(body), SERVER_DEVICE_ID, version, Number(seq), user.id],
+    );
+    await tx.query(
+      `INSERT INTO memory.memory_versions (memory_id, version, snapshot, changed_by_user, change_reason)
+       VALUES ($1, $2, $3::jsonb, $4, $5)`,
+      [memoryId, version, JSON.stringify(body), user.id, reason ? `${to === 'confirmed' ? 'confirm' : 'deprecate'}: ${reason}` : (to === 'confirmed' ? 'confirm' : 'deprecate')],
+    );
+    await tx.query(
+      `INSERT INTO work.changes (project_id, seq, entity, entity_id, op) VALUES ($1, $2, 'memory', $3, 'upsert')`,
+      [project.id, Number(seq), memoryId],
+    );
+    await audit(tx, {
+      action: to === 'confirmed' ? 'memory.confirm' : 'memory.deprecate',
+      actorUserId: user.id,
+      orgId: project.orgId,
+      projectId: project.id,
+      targetType: 'memory',
+      targetId: memoryId,
+      detail: reason ? { reason: reason.slice(0, 500) } : {},
+    });
+  }
+  return getMemory(tx, memoryId);
+}
+

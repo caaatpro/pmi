@@ -10,6 +10,13 @@ export interface Queryable {
 
 export interface Database extends Queryable {
   transaction<T>(fn: (tx: Queryable) => Promise<T>): Promise<T>;
+  /**
+   * Run `fn` in a transaction as the restricted role `pmi_app` with
+   * `app.user_id` set, so row-level security filters every project-data
+   * query to what this user may see (migration 0002). Use it for all
+   * project data; identity and admin queries stay on the owner connection.
+   */
+  asUser<T>(userId: string, fn: (tx: Queryable) => Promise<T>): Promise<T>;
   close(): Promise<void>;
 }
 
@@ -35,9 +42,16 @@ export async function openDatabase(connectionString: string, options: { max?: nu
   // query reconnects and /ready reports the outage.
   pool.on('error', (error) => console.error(`[pmi-server] idle Postgres client error: ${error.message}`));
 
-  return {
+  const database: Database = {
     async query<T>(sql: string, params: unknown[] = []): Promise<T[]> {
       return (await pool.query(sql, params)).rows as T[];
+    },
+    async asUser<T>(userId: string, fn: (tx: Queryable) => Promise<T>): Promise<T> {
+      return database.transaction(async (tx) => {
+        await tx.query('SET LOCAL ROLE pmi_app');
+        await tx.query("SELECT set_config('app.user_id', $1, true)", [userId]);
+        return fn(tx);
+      });
     },
     async transaction<T>(fn: (tx: Queryable) => Promise<T>): Promise<T> {
       const client = await pool.connect();
@@ -62,4 +76,5 @@ export async function openDatabase(connectionString: string, options: { max?: nu
       await pool.end();
     },
   };
+  return database;
 }

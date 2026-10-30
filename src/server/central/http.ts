@@ -1,7 +1,8 @@
 /**
  * HTTP API of the central server (docs/PMI/API.md §1). Plain `node:http`
- * with zod validation; every handler goes through `authenticate` and, for
- * project-scoped routes, `assertProjectAccess`.
+ * with zod validation. Every handler goes through `authenticate`; project
+ * routes go through `authorize()` and read or write project data inside
+ * `db.asUser()`, where Postgres row-level security applies as well.
  */
 import http from 'node:http';
 import { z } from 'zod';
@@ -11,16 +12,33 @@ import { validateBatches } from '../../sync/engine.js';
 import { syncNamespace } from '../../sync/namespace.js';
 import type { ChangeBatch } from '../../sync/types.js';
 import type { Database } from './db.js';
+import { sanitizeCredentials } from '../../memory/secret-filter.js';
 import {
   HttpError,
-  assertProjectAccess,
   authenticate,
+  authorize,
+  createTeam,
+  addTeamMember,
+  findTeam,
+  findUserByEmail,
   listMemberships,
+  listProjectGrants,
   listProjects,
   resolveProject,
+  setProjectGrant,
   type AuthUser,
 } from './identity.js';
-import { applyPushedBatch, getMemory, listConflicts, listMemories, listVersions, readChanges } from './memory-repo.js';
+import { handleMcpRequest } from './mcp.js';
+import {
+  applyPushedBatch,
+  getMemory,
+  listConflicts,
+  listMemories,
+  listVersions,
+  readChanges,
+  searchMemories,
+  setConfidence,
+} from './memory-repo.js';
 import { pendingMigrations } from './migrations.js';
 
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
@@ -33,13 +51,15 @@ export interface CentralServerOptions {
 
 interface RequestContext {
   req: http.IncomingMessage;
+  res: http.ServerResponse;
   url: URL;
   params: Record<string, string>;
   body: () => Promise<unknown>;
   user: () => Promise<AuthUser>;
 }
 
-type Handler = (ctx: RequestContext) => Promise<{ status?: number; body: unknown }>;
+/** `raw: true` means the handler wrote the response itself (MCP transport). */
+type Handler = (ctx: RequestContext) => Promise<{ status?: number; body: unknown } | { raw: true; status: number }>;
 
 interface Route {
   method: string;
@@ -96,6 +116,22 @@ const changesQuerySchema = z.object({
   legacy: z.string().min(1).max(512),
 });
 
+const searchSchema = z.object({
+  query: z.string().min(1).max(500),
+  limit: z.number().int().min(1).max(100).default(20),
+});
+
+const confidenceSchema = z.object({ reason: z.string().max(2000).optional() });
+
+const grantSchema = z.object({
+  user: z.string().email().optional(),
+  team: z.string().min(1).max(200).optional(),
+  role: z.enum(['maintainer', 'developer', 'viewer']).nullable(),
+}).refine((value) => Boolean(value.user) !== Boolean(value.team), { message: 'give exactly one of user or team' });
+
+const teamSchema = z.object({ name: z.string().min(1).max(200) });
+const teamMemberSchema = z.object({ email: z.string().email() });
+
 function parse<S extends z.ZodTypeAny>(schema: S, value: unknown): z.output<S> {
   const result = schema.safeParse(value);
   if (!result.success) {
@@ -141,32 +177,89 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
       return { status: result.created ? 201 : 200, body: result };
     }),
 
-    route('GET', '/v1/projects/:id', async (ctx) => ({ body: { project: await assertProjectAccess(db, await ctx.user(), ctx.params.id) } })),
+    route('GET', '/v1/projects/:id', async (ctx) => {
+      const user = await ctx.user();
+      const project = await authorize(db, user, ctx.params.id, 'memory.read');
+      return { body: { project, ...(project.role === 'viewer' ? {} : { grants: await listProjectGrants(db, project.id) }) } };
+    }),
+
+    route('PUT', '/v1/projects/:id/grants', async (ctx) => {
+      const user = await ctx.user();
+      const project = await authorize(db, user, ctx.params.id, 'project.manage');
+      const input = parse(grantSchema, await ctx.body());
+      const principal = input.user
+        ? { principalType: 'user' as const, principalId: (await findUserByEmail(db, input.user))?.id }
+        : { principalType: 'team' as const, principalId: (await db.query<{ id: string }>('SELECT id FROM core.teams WHERE org_id = $1 AND name = $2', [project.orgId, input.team]))[0]?.id };
+      if (!principal.principalId) throw new HttpError(404, 'principal_not_found', `${principal.principalType} not found`);
+      await db.transaction((tx) => setProjectGrant(tx, project, { principalType: principal.principalType, principalId: principal.principalId!, role: input.role }, user.id));
+      return { body: { grants: await listProjectGrants(db, project.id) } };
+    }),
+
+    route('POST', '/v1/orgs/:org/teams', async (ctx) => {
+      const user = await ctx.user();
+      await assertOrgAdmin(user, ctx.params.org);
+      const input = parse(teamSchema, await ctx.body());
+      return { status: 201, body: { team: await db.transaction((tx) => createTeam(tx, ctx.params.org, input.name, user.id)) } };
+    }),
+
+    route('POST', '/v1/orgs/:org/teams/:team/members', async (ctx) => {
+      const user = await ctx.user();
+      await assertOrgAdmin(user, ctx.params.org);
+      const input = parse(teamMemberSchema, await ctx.body());
+      const team = await findTeam(db, ctx.params.org, decodeURIComponent(ctx.params.team));
+      const member = await findUserByEmail(db, input.email);
+      if (!team) throw new HttpError(404, 'team_not_found', 'team not found');
+      if (!member) throw new HttpError(404, 'user_not_found', 'user not found');
+      await db.transaction((tx) => addTeamMember(tx, team.id, member.id, user.id));
+      return { body: { ok: true } };
+    }),
 
     route('GET', '/v1/projects/:id/memories', async (ctx) => {
-      const project = await assertProjectAccess(db, await ctx.user(), ctx.params.id);
+      const user = await ctx.user();
+      const project = await authorize(db, user, ctx.params.id, 'memory.read');
       const filters = parse(memoryQuerySchema, Object.fromEntries(ctx.url.searchParams));
-      return { body: { memories: await listMemories(db, project.id, filters) } };
+      return { body: { memories: await db.asUser(user.id, (tx) => listMemories(tx, project.id, filters)) } };
+    }),
+
+    route('POST', '/v1/projects/:id/search', async (ctx) => {
+      const user = await ctx.user();
+      const project = await authorize(db, user, ctx.params.id, 'memory.read');
+      const input = parse(searchSchema, await ctx.body());
+      return { body: { results: await db.asUser(user.id, (tx) => searchMemories(tx, [project.id], input.query, input.limit)) } };
+    }),
+
+    // Cross-project search over every project the caller can read.
+    route('POST', '/v1/search', async (ctx) => {
+      const user = await ctx.user();
+      const input = parse(searchSchema, await ctx.body());
+      const projectIds = (await listProjects(db, user.id)).map((project) => project.id);
+      return { body: { results: await db.asUser(user.id, (tx) => searchMemories(tx, projectIds, input.query, input.limit)) } };
     }),
 
     route('GET', '/v1/projects/:id/conflicts', async (ctx) => {
-      const project = await assertProjectAccess(db, await ctx.user(), ctx.params.id);
-      return { body: { conflicts: await listConflicts(db, project.id) } };
+      const user = await ctx.user();
+      const project = await authorize(db, user, ctx.params.id, 'memory.read');
+      return { body: { conflicts: await db.asUser(user.id, (tx) => listConflicts(tx, project.id)) } };
     }),
 
     route('GET', '/v1/memories/:mid', async (ctx) => {
       const user = await ctx.user();
-      const memory = await getMemory(db, decodeURIComponent(ctx.params.mid));
+      const memoryId = decodeURIComponent(ctx.params.mid);
+      const memory = await db.asUser(user.id, (tx) => getMemory(tx, memoryId));
       if (!memory) throw new HttpError(404, 'memory_not_found', 'memory not found');
-      await assertProjectAccess(db, user, memory.projectId);
+      await authorize(db, user, memory.projectId, 'memory.read');
       const include = new Set((ctx.url.searchParams.get('include') ?? '').split(',').filter(Boolean));
-      return { body: { memory, ...(include.has('versions') ? { versions: await listVersions(db, memory.id) } : {}) } };
+      const versions = include.has('versions') ? await db.asUser(user.id, (tx) => listVersions(tx, memory.id)) : undefined;
+      return { body: { memory, ...(versions ? { versions } : {}) } };
     }),
+
+    route('POST', '/v1/memories/:mid/confirm', (ctx) => changeConfidence(ctx, 'confirmed')),
+    route('POST', '/v1/memories/:mid/deprecate', (ctx) => changeConfidence(ctx, 'deprecated')),
 
     route('POST', '/v1/sync/push', async (ctx) => {
       const user = await ctx.user();
       const input = parse(pushSchema, await ctx.body());
-      const project = await assertProjectAccess(db, user, input.project_id);
+      const project = await authorize(db, user, input.project_id, 'memory.write');
       const batch = input.batch as unknown as ChangeBatch;
       if (!project.legacyProjectIds.includes(batch.projectId)) {
         throw new HttpError(409, 'identity_mismatch', `project "${project.slug}" does not replicate Memorix project ${batch.projectId}`);
@@ -176,16 +269,42 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
       } catch (error) {
         throw new HttpError(400, 'invalid_batch', (error as Error).message);
       }
-      const result = await db.transaction((tx) => applyPushedBatch(tx, project, user, batch));
+      const result = await db.asUser(user.id, (tx) => applyPushedBatch(tx, project, user, batch));
       return { body: result };
     }),
 
     route('GET', '/v1/projects/:id/changes', async (ctx) => {
-      const project = await assertProjectAccess(db, await ctx.user(), ctx.params.id);
+      const user = await ctx.user();
+      const project = await authorize(db, user, ctx.params.id, 'memory.read');
       const query = parse(changesQuerySchema, Object.fromEntries(ctx.url.searchParams));
-      return { body: await readChanges(db, project.id, query.legacy, query.after, query.limit) };
+      return { body: await db.asUser(user.id, (tx) => readChanges(tx, project.id, query.legacy, query.after, query.limit)) };
+    }),
+
+    route('POST', '/mcp', async (ctx) => {
+      const user = await ctx.user();
+      await handleMcpRequest(db, user, options.version, ctx.req, ctx.res, await ctx.body());
+      return { raw: true, status: ctx.res.statusCode };
     }),
   ];
+
+  async function assertOrgAdmin(user: AuthUser, orgSlug: string): Promise<void> {
+    const membership = (await listMemberships(db, user.id)).find((org) => org.slug === orgSlug);
+    if (!membership) throw new HttpError(404, 'org_not_found', 'organization not found');
+    if (membership.role === 'member') throw new HttpError(403, 'forbidden', 'organization owners and admins only');
+  }
+
+  async function changeConfidence(ctx: RequestContext, to: 'confirmed' | 'deprecated') {
+    const user = await ctx.user();
+    const memoryId = decodeURIComponent(ctx.params.mid);
+    const input = parse(confidenceSchema, await ctx.body());
+    const current = await db.asUser(user.id, (tx) => getMemory(tx, memoryId));
+    if (!current || current.deleted) throw new HttpError(404, 'memory_not_found', 'memory not found');
+    const project = await authorize(db, user, current.projectId, 'memory.confirm');
+    const reason = input.reason ? sanitizeCredentials(input.reason) : undefined;
+    const memory = await db.asUser(user.id, (tx) => setConfidence(tx, project, user, memoryId, to, reason));
+    if (!memory) throw new HttpError(404, 'memory_not_found', 'memory not found');
+    return { body: { memory } };
+  }
 
   return http.createServer((req, res) => {
     const started = Date.now();
@@ -212,6 +331,7 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
 
     const ctx: RequestContext = {
       req,
+      res,
       url,
       params,
       body: () => readJson(req),
@@ -222,7 +342,13 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
     };
 
     selected.handler(ctx).then(
-      (result) => send(result.status ?? 200, result.body),
+      (result) => {
+        if ('raw' in result) {
+          log({ at: new Date().toISOString(), method: req.method, path: url.pathname, status: result.status, ms: Date.now() - started, user: user?.id });
+          return;
+        }
+        send(result.status ?? 200, result.body);
+      },
       (error: unknown) => {
         if (error instanceof HttpError) {
           send(error.status, { error: { code: error.code, message: error.message, ...(error.details ? { details: error.details } : {}) } });

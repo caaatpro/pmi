@@ -8,6 +8,9 @@
  *   pmi-server add-member <org> <email> [--role ...]
  *   pmi-server issue-token <email> [--name laptop] [--days 90]
  *   pmi-server revoke-token <token-id>
+ *   pmi-server create-team <org> <name>
+ *   pmi-server add-team-member <org> <team> <email>
+ *   pmi-server grant <org>/<project-slug> (--user <email> | --team <name>) --role maintainer|developer|viewer|none
  *
  * Configuration: PMI_DATABASE_URL (required), PMI_HOST, PMI_PORT.
  */
@@ -15,7 +18,21 @@ import { parseArgs } from 'node:util';
 
 import { openDatabase, type Database } from './db.js';
 import { createCentralServer } from './http.js';
-import { HttpError, addOrgMember, createOrganization, createUser, issueToken, revokeToken } from './identity.js';
+import {
+  HttpError,
+  addOrgMember,
+  addTeamMember,
+  createOrganization,
+  createTeam,
+  createUser,
+  findTeam,
+  findUserByEmail,
+  issueToken,
+  revokeToken,
+  setProjectGrant,
+  type GrantRole,
+  type ProjectRecord,
+} from './identity.js';
 import { migrate } from './migrations.js';
 
 declare const __MEMORIX_VERSION__: string | undefined;
@@ -31,6 +48,12 @@ Commands:
   add-member <org> <email> [--role owner|admin|member]
   issue-token <email> [--name N] [--days D]  Print a new personal access token once
   revoke-token <token-id>
+  create-team <org> <name>
+  add-team-member <org> <team> <email>
+  grant <org>/<project> (--user EMAIL | --team NAME) --role maintainer|developer|viewer|none
+
+Organization owners/admins have full access to every project of their
+organization; everyone else needs a project grant (directly or via a team).
 
 Environment: PMI_DATABASE_URL (required), PMI_HOST (default 127.0.0.1), PMI_PORT (default 7420)`;
 
@@ -64,6 +87,8 @@ export async function runServerCli(argv: string[]): Promise<number> {
       name: { type: 'string' },
       org: { type: 'string' },
       role: { type: 'string' },
+      user: { type: 'string' },
+      team: { type: 'string' },
       days: { type: 'string' },
       help: { type: 'boolean', short: 'h' },
     },
@@ -143,6 +168,48 @@ export async function runServerCli(argv: string[]): Promise<number> {
       const revoked = await withDatabase((db) => revokeToken(db, id));
       console.log(revoked ? `Revoked ${id}` : `No active token ${id}`);
       return revoked ? 0 : 1;
+    }
+    case 'create-team': {
+      const [org, name] = rest;
+      if (!org || !name) throw new Error('usage: pmi-server create-team <org> <name>');
+      const team = await withDatabase((db) => db.transaction((tx) => createTeam(tx, org, name)));
+      console.log(`Team ${team.name} (${team.id})`);
+      return 0;
+    }
+    case 'add-team-member': {
+      const [org, teamName, email] = rest;
+      if (!org || !teamName || !email) throw new Error('usage: pmi-server add-team-member <org> <team> <email>');
+      await withDatabase((db) => db.transaction(async (tx) => {
+        const team = await findTeam(tx, org, teamName);
+        const user = await findUserByEmail(tx, email);
+        if (!team) throw new Error(`no team ${teamName} in ${org}`);
+        if (!user) throw new Error(`no user with email ${email}`);
+        await addTeamMember(tx, team.id, user.id);
+      }));
+      console.log(`${email} joined ${org}/${teamName}`);
+      return 0;
+    }
+    case 'grant': {
+      const [target] = rest;
+      const [org, slug] = (target ?? '').split('/');
+      if (!org || !slug || Boolean(values.user) === Boolean(values.team) || !values.role) {
+        throw new Error('usage: pmi-server grant <org>/<project> (--user EMAIL | --team NAME) --role maintainer|developer|viewer|none');
+      }
+      if (!['maintainer', 'developer', 'viewer', 'none'].includes(values.role)) throw new Error('--role must be maintainer, developer, viewer or none');
+      const role = values.role === 'none' ? null : values.role as GrantRole;
+      await withDatabase((db) => db.transaction(async (tx) => {
+        const [project] = await tx.query<ProjectRecord>(
+          `SELECT p.id, p.org_id AS "orgId", p.slug, p.name, p.legacy_project_ids AS "legacyProjectIds", p.created_at AS "createdAt"
+             FROM core.projects p JOIN core.organizations o ON o.id = p.org_id WHERE o.slug = $1 AND p.slug = $2`,
+          [org, slug],
+        );
+        if (!project) throw new Error(`no project ${org}/${slug}`);
+        const principalId = values.user ? (await findUserByEmail(tx, values.user))?.id : (await findTeam(tx, org, values.team!))?.id;
+        if (!principalId) throw new Error(`no ${values.user ? 'user' : 'team'} ${values.user ?? values.team}`);
+        await setProjectGrant(tx, project, { principalType: values.user ? 'user' : 'team', principalId, role });
+      }));
+      console.log(role ? `${values.user ?? `team ${values.team}`} is ${role} on ${org}/${slug}` : `Revoked access of ${values.user ?? `team ${values.team}`} to ${org}/${slug}`);
+      return 0;
     }
     default:
       console.error(`Unknown command "${command}"\n\n${USAGE}`);

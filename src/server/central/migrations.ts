@@ -193,6 +193,148 @@ CREATE TABLE work.changes (
 );
 `,
   },
+  {
+    // Phase 5: teams, per-project grants and row-level security. Project data
+    // is read and written under the NOLOGIN role pmi_app with app.user_id set
+    // per transaction; policies call core.can(), so a bug in the service
+    // layer still cannot return another project's rows.
+    id: '0002-rbac-rls',
+    sql: `
+CREATE TABLE core.teams (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id uuid NOT NULL REFERENCES core.organizations ON DELETE CASCADE,
+  name text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (org_id, name)
+);
+
+CREATE TABLE core.team_members (
+  team_id uuid REFERENCES core.teams ON DELETE CASCADE,
+  user_id uuid REFERENCES core.users ON DELETE CASCADE,
+  PRIMARY KEY (team_id, user_id)
+);
+
+CREATE TABLE core.project_grants (
+  project_id uuid REFERENCES core.projects ON DELETE CASCADE,
+  principal_type text NOT NULL CHECK (principal_type IN ('user','team')),
+  principal_id uuid NOT NULL,
+  role text NOT NULL CHECK (role IN ('maintainer','developer','viewer')),
+  granted_by uuid REFERENCES core.users,
+  granted_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (project_id, principal_type, principal_id)
+);
+CREATE INDEX project_grants_principal ON core.project_grants (principal_type, principal_id);
+
+-- Phase 4 gave every organization member access to every project of the
+-- organization. Keep that access explicitly so the upgrade locks nobody out.
+INSERT INTO core.project_grants (project_id, principal_type, principal_id, role)
+SELECT p.id, 'user', m.user_id, 'developer'
+  FROM core.projects p JOIN core.org_members m ON m.org_id = p.org_id
+ WHERE m.role = 'member'
+ON CONFLICT DO NOTHING;
+
+ALTER TABLE memory.memories ADD COLUMN confirmed_by uuid REFERENCES core.users;
+ALTER TABLE memory.memories ADD COLUMN confirmed_at timestamptz;
+
+CREATE FUNCTION core.role_rank(role text) RETURNS int
+  LANGUAGE sql IMMUTABLE AS $f$
+  SELECT CASE role WHEN 'admin' THEN 4 WHEN 'maintainer' THEN 3 WHEN 'developer' THEN 2 WHEN 'viewer' THEN 1 ELSE 0 END
+$f$;
+
+-- Effective project role: organization owners/admins act as 'admin' on every
+-- project of their organization; others get the highest grant held directly
+-- or through a team, and only while they remain organization members.
+CREATE FUNCTION core.project_role_of(p_project uuid, p_user uuid) RETURNS text
+  LANGUAGE sql STABLE SECURITY DEFINER SET search_path = core, pg_temp AS $f$
+  SELECT role FROM (
+    SELECT 'admin' AS role
+      FROM core.projects p
+      JOIN core.org_members m ON m.org_id = p.org_id
+      JOIN core.users u ON u.id = m.user_id AND u.disabled_at IS NULL
+     WHERE p.id = p_project AND m.user_id = p_user AND m.role IN ('owner','admin') AND p.archived_at IS NULL
+    UNION ALL
+    SELECT g.role
+      FROM core.project_grants g
+      JOIN core.projects p ON p.id = g.project_id AND p.archived_at IS NULL
+      JOIN core.org_members m ON m.org_id = p.org_id AND m.user_id = p_user
+      JOIN core.users u ON u.id = p_user AND u.disabled_at IS NULL
+     WHERE g.project_id = p_project
+       AND ((g.principal_type = 'user' AND g.principal_id = p_user)
+         OR (g.principal_type = 'team' AND g.principal_id IN (SELECT team_id FROM core.team_members WHERE user_id = p_user)))
+  ) roles
+  ORDER BY core.role_rank(role) DESC
+  LIMIT 1
+$f$;
+
+CREATE FUNCTION core.current_app_user() RETURNS uuid
+  LANGUAGE sql STABLE AS $f$
+  SELECT nullif(current_setting('app.user_id', true), '')::uuid
+$f$;
+
+CREATE FUNCTION core.can(p_project uuid, p_min_role text) RETURNS boolean
+  LANGUAGE sql STABLE AS $f$
+  SELECT p_project IS NOT NULL
+     AND core.current_app_user() IS NOT NULL
+     AND core.role_rank(core.project_role_of(p_project, core.current_app_user())) >= core.role_rank(p_min_role)
+$f$;
+
+DO $do$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'pmi_app') THEN
+    CREATE ROLE pmi_app NOLOGIN;
+  END IF;
+END
+$do$;
+GRANT pmi_app TO CURRENT_USER;
+
+GRANT USAGE ON SCHEMA core, memory, work TO pmi_app;
+GRANT SELECT, INSERT, UPDATE ON memory.memories, memory.memory_versions, memory.memory_links, memory.conflicts TO pmi_app;
+GRANT SELECT, INSERT ON work.changes TO pmi_app;
+GRANT SELECT, UPDATE ON work.project_seq TO pmi_app;
+GRANT INSERT ON core.audit_log TO pmi_app;
+GRANT USAGE ON SEQUENCE core.audit_log_id_seq TO pmi_app;
+
+ALTER TABLE memory.memories ENABLE ROW LEVEL SECURITY;
+CREATE POLICY memories_read ON memory.memories FOR SELECT TO pmi_app USING (core.can(project_id, 'viewer'));
+CREATE POLICY memories_insert ON memory.memories FOR INSERT TO pmi_app WITH CHECK (core.can(project_id, 'developer'));
+CREATE POLICY memories_update ON memory.memories FOR UPDATE TO pmi_app
+  USING (core.can(project_id, 'developer')) WITH CHECK (core.can(project_id, 'developer'));
+
+ALTER TABLE memory.memory_versions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY versions_read ON memory.memory_versions FOR SELECT TO pmi_app
+  USING (core.can((SELECT m.project_id FROM memory.memories m WHERE m.id = memory_id), 'viewer'));
+CREATE POLICY versions_insert ON memory.memory_versions FOR INSERT TO pmi_app
+  WITH CHECK (core.can((SELECT m.project_id FROM memory.memories m WHERE m.id = memory_id), 'developer'));
+
+ALTER TABLE memory.memory_links ENABLE ROW LEVEL SECURITY;
+CREATE POLICY links_read ON memory.memory_links FOR SELECT TO pmi_app
+  USING (core.can((SELECT m.project_id FROM memory.memories m WHERE m.id = from_id), 'viewer'));
+CREATE POLICY links_write ON memory.memory_links FOR INSERT TO pmi_app
+  WITH CHECK (core.can((SELECT m.project_id FROM memory.memories m WHERE m.id = from_id), 'developer'));
+
+ALTER TABLE memory.conflicts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY conflicts_read ON memory.conflicts FOR SELECT TO pmi_app USING (core.can(project_id, 'viewer'));
+CREATE POLICY conflicts_insert ON memory.conflicts FOR INSERT TO pmi_app WITH CHECK (core.can(project_id, 'developer'));
+CREATE POLICY conflicts_update ON memory.conflicts FOR UPDATE TO pmi_app USING (core.can(project_id, 'developer'));
+
+ALTER TABLE work.changes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY changes_read ON work.changes FOR SELECT TO pmi_app USING (core.can(project_id, 'viewer'));
+CREATE POLICY changes_insert ON work.changes FOR INSERT TO pmi_app WITH CHECK (core.can(project_id, 'developer'));
+
+ALTER TABLE work.project_seq ENABLE ROW LEVEL SECURITY;
+CREATE POLICY seq_read ON work.project_seq FOR SELECT TO pmi_app USING (core.can(project_id, 'viewer'));
+CREATE POLICY seq_update ON work.project_seq FOR UPDATE TO pmi_app USING (core.can(project_id, 'developer'));
+
+REVOKE UPDATE, DELETE, TRUNCATE ON core.audit_log FROM PUBLIC, pmi_app;
+
+-- Memory ids are global. Row-level security hides a row of another project,
+-- so the sync path asks which project owns a key before writing it.
+CREATE FUNCTION memory.memory_project(p_id text) RETURNS uuid
+  LANGUAGE sql STABLE SECURITY DEFINER SET search_path = memory, pg_temp AS $f$
+  SELECT project_id FROM memory.memories WHERE id = p_id
+$f$;
+`,
+  },
 ];
 
 const MIGRATION_LOCK_KEY = 74_201_001;
@@ -202,7 +344,8 @@ export interface MigrationReport {
   current: string | null;
 }
 
-export async function migrate(db: Database): Promise<MigrationReport> {
+/** Apply pending migrations; `until` stops after that id (used to test upgrades from an older schema). */
+export async function migrate(db: Database, options: { until?: string } = {}): Promise<MigrationReport> {
   return db.transaction(async (tx) => {
     await tx.query('SELECT pg_advisory_xact_lock($1)', [MIGRATION_LOCK_KEY]);
     await tx.query(`CREATE TABLE IF NOT EXISTS public.pmi_schema_migrations (
@@ -216,6 +359,7 @@ export async function migrate(db: Database): Promise<MigrationReport> {
       await tx.query(migration.sql);
       await tx.query('INSERT INTO public.pmi_schema_migrations (id) VALUES ($1)', [migration.id]);
       applied.push(migration.id);
+      if (migration.id === options.until) break;
     }
     return { applied, current: PG_MIGRATIONS.at(-1)?.id ?? null };
   });

@@ -63,7 +63,7 @@ describe.skipIf(!pgAvailable)('central server (real Postgres)', () => {
   beforeAll(async () => {
     pg = await startPostgres();
     db = await openDatabase(pg.url);
-    expect((await migrate(db)).applied).toEqual(['0001-core-memory']);
+    expect((await migrate(db)).applied).toEqual(['0001-core-memory', '0002-rbac-rls']);
     await createOrganization(db, 'acme', 'Acme');
     await createOrganization(db, 'other', 'Other');
     await createUser(db, { email: 'lead@acme.test', displayName: 'Lead', orgSlug: 'acme', role: 'admin' });
@@ -106,6 +106,12 @@ describe.skipIf(!pgAvailable)('central server (real Postgres)', () => {
     });
     expect(created.status).toBe(201);
     projectId = created.body.project.id;
+
+    // Phase 5: organization membership alone does not open a project.
+    const hidden = await call('/v1/projects/resolve', { token: memberToken, body: { legacy_project_id: LEGACY } });
+    expect(hidden.status).toBe(404);
+    const granted = await call(`/v1/projects/${projectId}/grants`, { method: 'PUT', token: adminToken, body: { user: 'dev@acme.test', role: 'developer' } });
+    expect(granted.status).toBe(200);
 
     const resolved = await call('/v1/projects/resolve', { token: memberToken, body: { legacy_project_id: LEGACY } });
     expect(resolved).toMatchObject({ status: 200, body: { created: false, project: { id: projectId, slug: 'app' } } });

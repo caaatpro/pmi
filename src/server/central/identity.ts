@@ -1,10 +1,13 @@
 /**
- * Organizations, users, API tokens and projects on the central server.
+ * Organizations, users, teams, API tokens, projects and grants on the central
+ * server, plus `authorize()` — the single service-layer authorization point
+ * (docs/PMI/DATABASE.md §4).
  *
- * Phase 4 access rule: a user may read and sync a project when they are a
- * member of the project's organization; owners and admins may create
- * projects. Per-project grants, teams and Postgres RLS arrive in Phase 5 and
- * replace `assertProjectAccess` as the single authorization point.
+ * Effective project role (computed in SQL by core.project_role_of, the same
+ * function row-level security uses): organization owners/admins are `admin`
+ * on every project of their organization; everyone else gets the highest
+ * grant held directly or through a team. No role means the project is
+ * invisible: callers get 404, never a hint that it exists.
  */
 import { createHash, randomBytes } from 'node:crypto';
 import type { Queryable } from './db.js';
@@ -38,6 +41,33 @@ export interface ProjectRecord {
   name: string;
   legacyProjectIds: string[];
   createdAt: string;
+}
+
+export type ProjectRole = 'viewer' | 'developer' | 'maintainer' | 'admin';
+export type GrantRole = Exclude<ProjectRole, 'admin'>;
+
+export type ProjectAction =
+  | 'memory.read'
+  | 'memory.write'
+  | 'memory.confirm'
+  | 'project.manage';
+
+const ROLE_RANK: Record<ProjectRole, number> = { viewer: 1, developer: 2, maintainer: 3, admin: 4 };
+
+/** Minimum project role per action — the RBAC matrix of DATABASE.md §4. */
+export const ACTION_MIN_ROLE: Record<ProjectAction, ProjectRole> = {
+  'memory.read': 'viewer',
+  'memory.write': 'developer',
+  'memory.confirm': 'developer',
+  'project.manage': 'maintainer',
+};
+
+export function roleAllows(role: ProjectRole | null | undefined, action: ProjectAction): boolean {
+  return Boolean(role) && ROLE_RANK[role!] >= ROLE_RANK[ACTION_MIN_ROLE[action]];
+}
+
+export interface AuthorizedProject extends ProjectRecord {
+  role: ProjectRole;
 }
 
 export function hashToken(token: string): Buffer {
@@ -147,26 +177,117 @@ export async function listMemberships(db: Queryable, userId: string): Promise<Or
 
 const PROJECT_COLUMNS = `p.id, p.org_id AS "orgId", p.slug, p.name, p.legacy_project_ids AS "legacyProjectIds", p.created_at AS "createdAt"`;
 
-export async function listProjects(db: Queryable, userId: string): Promise<ProjectRecord[]> {
-  return db.query<ProjectRecord>(
-    `SELECT ${PROJECT_COLUMNS}
-       FROM core.projects p JOIN core.org_members m ON m.org_id = p.org_id
-      WHERE m.user_id = $1 AND p.archived_at IS NULL ORDER BY p.slug`,
+/** Projects the user holds any role on, with that role. */
+export async function listProjects(db: Queryable, userId: string): Promise<AuthorizedProject[]> {
+  return db.query<AuthorizedProject>(
+    `SELECT * FROM (
+       SELECT ${PROJECT_COLUMNS}, core.project_role_of(p.id, $1) AS role
+         FROM core.projects p WHERE p.archived_at IS NULL
+     ) visible WHERE role IS NOT NULL ORDER BY slug`,
     [userId],
   );
 }
 
-/** The single authorization point for project-scoped requests in Phase 4. Unknown and forbidden look the same. */
-export async function assertProjectAccess(db: Queryable, user: AuthUser, projectId: string): Promise<ProjectRecord> {
+/**
+ * The single authorization point for project-scoped requests. A project the
+ * user cannot read is reported as not found (404); a readable project with an
+ * insufficient role is 403, and the denial is audited.
+ */
+export async function authorize(db: Queryable, user: AuthUser, projectId: string, action: ProjectAction): Promise<AuthorizedProject> {
   if (!/^[0-9a-f-]{36}$/i.test(projectId)) throw new HttpError(404, 'project_not_found', 'project not found');
-  const [project] = await db.query<ProjectRecord>(
-    `SELECT ${PROJECT_COLUMNS}
-       FROM core.projects p JOIN core.org_members m ON m.org_id = p.org_id
-      WHERE p.id = $1 AND m.user_id = $2 AND p.archived_at IS NULL`,
+  const [project] = await db.query<AuthorizedProject>(
+    `SELECT ${PROJECT_COLUMNS}, core.project_role_of(p.id, $2) AS role
+       FROM core.projects p WHERE p.id = $1 AND p.archived_at IS NULL`,
     [projectId, user.id],
   );
-  if (!project) throw new HttpError(404, 'project_not_found', 'project not found');
+  if (!project?.role) throw new HttpError(404, 'project_not_found', 'project not found');
+  if (!roleAllows(project.role, action)) {
+    await audit(db, { action: 'access.denied', actorUserId: user.id, orgId: project.orgId, projectId: project.id, detail: { attempted: action, role: project.role } });
+    throw new HttpError(403, 'forbidden', `${action} requires the ${ACTION_MIN_ROLE[action]} role on this project (you are ${project.role})`);
+  }
   return project;
+}
+
+export async function createTeam(db: Queryable, orgSlug: string, name: string, actorUserId?: string): Promise<{ id: string; name: string }> {
+  const [org] = await db.query<{ id: string }>('SELECT id FROM core.organizations WHERE slug = $1', [orgSlug]);
+  if (!org) throw new HttpError(404, 'org_not_found', `organization "${orgSlug}" does not exist`);
+  const [team] = await db.query<{ id: string; name: string }>(
+    'INSERT INTO core.teams (org_id, name) VALUES ($1, $2) RETURNING id, name',
+    [org.id, name],
+  );
+  await audit(db, { action: 'team.create', actorUserId, orgId: org.id, targetType: 'team', targetId: team.id, detail: { name } });
+  return team;
+}
+
+export async function addTeamMember(db: Queryable, teamId: string, userId: string, actorUserId?: string): Promise<void> {
+  const [team] = await db.query<{ org_id: string }>('SELECT org_id FROM core.teams WHERE id = $1', [teamId]);
+  if (!team) throw new HttpError(404, 'team_not_found', 'team not found');
+  const [member] = await db.query('SELECT 1 FROM core.org_members WHERE org_id = $1 AND user_id = $2', [team.org_id, userId]);
+  if (!member) throw new HttpError(422, 'not_org_member', 'only members of the team\'s organization can join it');
+  await db.query('INSERT INTO core.team_members (team_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [teamId, userId]);
+  await audit(db, { action: 'team.member.add', actorUserId, orgId: team.org_id, targetType: 'user', targetId: userId, detail: { teamId } });
+}
+
+export interface GrantInput {
+  principalType: 'user' | 'team';
+  principalId: string;
+  role: GrantRole | null;
+}
+
+/** Set (or with role null, revoke) a project grant. The principal must belong to the project's organization. */
+export async function setProjectGrant(db: Queryable, project: ProjectRecord, input: GrantInput, actorUserId?: string): Promise<void> {
+  const principalOrg = input.principalType === 'team'
+    ? await db.query('SELECT 1 FROM core.teams WHERE id = $1 AND org_id = $2', [input.principalId, project.orgId])
+    : await db.query('SELECT 1 FROM core.org_members WHERE user_id = $1 AND org_id = $2', [input.principalId, project.orgId]);
+  if (principalOrg.length === 0) {
+    throw new HttpError(422, 'principal_outside_org', `the ${input.principalType} is not part of the project's organization`);
+  }
+  if (input.role === null) {
+    await db.query(
+      'DELETE FROM core.project_grants WHERE project_id = $1 AND principal_type = $2 AND principal_id = $3',
+      [project.id, input.principalType, input.principalId],
+    );
+  } else {
+    await db.query(
+      `INSERT INTO core.project_grants (project_id, principal_type, principal_id, role, granted_by) VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (project_id, principal_type, principal_id) DO UPDATE SET role = excluded.role, granted_by = excluded.granted_by, granted_at = now()`,
+      [project.id, input.principalType, input.principalId, input.role, actorUserId ?? null],
+    );
+  }
+  await audit(db, {
+    action: input.role === null ? 'grant.revoke' : 'grant.set',
+    actorUserId,
+    orgId: project.orgId,
+    projectId: project.id,
+    targetType: input.principalType,
+    targetId: input.principalId,
+    detail: { role: input.role },
+  });
+}
+
+export async function listProjectGrants(db: Queryable, projectId: string): Promise<Array<{ principalType: string; principalId: string; principal: string; role: GrantRole }>> {
+  return db.query(
+    `SELECT g.principal_type AS "principalType", g.principal_id AS "principalId", g.role,
+            COALESCE(u.email::text, t.name) AS principal
+       FROM core.project_grants g
+       LEFT JOIN core.users u ON g.principal_type = 'user' AND u.id = g.principal_id
+       LEFT JOIN core.teams t ON g.principal_type = 'team' AND t.id = g.principal_id
+      WHERE g.project_id = $1 ORDER BY g.principal_type, principal`,
+    [projectId],
+  );
+}
+
+export async function findUserByEmail(db: Queryable, email: string): Promise<{ id: string } | undefined> {
+  const [user] = await db.query<{ id: string }>('SELECT id FROM core.users WHERE email = $1', [email]);
+  return user;
+}
+
+export async function findTeam(db: Queryable, orgSlug: string, name: string): Promise<{ id: string } | undefined> {
+  const [team] = await db.query<{ id: string }>(
+    'SELECT t.id FROM core.teams t JOIN core.organizations o ON o.id = t.org_id WHERE o.slug = $1 AND t.name = $2',
+    [orgSlug, name],
+  );
+  return team;
 }
 
 export interface ResolveProjectInput {
@@ -188,9 +309,9 @@ export async function resolveProject(
   const visible = await db.query<ProjectRecord>(
     `SELECT DISTINCT ${PROJECT_COLUMNS}
        FROM core.projects p
-       JOIN core.org_members m ON m.org_id = p.org_id AND m.user_id = $1
        LEFT JOIN core.repositories r ON r.project_id = p.id
       WHERE p.archived_at IS NULL
+        AND core.project_role_of(p.id, $1) IS NOT NULL
         AND ($2 = ANY (p.legacy_project_ids) OR ($3::text IS NOT NULL AND r.root_commit = $3))`,
     [user.id, input.legacyProjectId, input.rootCommit ?? null],
   );
