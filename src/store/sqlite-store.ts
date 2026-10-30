@@ -65,6 +65,8 @@ function obsToRow(obs: Observation): Record<string, unknown> {
     sharedWithAgentIds: obs.sharedWithAgentIds ? JSON.stringify(obs.sharedWithAgentIds) : null,
     createdByAgentId: obs.createdByAgentId ?? null,
     writeGeneration: obs.writeGeneration ?? 0,
+    category: obs.category ?? null,
+    confidence: obs.confidence ?? null,
   };
 }
 
@@ -101,6 +103,8 @@ function rowToObs(row: any): Observation {
     ...(row.sharedWithAgentIds ? { sharedWithAgentIds: safeJsonParse(row.sharedWithAgentIds, []) } : {}),
     ...(row.createdByAgentId ? { createdByAgentId: row.createdByAgentId } : {}),
     ...(row.writeGeneration ? { writeGeneration: row.writeGeneration } : {}),
+    ...(row.category ? { category: row.category } : {}),
+    ...(row.confidence ? { confidence: row.confidence } : {}),
   } as Observation;
 }
 
@@ -157,13 +161,13 @@ export class SqliteBackend implements ObservationStore {
          createdAt, updatedAt, projectId, hasCausalLanguage, topicKey, revisionCount,
          sessionId, status, progress, source, commitHash, relatedCommits, relatedEntities,
          attachments, sourceDetail, valueCategory, admissionState, admissionReason, visibility, sharedWithAgentIds,
-         createdByAgentId, writeGeneration)
+         createdByAgentId, writeGeneration, category, confidence)
       VALUES
         (@id, @entityName, @type, @title, @narrative, @facts, @filesModified, @concepts, @tokens,
          @createdAt, @updatedAt, @projectId, @hasCausalLanguage, @topicKey, @revisionCount,
          @sessionId, @status, @progress, @source, @commitHash, @relatedCommits, @relatedEntities,
          @attachments, @sourceDetail, @valueCategory, @admissionState, @admissionReason, @visibility, @sharedWithAgentIds,
-         @createdByAgentId, @writeGeneration)
+         @createdByAgentId, @writeGeneration, @category, @confidence)
       ON CONFLICT(id) DO UPDATE SET
         entityName = excluded.entityName,
         type = excluded.type,
@@ -194,7 +198,9 @@ export class SqliteBackend implements ObservationStore {
         visibility = excluded.visibility,
         sharedWithAgentIds = excluded.sharedWithAgentIds,
         createdByAgentId = excluded.createdByAgentId,
-        writeGeneration = excluded.writeGeneration
+        writeGeneration = excluded.writeGeneration,
+        category = excluded.category,
+        confidence = excluded.confidence
     `);
     this.stmtUpdate = this.stmtInsert;
     this.stmtSetStatus = this.db.prepare(`UPDATE observations SET status = ? WHERE id = ?`);

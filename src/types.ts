@@ -10,6 +10,8 @@
  * can be added by extending RuleSource and adding format adapters.
  */
 
+import type { MemoryCategory, MemoryConfidence } from './domain/memory.js';
+
 // ============================================================
 // Knowledge Graph (adopted from MCP Official Memory Server)
 // ============================================================
@@ -182,6 +184,10 @@ export interface Observation {
   createdByAgentId?: string;
   /** Phase 4a: Monotonic write generation — snapshot of storage_generation at write time (watermark coherence) */
   writeGeneration?: number;
+  /** PMI category override; absent means the default for `type` (src/domain/memory.ts). */
+  category?: MemoryCategory;
+  /** PMI confidence override; absent means the default for `type`. Agents never set `confirmed`. */
+  confidence?: MemoryConfidence;
 }
 
 // ============================================================

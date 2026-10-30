@@ -1142,6 +1142,17 @@ const SCHEMA_MIGRATIONS: SchemaMigration[] = [
     },
   },
   {
+    // PMI: explicit memory classification. NULL means "derive from the
+    // observation type" (src/domain/memory.ts), so no row is rewritten and a
+    // later type edit can never leave a stale derived category behind.
+    id: 'pmi-1-memory-classification',
+    apply: (db) => {
+      addColumnIfMissing(db, 'observations', 'category', 'category TEXT');
+      addColumnIfMissing(db, 'observations', 'confidence', 'confidence TEXT');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_observations_project_category ON observations(projectId, category, status)');
+    },
+  },
+  {
     id: '1.9-continuity-v2',
     apply: (db) => {
       addColumnIfMissing(db, 'task_continuity_events', 'event_key', 'event_key TEXT');
@@ -1155,8 +1166,40 @@ const SCHEMA_MIGRATIONS: SchemaMigration[] = [
   },
 ];
 
-function applySchemaMigrations(db: any): void {
+/** Migrations introduced by PMI; a store holding data is backed up before the first one runs. */
+const PMI_MIGRATION_PREFIX = 'pmi-';
+
+/**
+ * Copy the database to `memorix.db.pre-pmi-<timestamp>` with `VACUUM INTO` and
+ * verify the copy before any PMI migration touches the schema
+ * (docs/PMI/DATABASE.md §5). Empty stores have nothing to protect.
+ */
+export function backupBeforePmiMigrations(db: any, dbPath: string, pendingIds: string[]): string | null {
+  if (!pendingIds.some((id) => id.startsWith(PMI_MIGRATION_PREFIX))) return null;
+  const hasData = db.prepare('SELECT 1 FROM observations LIMIT 1').get();
+  if (!hasData) return null;
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const backupPath = `${dbPath}.pre-pmi-${stamp}`;
+  db.prepare('VACUUM INTO ?').run(backupPath);
+  const copy = createDatabase(backupPath);
+  try {
+    const result = copy.prepare('PRAGMA integrity_check').get() as Record<string, unknown> | undefined;
+    const verdict = result ? Object.values(result)[0] : undefined;
+    if (verdict !== 'ok') throw new Error(`[pmi] pre-migration backup failed integrity check: ${String(verdict)}`);
+  } finally {
+    copy.close();
+  }
+  return backupPath;
+}
+
+function applySchemaMigrations(db: any, dbPath?: string): void {
   db.exec(CREATE_SCHEMA_MIGRATIONS_TABLE);
+  if (dbPath) {
+    const pending = SCHEMA_MIGRATIONS
+      .filter((migration) => !db.prepare('SELECT 1 FROM schema_migrations WHERE id = ?').get(migration.id))
+      .map((migration) => migration.id);
+    backupBeforePmiMigrations(db, dbPath, pending);
+  }
   for (const migration of SCHEMA_MIGRATIONS) {
     const applied = db.prepare('SELECT 1 FROM schema_migrations WHERE id = ?').get(migration.id);
     if (applied) continue;
@@ -1271,7 +1314,7 @@ export function getDatabase(dataDir: string): any {
 
   // New migrations are transactional and tracked. Older idempotent migrations
   // remain untouched for backwards compatibility with existing local stores.
-  applySchemaMigrations(db);
+  applySchemaMigrations(db, dbPath);
 
   // Create indexes AFTER all ALTER TABLE migrations so referenced columns exist
   db.exec(CREATE_INDEXES);
