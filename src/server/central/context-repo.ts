@@ -182,13 +182,18 @@ export async function buildServerContext(
   const query = [request.task, request.session?.task, request.session?.nextAction].filter(Boolean).join(' ');
   const hits = await hybridSearch(tx, [project.id], query, { limit: 80, embeddings: options.embeddings, includeDeprecated: levels.includes('L3') });
   const relevance = new Map(hits.map((hit) => [hit.id, hit.relevance]));
+  // Bounded candidate sets, each served by an index: search hits, memories
+  // about the task's files, about its components, and the most recent ones.
   const rows = await tx.query<MemoryRow>(
-    `SELECT ${MEMORY_COLUMNS} FROM memory.memories m
-      WHERE m.project_id = $1 AND m.deleted_at IS NULL
-        AND (m.id = ANY ($2::text[])
-             OR m.related_files && $3::text[]
-             OR lower(m.component) = ANY ($4::text[])
-             OR m.id IN (SELECT id FROM memory.memories r WHERE r.project_id = $1 AND r.deleted_at IS NULL ORDER BY r.updated_at DESC LIMIT 40))`,
+    `SELECT ${MEMORY_COLUMNS} FROM memory.memories m WHERE m.id IN (
+       SELECT id FROM memory.memories WHERE id = ANY ($2::text[])
+       UNION
+       (SELECT id FROM memory.memories WHERE project_id = $1 AND deleted_at IS NULL AND related_files && $3::text[] ORDER BY updated_at DESC LIMIT 100)
+       UNION
+       (SELECT id FROM memory.memories WHERE project_id = $1 AND deleted_at IS NULL AND lower(component) = ANY ($4::text[]) ORDER BY updated_at DESC LIMIT 100)
+       UNION
+       (SELECT id FROM memory.memories WHERE project_id = $1 AND deleted_at IS NULL ORDER BY updated_at DESC LIMIT 40))
+     AND m.deleted_at IS NULL`,
     [project.id, [...relevance.keys()], files, (request.components ?? []).map((component) => component.toLowerCase())],
   );
   const memories = rows.map((row) => toContextMemory(row, relevance.get(row.id) ?? 0));

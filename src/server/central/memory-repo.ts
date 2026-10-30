@@ -59,12 +59,16 @@ export async function applyPushedBatch(
   batch: ChangeBatch,
 ): Promise<PushResult> {
   const results: PushEntryResult[] = [];
-  let lastSeq = 0;
+  const applied = new Map<string, { syncKey: string; op: 'upsert' | 'delete' }>();
   for (const entry of batch.entries) {
     const result = await applyEntry(tx, project, user, batch, entry);
     results.push(result.result);
-    if (result.seq) lastSeq = result.seq;
+    if (result.applied) {
+      applied.delete(result.applied.syncKey);
+      applied.set(result.applied.syncKey, result.applied);
+    }
   }
+  const lastSeq = await assignFeedPositions(tx, project.id, [...applied.values()]);
   const counts = results.reduce<Record<string, number>>((acc, item) => {
     acc[item.outcome] = (acc[item.outcome] ?? 0) + 1;
     return acc;
@@ -88,7 +92,7 @@ async function applyEntry(
   user: AuthUser,
   batch: ChangeBatch,
   entry: ChangeEntry,
-): Promise<{ result: PushEntryResult; seq?: number }> {
+): Promise<{ result: PushEntryResult; applied?: { syncKey: string; op: 'upsert' | 'delete' } }> {
   const syncKey = entry.syncKey;
   if (entry.kind === 'upsert' && entry.row && hasCredential(entry.row)) {
     // Secrets never reach project memory (spec §14). The row stays on the
@@ -132,11 +136,8 @@ async function applyEntry(
   const protectedReason = confidenceGuard(stored, entry);
   if (protectedReason) return { result: { syncKey, outcome: 'rejected', reason: protectedReason, conflict } };
 
-  const [{ seq }] = await tx.query<{ seq: string }>(
-    'UPDATE work.project_seq SET next_seq = next_seq + 1 WHERE project_id = $1 RETURNING next_seq - 1 AS seq',
-    [project.id],
-  );
-  const serverSeq = Number(seq);
+  // The feed position is assigned for the whole batch at the end (assignFeedPositions).
+  const serverSeq = 0;
   const version = (stored?.version ?? 0) + 1;
 
   if (entry.kind === 'tombstone') {
@@ -169,11 +170,32 @@ async function applyEntry(
      VALUES ($1, $2, $3::jsonb, $4, $5, $6, 'sync')`,
     [syncKey, version, entry.row ? JSON.stringify(entry.row) : null, entry.kind === 'tombstone', user.id, batch.deviceId],
   );
-  await tx.query(
-    `INSERT INTO work.changes (project_id, seq, entity, entity_id, op) VALUES ($1, $2, 'memory', $3, $4)`,
-    [project.id, serverSeq, syncKey, entry.kind === 'tombstone' ? 'delete' : 'upsert'],
+  return { result: { syncKey, outcome: 'applied', conflict }, applied: { syncKey, op: entry.kind === 'tombstone' ? 'delete' : 'upsert' } };
+}
+
+/**
+ * Give the applied memories their changes-feed positions in one step at the
+ * end of the transaction. The project_seq row lock is what keeps commit order
+ * equal to feed order (no reader can skip a position that commits later), so
+ * it is taken last and held only for these three statements.
+ */
+async function assignFeedPositions(tx: Queryable, projectId: string, applied: Array<{ syncKey: string; op: 'upsert' | 'delete' }>): Promise<number> {
+  if (!applied.length) return 0;
+  const [{ first }] = await tx.query<{ first: string }>(
+    'UPDATE work.project_seq SET next_seq = next_seq + $2 WHERE project_id = $1 RETURNING next_seq - $2 AS first',
+    [projectId, applied.length],
   );
-  return { result: { syncKey, outcome: 'applied', conflict }, seq: serverSeq };
+  const seqs = applied.map((_, index) => Number(first) + index);
+  await tx.query(
+    `UPDATE memory.memories m SET server_seq = v.seq FROM unnest($1::text[], $2::bigint[]) AS v(id, seq) WHERE m.id = v.id`,
+    [applied.map((item) => item.syncKey), seqs],
+  );
+  await tx.query(
+    `INSERT INTO work.changes (project_id, seq, entity, entity_id, op)
+     SELECT $1, v.seq, 'memory', v.id, v.op FROM unnest($2::text[], $3::bigint[], $4::text[]) AS v(id, seq, op)`,
+    [projectId, applied.map((item) => item.syncKey), seqs, applied.map((item) => item.op)],
+  );
+  return seqs.at(-1)!;
 }
 
 /**

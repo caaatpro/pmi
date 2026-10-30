@@ -149,6 +149,8 @@ const main = defineCommand({
     daemon: () => import('./commands/daemon.js').then(m => m.default),
     workspace: () => import('./commands/workspace.js').then(m => m.default),
     git: () => import('./commands/git.js').then(m => m.default),
+    backup: () => import('./commands/backup.js').then(m => m.backup),
+    restore: () => import('./commands/backup.js').then(m => m.restore),
     hook: () => import('./commands/hook.js').then(m => m.default),
     hooks: () => import('./commands/hooks.js').then(m => m.default),
     ingest: () => import('./commands/ingest.js').then(m => m.default),
@@ -181,7 +183,7 @@ const main = defineCommand({
       'init', 'setup', 'integrate', 'memory', 'context', 'resume', 'explain', 'codegraph', 'checkpoint', 'knowledge', 'reasoning', 'retention', 'formation', 'audit', 'transfer', 'skills', 'identity',
       'session', 'team', 'task', 'message', 'lock', 'handoff', 'poll', 'evidence', 'feedback', 'continuity',
       'receipt',
-      'serve', 'serve-http', 'status', 'sync', 'login', 'logout', 'project', 'daemon', 'workspace', 'git',
+      'serve', 'serve-http', 'status', 'sync', 'login', 'logout', 'project', 'daemon', 'workspace', 'git', 'backup', 'restore',
       'hook', 'hooks', 'ingest', 'git-hook', 'git-hook-uninstall',
       'background', 'bg', 'bs', 'doctor', 'repair', 'dashboard', 'cleanup', 'purge', 'uninstall'];
     if (firstArg && knownSubs.includes(firstArg)) return;
@@ -210,6 +212,7 @@ const main = defineCommand({
     console.error('  daemon     Automatic session checkpoints (start/stop/status)');
     console.error('  workspace  Snapshot uncommitted work; restore it on another machine');
     console.error('  git        Analyze new commits incrementally into project memory');
+    console.error('  backup     Back up / restore the local store (pmi backup <dir>, pmi restore <dir>)');
     console.error('  memory     Search/store/detail/timeline/resolve observations');
     console.error('  context    Show the Memory Autopilot brief for this project');
     console.error('  resume     Resume prior work with one bounded project brief');

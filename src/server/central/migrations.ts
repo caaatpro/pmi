@@ -563,6 +563,95 @@ CREATE POLICY git_commits_read ON work.git_commits FOR SELECT TO pmi_app USING (
 CREATE POLICY git_commits_insert ON work.git_commits FOR INSERT TO pmi_app WITH CHECK (core.can(project_id, 'developer'));
 `,
   },
+  {
+    // Phase 10 (load test): row-level security evaluated core.project_role_of
+    // for every row — a full scan at 100k memories. The same rules, but the
+    // caller's project set is computed once per statement (an InitPlan) and
+    // rows are matched with = ANY, so indexes apply again.
+    id: '0007-rls-performance',
+    sql: `
+CREATE FUNCTION core.project_ids_with(p_min_role text) RETURNS uuid[]
+  LANGUAGE sql STABLE SECURITY DEFINER SET search_path = core, pg_temp AS $f$
+  SELECT COALESCE(array_agg(p.id), '{}')
+    FROM core.projects p
+   WHERE core.current_app_user() IS NOT NULL
+     AND core.role_rank(core.project_role_of(p.id, core.current_app_user())) >= core.role_rank(p_min_role)
+$f$;
+
+ALTER POLICY memories_read ON memory.memories
+  USING (project_id = ANY ((SELECT core.project_ids_with('viewer'))::uuid[]));
+ALTER POLICY memories_insert ON memory.memories
+  WITH CHECK (project_id = ANY ((SELECT core.project_ids_with('developer'))::uuid[]));
+ALTER POLICY memories_update ON memory.memories
+  USING (project_id = ANY ((SELECT core.project_ids_with('developer'))::uuid[]))
+  WITH CHECK (project_id = ANY ((SELECT core.project_ids_with('developer'))::uuid[]));
+ALTER POLICY versions_read ON memory.memory_versions
+  USING (EXISTS (SELECT 1 FROM memory.memories m WHERE m.id = memory_id AND m.project_id = ANY ((SELECT core.project_ids_with('viewer'))::uuid[])));
+ALTER POLICY versions_insert ON memory.memory_versions
+  WITH CHECK (EXISTS (SELECT 1 FROM memory.memories m WHERE m.id = memory_id AND m.project_id = ANY ((SELECT core.project_ids_with('developer'))::uuid[])));
+ALTER POLICY links_read ON memory.memory_links
+  USING (EXISTS (SELECT 1 FROM memory.memories m WHERE m.id = from_id AND m.project_id = ANY ((SELECT core.project_ids_with('viewer'))::uuid[])));
+ALTER POLICY links_write ON memory.memory_links
+  WITH CHECK (EXISTS (SELECT 1 FROM memory.memories m WHERE m.id = from_id AND m.project_id = ANY ((SELECT core.project_ids_with('developer'))::uuid[])));
+ALTER POLICY conflicts_read ON memory.conflicts
+  USING (project_id = ANY ((SELECT core.project_ids_with('viewer'))::uuid[]));
+ALTER POLICY conflicts_insert ON memory.conflicts
+  WITH CHECK (project_id = ANY ((SELECT core.project_ids_with('developer'))::uuid[]));
+ALTER POLICY conflicts_update ON memory.conflicts
+  USING (project_id = ANY ((SELECT core.project_ids_with('developer'))::uuid[]));
+ALTER POLICY changes_read ON work.changes
+  USING (project_id = ANY ((SELECT core.project_ids_with('viewer'))::uuid[]));
+ALTER POLICY changes_insert ON work.changes
+  WITH CHECK (project_id = ANY ((SELECT core.project_ids_with('developer'))::uuid[]));
+ALTER POLICY seq_read ON work.project_seq
+  USING (project_id = ANY ((SELECT core.project_ids_with('viewer'))::uuid[]));
+ALTER POLICY seq_update ON work.project_seq
+  USING (project_id = ANY ((SELECT core.project_ids_with('developer'))::uuid[]));
+ALTER POLICY sessions_read ON work.sessions
+  USING (project_id = ANY ((SELECT core.project_ids_with('viewer'))::uuid[]));
+ALTER POLICY sessions_insert ON work.sessions
+  WITH CHECK (project_id = ANY ((SELECT core.project_ids_with('developer'))::uuid[]));
+ALTER POLICY sessions_update ON work.sessions
+  USING (project_id = ANY ((SELECT core.project_ids_with('developer'))::uuid[]))
+  WITH CHECK (project_id = ANY ((SELECT core.project_ids_with('developer'))::uuid[]));
+ALTER POLICY checkpoints_read ON work.checkpoints
+  USING (EXISTS (SELECT 1 FROM work.sessions s WHERE s.id = session_id AND s.project_id = ANY ((SELECT core.project_ids_with('developer'))::uuid[])));
+ALTER POLICY checkpoints_insert ON work.checkpoints
+  WITH CHECK (EXISTS (SELECT 1 FROM work.sessions s WHERE s.id = session_id AND s.project_id = ANY ((SELECT core.project_ids_with('developer'))::uuid[])));
+ALTER POLICY project_blobs_read ON work.project_blobs
+  USING (project_id = ANY ((SELECT core.project_ids_with('developer'))::uuid[]));
+ALTER POLICY project_blobs_insert ON work.project_blobs
+  WITH CHECK (project_id = ANY ((SELECT core.project_ids_with('developer'))::uuid[]));
+ALTER POLICY snapshots_read ON work.snapshots
+  USING (project_id = ANY ((SELECT core.project_ids_with('developer'))::uuid[]));
+ALTER POLICY snapshots_insert ON work.snapshots
+  WITH CHECK (project_id = ANY ((SELECT core.project_ids_with('developer'))::uuid[]));
+ALTER POLICY snapshots_update ON work.snapshots
+  USING (project_id = ANY ((SELECT core.project_ids_with('developer'))::uuid[]));
+ALTER POLICY snapshot_blobs_read ON work.snapshot_blobs
+  USING (project_id = ANY ((SELECT core.project_ids_with('developer'))::uuid[]));
+ALTER POLICY snapshot_blobs_insert ON work.snapshot_blobs
+  WITH CHECK (project_id = ANY ((SELECT core.project_ids_with('developer'))::uuid[]));
+ALTER POLICY overviews_read ON memory.overviews
+  USING (project_id = ANY ((SELECT core.project_ids_with('viewer'))::uuid[]));
+ALTER POLICY metrics_insert ON work.metrics_events
+  WITH CHECK (project_id IS NULL OR project_id = ANY ((SELECT core.project_ids_with('viewer'))::uuid[]));
+ALTER POLICY git_cursors_read ON work.git_cursors
+  USING (project_id = ANY ((SELECT core.project_ids_with('viewer'))::uuid[]));
+ALTER POLICY git_cursors_write ON work.git_cursors
+  WITH CHECK (project_id = ANY ((SELECT core.project_ids_with('developer'))::uuid[]));
+ALTER POLICY git_cursors_update ON work.git_cursors
+  USING (project_id = ANY ((SELECT core.project_ids_with('developer'))::uuid[]));
+ALTER POLICY git_commits_read ON work.git_commits
+  USING (project_id = ANY ((SELECT core.project_ids_with('viewer'))::uuid[]));
+ALTER POLICY git_commits_insert ON work.git_commits
+  WITH CHECK (project_id = ANY ((SELECT core.project_ids_with('developer'))::uuid[]));
+
+CREATE INDEX IF NOT EXISTS conflicts_memory ON memory.conflicts (memory_id) WHERE state = 'open';
+CREATE INDEX IF NOT EXISTS memories_project_recent ON memory.memories (project_id, updated_at DESC) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS memories_project_component ON memory.memories (project_id, lower(component)) WHERE deleted_at IS NULL;
+`,
+  },
 ];
 
 const MIGRATION_LOCK_KEY = 74_201_001;
