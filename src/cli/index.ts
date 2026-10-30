@@ -146,6 +146,7 @@ const main = defineCommand({
     login: () => import('./commands/connect.js').then(m => m.login),
     logout: () => import('./commands/connect.js').then(m => m.logout),
     project: () => import('./commands/connect.js').then(m => m.projectCommand),
+    daemon: () => import('./commands/daemon.js').then(m => m.default),
     hook: () => import('./commands/hook.js').then(m => m.default),
     hooks: () => import('./commands/hooks.js').then(m => m.default),
     ingest: () => import('./commands/ingest.js').then(m => m.default),
@@ -178,7 +179,7 @@ const main = defineCommand({
       'init', 'setup', 'integrate', 'memory', 'context', 'resume', 'explain', 'codegraph', 'checkpoint', 'knowledge', 'reasoning', 'retention', 'formation', 'audit', 'transfer', 'skills', 'identity',
       'session', 'team', 'task', 'message', 'lock', 'handoff', 'poll', 'evidence', 'feedback', 'continuity',
       'receipt',
-      'serve', 'serve-http', 'status', 'sync', 'login', 'logout', 'project',
+      'serve', 'serve-http', 'status', 'sync', 'login', 'logout', 'project', 'daemon',
       'hook', 'hooks', 'ingest', 'git-hook', 'git-hook-uninstall',
       'background', 'bg', 'bs', 'doctor', 'repair', 'dashboard', 'cleanup', 'purge', 'uninstall'];
     if (firstArg && knownSubs.includes(firstArg)) return;
@@ -203,7 +204,8 @@ const main = defineCommand({
     console.error('  project    Link this working copy to a server project');
     console.error('  sync       Sync memory with the PMI server (push/pull/status); rules/workspace sync');
     console.error('  background Start/stop/status background control plane');
-    console.error('  session    Start/end/context for coding sessions');
+    console.error('  session    Start/checkpoint/handoff/list/resume/finish coding sessions');
+    console.error('  daemon     Automatic session checkpoints (start/stop/status)');
     console.error('  memory     Search/store/detail/timeline/resolve observations');
     console.error('  context    Show the Memory Autopilot brief for this project');
     console.error('  resume     Resume prior work with one bounded project brief');

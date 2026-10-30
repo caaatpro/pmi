@@ -10,6 +10,7 @@
 import { randomUUID } from 'node:crypto';
 
 import {
+  FINAL_STATUSES,
   boundState,
   canTransitionSession,
   type CheckpointTrigger,
@@ -175,6 +176,7 @@ export class LocalSessionStore {
   ): LocalCheckpoint {
     const run = this.db.transaction(() => {
       const current = this.require(id);
+      if (FINAL_STATUSES.includes(current.status)) throw new Error(`[pmi] session cannot move from ${current.status}: it is closed`);
       const now = new Date().toISOString();
       const seq = current.checkpointSeq + 1;
       const checkpointId = `${id}:${seq}`;

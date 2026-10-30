@@ -63,6 +63,7 @@ import {
   type ProjectBindingTransport,
 } from './server/request-context.js';
 import { getMcpServerInfo, registerMcpDiscovery } from './server/mcp-compat.js';
+import { registerSessionTools } from './mcp/tools/session.js';
 
 // ── Timeout budgets for LLM-heavy paths ──────────────────────────
 const FORMATION_TIMEOUT_MS = parseFormationTimeoutMs(process.env.MEMORIX_FORMATION_TIMEOUT_MS); // Formation pipeline (extract+resolve+evaluate)
@@ -659,7 +660,13 @@ export async function createMemorixServer(
         if (shouldAwaitProjectRuntime(name)) {
           await ensureProjectRuntimeInitialized();
         }
-        return await maybeHandler(...handlerArgs);
+        try {
+          return await maybeHandler(...handlerArgs);
+        } finally {
+          // Any tool call is agent activity: the PMI daemon releases a session
+          // only after its agent has been silent for PMI_AGENT_IDLE_MS.
+          if (connectionSessionId) touchPmiSession(projectDir, connectionSessionId);
+        }
       };
       return (originalRegisterTool as (...innerArgs: unknown[]) => unknown)(name, maybeConfig, wrappedHandler, ...args.slice(2)) as never;
     }
@@ -3633,9 +3640,13 @@ export async function createMemorixServer(
           'Memorix will detect the git project from this path and bind this session to it. ' +
           'Required for HTTP transport when multiple projects are open simultaneously or when rebinding an existing control-plane session.',
         ),
+        task: z.string().max(2000).optional().describe('PMI: the task this session works on (enables handoff/resume by others)'),
+        objective: z.string().max(4000).optional().describe('PMI: when the task counts as done'),
+        model: z.string().max(100).optional().describe('PMI: model you run on, e.g. claude-opus or gpt-5'),
+        modelProvider: z.string().max(100).optional().describe('PMI: model provider, e.g. anthropic or openai'),
       },
     },
-    async ({ sessionId, agent, agentType, instanceId, joinTeam, role, projectRoot: explicitRoot }) => {
+    async ({ sessionId, agent, agentType, instanceId, joinTeam, role, projectRoot: explicitRoot, task, objective, model, modelProvider }) => {
       // Phase 4a: clear agent identity — must not bleed from prior session_start
       currentAgentId = undefined;
 
@@ -3789,6 +3800,7 @@ export async function createMemorixServer(
         reader: getObservationReader(),
       });
       connectionSessionId = result.session.id;
+      const pmiStart = await startPmiContinuity(projectDir, project, result.session.id, { agent, task, objective, model, modelProvider });
       const bindingReceipt = projectBinding.receipt({
         dataDir: projectDir,
         transport: options.bindingTransport,
@@ -3807,6 +3819,7 @@ export async function createMemorixServer(
         teamJoinNotice,
         registeredAgent ? watermarkInfo : '',
         registeredAgent ? rescueInfo : '',
+        ...pmiStart.lines,
         '',
         '[TIP] Tips: Use `memorix_resolve` to mark completed tasks. Use `progress` param in `memorix_store` for task tracking. Use `topicKey` to prevent duplicate memories.',
         '',
@@ -3875,6 +3888,18 @@ export async function createMemorixServer(
     },
   );
 
+  registerSessionTools(server, {
+    dataDir: () => projectDir,
+    project: () => ({ id: project.id, rootPath: project.rootPath }),
+    connectionSessionId: () => connectionSessionId,
+    setConnectionSessionId: (id) => { connectionSessionId = id; },
+    openMemorixSession: async (sessionId, agent) => {
+      const { startSession } = await import('./memory/session.js');
+      await startSession(projectDir, project.id, { sessionId, agent, reader: getObservationReader() });
+    },
+    agentPid: process.pid,
+  });
+
   /**
    * memorix_session_end — End the current coding session
    *
@@ -3901,6 +3926,7 @@ export async function createMemorixServer(
       const { endSession } = await import('./memory/session.js');
       const session = await endSession(projectDir, sessionId, summary);
       if (session && connectionSessionId === sessionId) connectionSessionId = undefined;
+      await finishPmiContinuity(projectDir, sessionId, summary);
 
       if (!session) {
         return {
@@ -5280,3 +5306,76 @@ export async function createMemorixServer(
     handleTransportClose,
   };
 }
+
+// ── PMI session continuity glue ───────────────────────────────────
+
+/** Record agent activity on the session; never fails a tool call. */
+function touchPmiSession(dataDir: string, sessionId: string): void {
+  import('./session/local-store.js')
+    .then(({ LocalSessionStore }) => {
+      const store = new LocalSessionStore(dataDir);
+      if (store.get(sessionId)) store.touch(sessionId);
+    })
+    .catch(() => undefined);
+}
+
+/**
+ * Give a new MCP session its PMI state. The agent's pid is this stdio server
+ * process: when the agent exits, so does the server, and the daemon notices.
+ */
+async function startPmiContinuity(
+  dataDir: string,
+  project: { id: string; rootPath: string },
+  sessionId: string,
+  input: { agent?: string; task?: string; objective?: string; model?: string; modelProvider?: string },
+): Promise<{ lines: string[] }> {
+  try {
+    const { LocalSessionStore } = await import('./session/local-store.js');
+    const service = await import('./session/service.js');
+    const { ensureDaemon, currentCliPath } = await import('./session/daemon.js');
+    const store = new LocalSessionStore(dataDir);
+    service.startSession(store, {
+      projectId: project.id,
+      projectRoot: project.rootPath,
+      sessionId,
+      agent: input.agent ?? null,
+      task: input.task,
+      objective: input.objective,
+      model: input.model,
+      modelProvider: input.modelProvider,
+      agentPid: process.pid,
+    });
+    const lines: string[] = [];
+    if (service.connectedProject(project.rootPath)) {
+      await service.flushOutbox(store);
+      const pid = ensureDaemon(dataDir, currentCliPath());
+      if (pid) lines.push(`PMI: automatic checkpoints on (daemon pid ${pid}).`);
+      const { sessions } = await service.listProjectSessions(store, { projectId: project.id, projectRoot: project.rootPath });
+      const others = sessions.filter((item) => item.id !== sessionId);
+      if (others.length) {
+        lines.push('PMI: sessions waiting to be continued — call session_resume(id) to pick one up:');
+        for (const item of others.slice(0, 5)) lines.push(`  - ${item.id} [${item.status}] ${item.task || '(no task)'} (${item.agent ?? '?'}${item.userEmail ? `, ${item.userEmail}` : ''})`);
+      }
+    }
+    if (!input.task) lines.push('PMI: pass `task` to memorix_session_start, then use session_checkpoint / session_handoff so others can continue this work.');
+    return { lines };
+  } catch (error) {
+    return { lines: [`PMI session state unavailable: ${(error as Error).message}`] };
+  }
+}
+
+async function finishPmiContinuity(dataDir: string, sessionId: string, summary?: string): Promise<void> {
+  try {
+    const { LocalSessionStore } = await import('./session/local-store.js');
+    const { LIVE_STATUSES } = await import('./domain/session.js');
+    const service = await import('./session/service.js');
+    const store = new LocalSessionStore(dataDir);
+    const session = store.get(sessionId);
+    if (!session || !LIVE_STATUSES.includes(session.status)) return;
+    service.finishSession(store, sessionId, { summary });
+    await service.flushOutbox(store);
+  } catch {
+    // Ending the Memorix session must not fail on PMI bookkeeping.
+  }
+}
+

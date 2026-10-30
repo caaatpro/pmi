@@ -1,16 +1,16 @@
 /**
  * Tool Profile System — Progressive Disclosure for MCP tools
  *
- * The full Memorix tool set contains 37 tools, but most users only ever
+ * The full tool set contains 42 tools, but most users only ever
  * use a small subset (store / search / detail). Exposing all of them at
  * tools/list time causes cognitive overload.
  *
  * We provide four profiles:
  *   - "micro" (stdio default): Agent-ready project context + bounded recovery controls — 8 tools.
  *     Suitable for normal MCP clients where every tool schema costs context tokens.
- *   - "lite": Core memory CRUD, sessions, reasoning, continuity, retention, backup — 20 tools.
+ *   - "lite": Core memory CRUD, sessions, reasoning, continuity, retention, backup, PMI sessions — 25 tools.
  *     Suitable for solo users who want the full memory surface without team tools.
- *   - "team" (HTTP default): lite + coordination tools, dashboard, and Knowledge Workspace — 28 tools.
+ *   - "team" (HTTP default): lite + coordination tools, dashboard, and Knowledge Workspace — 33 tools.
  *     Suitable when an operator explicitly wants task/message/lock surfaces.
  *   - "full": Everything, including niche / advanced tools (consolidate, dedup,
  *     formation metrics, skills, rules/workspace sync).
@@ -54,6 +54,12 @@ export const TOOL_PROFILES: Record<string, ReadonlyArray<ToolProfile>> = Object.
   memorix_search_reasoning:   ['lite', 'team', 'full'],
   memorix_transfer:           ['lite', 'team', 'full'],
   memorix_retention:          ['lite', 'team', 'full'],
+  // PMI session continuity (src/mcp/tools/session.ts)
+  session_checkpoint:         ['lite', 'team', 'full'],
+  session_handoff:            ['lite', 'team', 'full'],
+  session_list:               ['lite', 'team', 'full'],
+  session_resume:             ['lite', 'team', 'full'],
+  session_finish:             ['lite', 'team', 'full'],
 
   // ── team: orchestration coordination surfaces — HTTP default ──────
   memorix_dashboard:          ['team', 'full'],
