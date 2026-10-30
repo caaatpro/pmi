@@ -1,0 +1,312 @@
+/**
+ * Central memory store: materializes pushed sync batches into
+ * `memory.memories`, keeps version history, records concurrent-edit
+ * conflicts, and serves the per-project changes feed.
+ *
+ * Ordering uses the same `(revision, writer)` total order as every replica
+ * (src/sync/merge.ts), so the server converges to the state each client
+ * would reach by itself, and re-pushing a batch is a no-op.
+ */
+import type { Observation } from '../../types.js';
+import { classifyObservation, toMemoryStatus, type MemoryCategory, type MemoryConfidence, type MemoryStatus } from '../../domain/memory.js';
+import { containsCredential } from '../../memory/secret-filter.js';
+import { compareVersion } from '../../sync/merge.js';
+import type { ChangeBatch, ChangeEntry, RowVersion } from '../../sync/types.js';
+import type { Queryable } from './db.js';
+import { audit, type AuthUser, type ProjectRecord } from './identity.js';
+
+/** Device id the server uses for the batches it serves; clients key their cursor by it. */
+export const SERVER_DEVICE_ID = 'pmi-server';
+
+export type PushOutcome = 'applied' | 'duplicate' | 'stale' | 'rejected';
+
+export interface PushEntryResult {
+  syncKey: string;
+  outcome: PushOutcome;
+  reason?: string;
+  conflict?: boolean;
+}
+
+export interface PushResult {
+  results: PushEntryResult[];
+  lastSeq: number;
+}
+
+interface StoredRow {
+  id: string;
+  project_id: string;
+  revision: number;
+  writer: string;
+  content_hash: string;
+  deleted: boolean;
+  version: number;
+  body: Observation | null;
+}
+
+export async function applyPushedBatch(
+  tx: Queryable,
+  project: ProjectRecord,
+  user: AuthUser,
+  batch: ChangeBatch,
+): Promise<PushResult> {
+  const results: PushEntryResult[] = [];
+  let lastSeq = 0;
+  for (const entry of batch.entries) {
+    const result = await applyEntry(tx, project, user, batch, entry);
+    results.push(result.result);
+    if (result.seq) lastSeq = result.seq;
+  }
+  const counts = results.reduce<Record<string, number>>((acc, item) => {
+    acc[item.outcome] = (acc[item.outcome] ?? 0) + 1;
+    return acc;
+  }, {});
+  await audit(tx, {
+    action: 'sync.push',
+    actorUserId: user.id,
+    orgId: project.orgId,
+    projectId: project.id,
+    deviceId: batch.deviceId,
+    targetType: 'sync_batch',
+    targetId: `${batch.deviceId}:${batch.sequence}`,
+    detail: { counts },
+  });
+  return { results, lastSeq };
+}
+
+async function applyEntry(
+  tx: Queryable,
+  project: ProjectRecord,
+  user: AuthUser,
+  batch: ChangeBatch,
+  entry: ChangeEntry,
+): Promise<{ result: PushEntryResult; seq?: number }> {
+  const syncKey = entry.syncKey;
+  if (entry.kind === 'upsert' && entry.row && hasCredential(entry.row)) {
+    // Secrets never reach project memory (spec §14). The row stays on the
+    // device that wrote it; the client is told why.
+    return { result: { syncKey, outcome: 'rejected', reason: 'contains a credential-like value' } };
+  }
+
+  const [stored] = await tx.query<StoredRow>(
+    `SELECT id, project_id, revision, writer, content_hash, deleted_at IS NOT NULL AS deleted, version, body
+       FROM memory.memories WHERE id = $1 FOR UPDATE`,
+    [syncKey],
+  );
+  if (stored && stored.project_id !== project.id) {
+    return { result: { syncKey, outcome: 'rejected', reason: 'the sync key belongs to another project' } };
+  }
+
+  let conflict = false;
+  if (stored) {
+    const storedVersion: RowVersion = { revision: stored.revision, writer: stored.writer };
+    const cmp = compareVersion(entry.version, storedVersion);
+    if (cmp === 0) {
+      if (stored.content_hash !== entry.contentHash) {
+        return { result: { syncKey, outcome: 'rejected', reason: 'same version with different content' } };
+      }
+      return { result: { syncKey, outcome: 'duplicate' } };
+    }
+    if (entry.version.revision === stored.revision) {
+      conflict = true;
+      const incomingWins = cmp > 0;
+      const storedSide = { version: storedVersion, kind: stored.deleted ? 'tombstone' : 'upsert', row: stored.body };
+      const incomingSide = { version: entry.version, kind: entry.kind, row: entry.row ?? null };
+      await tx.query(
+        `INSERT INTO memory.conflicts (project_id, memory_id, kind, detected_by, winner, loser)
+         VALUES ($1, $2, 'concurrent_edit', 'sync', $3::jsonb, $4::jsonb)`,
+        [project.id, syncKey, JSON.stringify(incomingWins ? incomingSide : storedSide), JSON.stringify(incomingWins ? storedSide : incomingSide)],
+      );
+    }
+    if (cmp < 0) return { result: { syncKey, outcome: 'stale', reason: 'the server holds a newer version', conflict } };
+  }
+
+  const [{ seq }] = await tx.query<{ seq: string }>(
+    'UPDATE work.project_seq SET next_seq = next_seq + 1 WHERE project_id = $1 RETURNING next_seq - 1 AS seq',
+    [project.id],
+  );
+  const serverSeq = Number(seq);
+  const version = (stored?.version ?? 0) + 1;
+
+  if (entry.kind === 'tombstone') {
+    if (stored) {
+      await tx.query(
+        `UPDATE memory.memories SET deleted_at = now(), revision = $2, writer = $3, version = $4,
+                content_hash = '', updated_at = now(), server_seq = $5
+          WHERE id = $1`,
+        [syncKey, entry.version.revision, entry.version.writer, version, serverSeq],
+      );
+    } else {
+      // Remember tombstones for rows we never saw, so a stale upsert from
+      // another replica cannot bring the row back.
+      await tx.query(
+        `INSERT INTO memory.memories (id, project_id, legacy_project_id, category, confidence, revision, writer,
+                                      version, deleted_at, created_at, updated_at, server_seq)
+         VALUES ($1, $2, $3, 'development_history', 'observed', $4, $5, $6, now(), now(), now(), $7)`,
+        [syncKey, project.id, batch.projectId, entry.version.revision, entry.version.writer, version, serverSeq],
+      );
+    }
+  } else {
+    const row = entry.row!;
+    const { category, confidence } = classifyObservation(row);
+    const params = [
+      syncKey, project.id, batch.projectId, category, confidence, toMemoryStatus(row.status),
+      row.title ?? '', row.narrative ?? '', JSON.stringify(row.facts ?? []), row.entityName ?? null,
+      row.topicKey ?? null, row.source ?? 'agent', user.id, row.createdByAgentId ?? null, row.sessionId ?? null,
+      row.filesModified ?? [], row.relatedCommits ?? [], JSON.stringify(row), entry.contentHash, row.tokens ?? 0,
+      entry.version.revision, entry.version.writer, version, row.createdAt, row.updatedAt ?? row.createdAt, serverSeq,
+    ];
+    await tx.query(
+      `INSERT INTO memory.memories (
+         id, project_id, legacy_project_id, category, confidence, status, title, content, facts, component,
+         topic_key, source, author_user_id, author_agent, session_id, related_files, related_commits, body,
+         content_hash, tokens, revision, writer, version, created_at, updated_at, server_seq)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12, $13, $14, $15, $16, $17, $18::jsonb,
+               $19, $20, $21, $22, $23, $24, $25, $26)
+       ON CONFLICT (id) DO UPDATE SET
+         category = excluded.category, confidence = excluded.confidence, status = excluded.status,
+         title = excluded.title, content = excluded.content, facts = excluded.facts, component = excluded.component,
+         topic_key = excluded.topic_key, source = excluded.source, author_agent = excluded.author_agent,
+         session_id = excluded.session_id, related_files = excluded.related_files,
+         related_commits = excluded.related_commits, body = excluded.body, content_hash = excluded.content_hash,
+         tokens = excluded.tokens, revision = excluded.revision, writer = excluded.writer,
+         version = excluded.version, deleted_at = NULL, updated_at = excluded.updated_at,
+         server_seq = excluded.server_seq`,
+      params,
+    );
+  }
+
+  await tx.query(
+    `INSERT INTO memory.memory_versions (memory_id, version, snapshot, deleted, changed_by_user, changed_by_device, change_reason)
+     VALUES ($1, $2, $3::jsonb, $4, $5, $6, 'sync')`,
+    [syncKey, version, entry.row ? JSON.stringify(entry.row) : null, entry.kind === 'tombstone', user.id, batch.deviceId],
+  );
+  await tx.query(
+    `INSERT INTO work.changes (project_id, seq, entity, entity_id, op) VALUES ($1, $2, 'memory', $3, $4)`,
+    [project.id, serverSeq, syncKey, entry.kind === 'tombstone' ? 'delete' : 'upsert'],
+  );
+  return { result: { syncKey, outcome: 'applied', conflict }, seq: serverSeq };
+}
+
+function hasCredential(row: Observation): boolean {
+  return [row.title, row.narrative, ...(row.facts ?? [])].some((text) => typeof text === 'string' && containsCredential(text));
+}
+
+export interface FeedChange {
+  seq: number;
+  entry: ChangeEntry;
+}
+
+/**
+ * Changes after `after`, oldest first. Only the latest change of each memory
+ * is served (`server_seq = seq`), so a client catching up never replays
+ * intermediate versions. `legacyProjectId` limits rows to the Memorix
+ * identity the caller replicates.
+ */
+export async function readChanges(
+  db: Queryable,
+  projectId: string,
+  legacyProjectId: string,
+  after: number,
+  limit: number,
+): Promise<{ changes: FeedChange[]; hasMore: boolean; lastSeq: number }> {
+  const rows = await db.query<{ seq: string; id: string; revision: number; writer: string; content_hash: string; deleted: boolean; body: Observation | null }>(
+    `SELECT c.seq, m.id, m.revision, m.writer, m.content_hash, m.deleted_at IS NOT NULL AS deleted, m.body
+       FROM work.changes c
+       JOIN memory.memories m ON m.id = c.entity_id AND m.server_seq = c.seq
+      WHERE c.project_id = $1 AND c.entity = 'memory' AND c.seq > $2 AND m.legacy_project_id = $3
+      ORDER BY c.seq
+      LIMIT $4`,
+    [projectId, after, legacyProjectId, limit + 1],
+  );
+  const hasMore = rows.length > limit;
+  const page = rows.slice(0, limit);
+  const changes = page.map((row) => ({
+    seq: Number(row.seq),
+    entry: row.deleted
+      ? { syncKey: row.id, kind: 'tombstone' as const, version: { revision: row.revision, writer: row.writer }, contentHash: '' }
+      : { syncKey: row.id, kind: 'upsert' as const, version: { revision: row.revision, writer: row.writer }, contentHash: row.content_hash, row: row.body! },
+  }));
+  return { changes, hasMore, lastSeq: changes.at(-1)?.seq ?? after };
+}
+
+export interface MemoryView {
+  id: string;
+  category: MemoryCategory;
+  confidence: MemoryConfidence;
+  status: MemoryStatus;
+  title: string;
+  content: string;
+  facts: string[];
+  component: string | null;
+  topicKey: string | null;
+  source: string;
+  authorUserId: string | null;
+  authorAgent: string | null;
+  relatedFiles: string[];
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  serverSeq: number;
+}
+
+const MEMORY_VIEW_COLUMNS = `id, category, confidence, status, title, content, facts, component, topic_key AS "topicKey",
+  source, author_user_id AS "authorUserId", author_agent AS "authorAgent", related_files AS "relatedFiles", version,
+  created_at AS "createdAt", updated_at AS "updatedAt", server_seq::int AS "serverSeq"`;
+
+export interface MemoryFilters {
+  category?: MemoryCategory;
+  confidence?: MemoryConfidence;
+  status?: MemoryStatus;
+  component?: string;
+  file?: string;
+  limit: number;
+}
+
+export async function listMemories(db: Queryable, projectId: string, filters: MemoryFilters): Promise<MemoryView[]> {
+  const where = ['project_id = $1', 'deleted_at IS NULL'];
+  const params: unknown[] = [projectId];
+  const add = (sql: string, value: unknown) => {
+    params.push(value);
+    where.push(sql.replace('?', `$${params.length}`));
+  };
+  if (filters.category) add('category = ?', filters.category);
+  if (filters.confidence) add('confidence = ?', filters.confidence);
+  if (filters.status) add('status = ?', filters.status);
+  if (filters.component) add('component = ?', filters.component);
+  if (filters.file) add('? = ANY (related_files)', filters.file);
+  params.push(filters.limit);
+  return db.query<MemoryView>(
+    `SELECT ${MEMORY_VIEW_COLUMNS} FROM memory.memories WHERE ${where.join(' AND ')}
+      ORDER BY updated_at DESC LIMIT $${params.length}`,
+    params,
+  );
+}
+
+export async function getMemory(
+  db: Queryable,
+  memoryId: string,
+): Promise<(MemoryView & { projectId: string; deleted: boolean }) | undefined> {
+  const [row] = await db.query<MemoryView & { projectId: string; deleted: boolean }>(
+    `SELECT ${MEMORY_VIEW_COLUMNS}, project_id AS "projectId", deleted_at IS NOT NULL AS deleted
+       FROM memory.memories WHERE id = $1`,
+    [memoryId],
+  );
+  return row;
+}
+
+export async function listVersions(db: Queryable, memoryId: string): Promise<Array<{ version: number; deleted: boolean; changedAt: string; changedByUser: string | null; changedByDevice: string | null; reason: string }>> {
+  return db.query(
+    `SELECT version, deleted, changed_at AS "changedAt", changed_by_user AS "changedByUser",
+            changed_by_device AS "changedByDevice", change_reason AS reason
+       FROM memory.memory_versions WHERE memory_id = $1 ORDER BY version DESC`,
+    [memoryId],
+  );
+}
+
+export async function listConflicts(db: Queryable, projectId: string, state = 'open'): Promise<Array<Record<string, unknown>>> {
+  return db.query(
+    `SELECT id, memory_id AS "memoryId", kind, detected_by AS "detectedBy", winner, loser, state, created_at AS "createdAt"
+       FROM memory.conflicts WHERE project_id = $1 AND state = $2 ORDER BY created_at DESC LIMIT 200`,
+    [projectId, state],
+  );
+}
