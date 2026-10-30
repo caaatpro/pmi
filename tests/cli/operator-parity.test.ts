@@ -93,14 +93,7 @@ describe('CLI native parity', () => {
   });
 
   it('provides an explicit CLI route for every Memorix-native MCP tool', () => {
-    const nativeTools = Object.keys(TOOL_PROFILES).filter((toolName) => !toolName.startsWith('create_')
-      && !toolName.startsWith('delete_')
-      && !toolName.startsWith('read_')
-      && !toolName.startsWith('search_nodes')
-      && !toolName.startsWith('open_nodes')
-      && !toolName.startsWith('add_observations'));
-
-    expect(new Set(Object.keys(CLI_NATIVE_PARITY))).toEqual(new Set(nativeTools));
+    expect(new Set(Object.keys(CLI_NATIVE_PARITY))).toEqual(new Set(Object.keys(TOOL_PROFILES)));
   });
 
   it('exposes reasoning, retention, formation, and transfer via JSON-first CLI commands', async () => {

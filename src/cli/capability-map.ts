@@ -37,15 +37,3 @@ export const CLI_NATIVE_PARITY: Record<string, string> = Object.freeze({
   memorix_rules_sync: 'memorix sync rules',
   memorix_workspace_sync: 'memorix sync workspace',
 });
-
-export const MCP_ONLY_COMPATIBILITY_TOOLS = Object.freeze([
-  'create_entities',
-  'create_relations',
-  'add_observations',
-  'delete_entities',
-  'delete_observations',
-  'delete_relations',
-  'read_graph',
-  'search_nodes',
-  'open_nodes',
-]);

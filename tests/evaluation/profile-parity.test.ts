@@ -53,7 +53,7 @@ describe('profile parity exam', () => {
     expect(describeProfile('micro')).toContain('8 tools');
     expect(describeProfile('lite')).toContain('20 tools');
     expect(describeProfile('team')).toContain('28 tools');
-    expect(describeProfile('full')).toContain('46 tools');
+    expect(describeProfile('full')).toContain('37 tools');
   });
 
   it('keeps packaged memory skills aware of the reachable lite surface', () => {

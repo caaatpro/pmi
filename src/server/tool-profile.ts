@@ -1,19 +1,19 @@
 /**
  * Tool Profile System — Progressive Disclosure for MCP tools
  *
- * The full Memorix tool set contains 40+ tools, but most users only ever
+ * The full Memorix tool set contains 37 tools, but most users only ever
  * use a small subset (store / search / detail). Exposing all of them at
  * tools/list time causes cognitive overload.
  *
  * We provide four profiles:
  *   - "micro" (stdio default): Agent-ready project context + bounded recovery controls — 8 tools.
  *     Suitable for normal MCP clients where every tool schema costs context tokens.
- *   - "lite": Core memory CRUD, sessions, reasoning, continuity, retention, backup — 21 tools.
+ *   - "lite": Core memory CRUD, sessions, reasoning, continuity, retention, backup — 20 tools.
  *     Suitable for solo users who want the full memory surface without team tools.
- *   - "team" (HTTP default): lite + orchestration coordination tools, dashboard, and Knowledge Workspace — 29 tools.
+ *   - "team" (HTTP default): lite + coordination tools, dashboard, and Knowledge Workspace — 28 tools.
  *     Suitable when an operator explicitly wants task/message/lock surfaces.
  *   - "full": Everything, including niche / advanced tools (consolidate, dedup,
- *     formation metrics, skills, rules/workspace sync, KG-official, image ingest).
+ *     formation metrics, skills, rules/workspace sync).
  *     Opt in via `MEMORIX_MODE=full` or `--mode full`.
  *
  * Users can override at any time via the `MEMORIX_MODE` env var, the `--mode`
@@ -75,19 +75,6 @@ export const TOOL_PROFILES: Record<string, ReadonlyArray<ToolProfile>> = Object.
   memorix_rules_sync:         ['full'],
   memorix_workspace_sync:     ['full'],
   memorix_compaction_checkpoint: ['full'],
-
-  // ── MCP Official Memory Server compatibility (KG tools) ──────────
-  // These are only useful to users specifically migrating from the
-  // reference mcp-memory server. Hide them unless explicitly enabled.
-  create_entities:            ['full'],
-  create_relations:           ['full'],
-  add_observations:           ['full'],
-  delete_entities:            ['full'],
-  delete_observations:        ['full'],
-  delete_relations:           ['full'],
-  read_graph:                 ['full'],
-  search_nodes:               ['full'],
-  open_nodes:                 ['full'],
 });
 
 /**
@@ -145,7 +132,7 @@ export function describeProfile(profile: ToolProfile): string {
     case 'micro': return `micro (agent-ready context + bounded recovery, ${count} tools)`;
     case 'lite': return `lite (core memory + sessions, ${count} tools)`;
     case 'team': return `team (lite + coordination tools + dashboard + knowledge workspace, ${count} tools)`;
-    case 'full': return `full (all tools including advanced / KG-compat, ${count} tools)`;
+    case 'full': return `full (all tools including advanced, ${count} tools)`;
   }
 }
 
