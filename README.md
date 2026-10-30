@@ -10,8 +10,10 @@ PMI is a fork of [Memorix](https://github.com/AVIDS2/memorix) (Apache-2.0) that 
 |---|---|
 | Local project memory (SQLite), MCP stdio/HTTP, hooks for 15+ agents, git commit ingest, codegraph, context briefs | Working (inherited from Memorix) |
 | Central PMI server (PostgreSQL + pgvector): shared project memory, version history, conflicts, offline buffering | Working (Phase 4), `pmi login` / `pmi project link` / `pmi sync` |
-| Users, organizations, personal access tokens | Working (Phase 4); access = membership in the project's organization |
-| Per-project grants, teams, RBAC, row-level security | Planned: Phase 5 |
+| Users, organizations, teams, personal access tokens | Working (Phase 4–5) |
+| Per-project grants, RBAC (viewer / developer / maintainer / org admin), Postgres row-level security, audit log | Working (Phase 5) |
+| Confirm / deprecate knowledge (people only; agents cannot confirm) | Working (Phase 5), REST |
+| MCP over HTTP on the central server with per-user tokens | Working (Phase 5): `project_list`, `memory_search`, `memory_get` |
 | Peer-to-peer sync of memory records (fs / S3 / GitHub / Postgres relay) | Working (inherited), `pmi sync store push/pull` |
 | Session checkpoints, handoff, `session resume <id>` | Planned: Phase 6 |
 | Workspace snapshots (uncommitted changes across machines) | Planned: Phase 7 |
@@ -79,6 +81,15 @@ docker compose -f deploy/compose.yaml exec pmi-server node dist/server/central/m
 docker compose -f deploy/compose.yaml exec pmi-server node dist/server/central/main.js create-user dev@acme.com --org acme --role admin
 docker compose -f deploy/compose.yaml exec pmi-server node dist/server/central/main.js issue-token dev@acme.com --name laptop --days 90
 ```
+
+Organization owners and admins can use every project of their organization. Everyone else needs a grant, directly or through a team:
+
+```bash
+docker compose -f deploy/compose.yaml exec pmi-server node dist/server/central/main.js create-user bob@acme.com --org acme
+docker compose -f deploy/compose.yaml exec pmi-server node dist/server/central/main.js grant acme/billing --user bob@acme.com --role developer
+```
+
+Agents without a local client can use the server directly over MCP: `https://<server>/mcp` with `Authorization: Bearer <token>`.
 
 On each developer machine, inside the repository:
 

@@ -93,6 +93,29 @@ TEST 8: клиент пишет при остановленном сервере
 
 TEST 1, TEST 9 (пользователь без гранта получает 403/404 на memory, sessions, snapshots, search, MCP; прямой SQL под его `app.user_id` не видит строк).
 
+### Итог Phase 5 (ветка `pmi/phase-5-rbac`)
+
+| Пункт | Результат | Проверка |
+|---|---|---|
+| Команды, гранты | Миграция `0002-rbac-rls`: `core.teams`, `core.team_members`, `core.project_grants` (пользователю или команде; `maintainer`/`developer`/`viewer`). Owner/admin организации — роль `admin` во всех её проектах; остальным нужен грант. При обновлении с Phase 4 участники организаций получают явный `developer` на существующие проекты, доступ не теряется | `tests/central/rbac.test.ts` (в т.ч. обновление со схемы `0001`) |
+| `authorize()` | Единственная точка проверки в сервисном слое, матрица DATABASE.md §4 (`memory.read/write/confirm`, `project.manage`). Невидимый проект → 404, недостаточная роль → 403 и запись `access.denied` в аудит | там же |
+| RLS | Роль `pmi_app` (NOLOGIN) и политики на `memory.*`, `work.changes`, `work.project_seq` через `core.can()` — ту же функцию роли, что и в сервисе. Все запросы к данным проектов идут в `db.asUser()` (`SET LOCAL ROLE pmi_app` + `app.user_id`). `core.audit_log` для приложения только на вставку | TEST 9, прямой SQL |
+| Защита знаний | `POST /v1/memories/:id/confirm|deprecate` (developer+, только явный вызов человека, с причиной в истории и аудите). Сервер создаёт новую ревизию (writer `pmi-server`), клиенты получают её через feed. Синхронизация (то, что записали агенты и хуки) не может подтвердить знание, изменить или удалить `confirmed` | `rbac.test.ts`, TEST 1 |
+| Поиск | `POST /v1/projects/:id/search` и кросс‑проектный `POST /v1/search` по всем проектам, где у пользователя есть чтение (tsvector; гибридный поиск — Phase 8) | `rbac.test.ts` |
+| MCP с токеном пользователя | `POST /mcp` (Streamable HTTP, без состояния): `project_list`, `memory_search`, `memory_get`; каждый вызов через `authorize()` и RLS; без токена 401 | `rbac.test.ts` |
+| Администрирование | REST: `PUT /v1/projects/:id/grants`, `POST /v1/orgs/:org/teams`, `POST /v1/orgs/:org/teams/:team/members`. CLI: `pmi-server create-team`, `add-team-member`, `grant` | `rbac.test.ts` |
+| **TEST 9** | Участник организации без гранта и пользователь другой организации: 404 на проект, память, feed, конфликты, поиск, запись, подтверждение, гранты, `project link`; кросс‑проектный поиск пуст; MCP‑инструменты отказывают; под их `app.user_id` SQL видит 0 строк, `UPDATE` ничего не меняет, `INSERT` отклоняется RLS, `DELETE` из аудита запрещён | ✔ |
+| **TEST 1** | Alice (Claude Code, машина A) сохраняет решение через реальный stdio MCP → `pmi sync` → Bob (Codex, машина B, другой пользователь с грантом) после `pmi sync` получает решение в `memorix_project_context` по связанной задаче, не обращаясь к файлам. Подтверждение Боба доходит до машины Алисы | `tests/central/cross-user-context.test.ts` ✔ |
+
+**Ограничения и перенос** (с обоснованием):
+- **Sessions и snapshots в TEST 9** проверяются по мере появления этих эндпоинтов (Phase 6, 7): тест расширяется теми же пользователями. Политики RLS для `work.sessions`/`work.snapshots` пишутся в их миграциях по образцу `0002`.
+- **Замена `team_*`‑идентичности агентов на пользователей** перенесена в Phase 6: она касается локальной координации сессий (`team_agents`, `team_locks`), которую Phase 6 заменяет session leases.
+- **`core.devices`, scopes токенов** — Phase 6 вместе с lease устройств; сейчас устройство идентифицируется `deviceId` sync‑пакета в аудите и истории версий.
+- **Кросс‑проектный поиск** ищет по всем проектам, где у пользователя есть чтение. Флаг `visibility = organization` (доступ к записи без гранта на проект) не нужен, пока такой сценарий не появится: RBAC уже ограничивает выдачу.
+- **TEST 1 использует нынешние MCP‑инструменты** (`memorix_store`, `memorix_project_context`); `decision_log` и `context_build` появятся в Phase 8 и будут проверены тем же тестом.
+- **Ключи памяти глобальны.** Два серверных проекта с одинаковым Memorix id (например, `local/app` у репозиториев без remote) могут столкнуться на одинаковых topic key; такая запись отклоняется с причиной, а не перезаписывает чужую. Решается переходом на `.pmi/project.json` как источник идентичности.
+- **Разрезка `src/server.ts` и миграция mini‑skills** по‑прежнему не сделаны; их черёд — перед PMI‑инструментами MCP (Phase 8).
+
 ## Phase 6 — Session continuity
 
 Session State, статусы, lease, checkpoints, `session_events` (+ миграция `task_continuity_events`), daemon (watcher, таймер, git‑события, IPC, автозапуск), handoff brief, `pmi session *`, MCP `session_*`, серверный джоб истечения lease.

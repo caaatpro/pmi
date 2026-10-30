@@ -6,8 +6,7 @@
  * client A writes while the server is down → its changes wait locally →
  * the server comes back → `pmi sync` uploads them → client B receives them.
  */
-import { execFileSync, spawn } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import type http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -18,16 +17,8 @@ import { openDatabase, type Database } from '../../src/server/central/db.js';
 import { createCentralServer } from '../../src/server/central/http.js';
 import { createOrganization, createUser, issueToken } from '../../src/server/central/identity.js';
 import { migrate } from '../../src/server/central/migrations.js';
+import { cliBuilt, createRepoPair, machine, pmi, type Machine } from './cli-helper.js';
 import { pgAvailable, pgSkipReason, startPostgres, type TestPostgres } from './pg-helper.js';
-
-const CLI = path.resolve(__dirname, '../../dist/cli/index.js');
-const cliBuilt = existsSync(CLI);
-
-interface Machine {
-  home: string;
-  repo: string;
-  env: NodeJS.ProcessEnv;
-}
 
 let root = '';
 let pg: TestPostgres;
@@ -52,47 +43,6 @@ async function stopServer(): Promise<void> {
   server = undefined;
 }
 
-function git(cwd: string, ...args: string[]): string {
-  return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
-}
-
-function machine(name: string, repo: string): Machine {
-  const home = path.join(root, name);
-  mkdirSync(home, { recursive: true });
-  return {
-    home,
-    repo,
-    env: {
-      PATH: process.env.PATH,
-      HOME: home,
-      USERPROFILE: home,
-      MEMORIX_DATA_DIR: path.join(home, 'data'),
-      PMI_HOME: path.join(home, '.pmi'),
-      MEMORIX_AUTO_UPDATE: 'off',
-      MEMORIX_SYNC_DEVICE_FINGERPRINT: `test|${name}`,
-    },
-  };
-}
-
-/** Async on purpose: the server runs in this process and must keep serving while the CLI waits. */
-function pmi(m: Machine, ...args: string[]): Promise<{ code: number; stdout: string; stderr: string; json: any }> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [CLI, ...args], { cwd: m.repo, env: m.env, stdio: ['ignore', 'pipe', 'pipe'] });
-    let stdout = '';
-    let stderr = '';
-    child.stdout.on('data', (chunk) => { stdout += chunk; });
-    child.stderr.on('data', (chunk) => { stderr += chunk; });
-    const timer = setTimeout(() => child.kill('SIGKILL'), 60_000);
-    child.on('error', reject);
-    child.on('close', (code) => {
-      clearTimeout(timer);
-      let json: any;
-      try { json = JSON.parse(stdout); } catch { json = undefined; }
-      resolve({ code: code ?? -1, stdout, stderr, json });
-    });
-  });
-}
-
 describe.skipIf(!pgAvailable || !cliBuilt)('TEST 8: offline client buffers and catches up (real CLI, server, Postgres)', () => {
   beforeAll(async () => {
     root = mkdtempSync(path.join(tmpdir(), 'pmi-test8-'));
@@ -104,18 +54,9 @@ describe.skipIf(!pgAvailable || !cliBuilt)('TEST 8: offline client buffers and c
     token = (await issueToken(db, { email: 'lead@acme.test', name: 'test8' })).token;
     await startServer();
 
-    const repoA = path.join(root, 'a-repo');
-    mkdirSync(repoA);
-    git(repoA, 'init', '-q', '-b', 'main');
-    git(repoA, 'config', 'user.email', 'lead@acme.test');
-    git(repoA, 'config', 'user.name', 'Lead');
-    git(repoA, 'remote', 'add', 'origin', 'https://github.com/acme/billing.git');
-    git(repoA, 'commit', '-q', '--allow-empty', '-m', 'root');
-    const repoB = path.join(root, 'b-repo');
-    git(root, 'clone', '-q', repoA, repoB);
-    git(repoB, 'remote', 'set-url', 'origin', 'https://github.com/acme/billing.git');
-    a = machine('machine-a', repoA);
-    b = machine('machine-b', repoB);
+    const [repoA, repoB] = createRepoPair(root, 'https://github.com/acme/billing.git');
+    a = machine(root, 'machine-a', repoA);
+    b = machine(root, 'machine-b', repoB);
   }, 180_000);
 
   afterAll(async () => {
