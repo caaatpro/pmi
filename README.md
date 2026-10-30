@@ -9,8 +9,10 @@ PMI is a fork of [Memorix](https://github.com/AVIDS2/memorix) (Apache-2.0) that 
 | Area | State |
 |---|---|
 | Local project memory (SQLite), MCP stdio/HTTP, hooks for 15+ agents, git commit ingest, codegraph, context briefs | Working (inherited from Memorix) |
-| Multi-device sync of memory records (fs / S3 / GitHub / Postgres relay) | Working, manual `sync store push/pull` |
-| Central PMI server (PostgreSQL + pgvector), users, RBAC | Planned: Phase 4–5 |
+| Central PMI server (PostgreSQL + pgvector): shared project memory, version history, conflicts, offline buffering | Working (Phase 4), `pmi login` / `pmi project link` / `pmi sync` |
+| Users, organizations, personal access tokens | Working (Phase 4); access = membership in the project's organization |
+| Per-project grants, teams, RBAC, row-level security | Planned: Phase 5 |
+| Peer-to-peer sync of memory records (fs / S3 / GitHub / Postgres relay) | Working (inherited), `pmi sync store push/pull` |
 | Session checkpoints, handoff, `session resume <id>` | Planned: Phase 6 |
 | Workspace snapshots (uncommitted changes across machines) | Planned: Phase 7 |
 | L1/L2/L3 context engine, token metrics | Planned: Phase 8 |
@@ -61,6 +63,35 @@ pmi doctor
 
 `memorix` is kept as an alias of `pmi` during the transition, and MCP tools keep their `memorix_*` names until the PMI tool set lands (see [API.md](docs/PMI/API.md)).
 
+## Central server (Connected mode)
+
+Run the server with Docker Compose (Postgres with pgvector, `pmi-server`, Caddy for TLS):
+
+```bash
+cp deploy/.env.example deploy/.env      # set POSTGRES_PASSWORD and PMI_DOMAIN
+docker compose -f deploy/compose.yaml up -d --build --wait
+```
+
+Create an organization, a user and a token (the token is printed once):
+
+```bash
+docker compose -f deploy/compose.yaml exec pmi-server node dist/server/central/main.js create-org acme
+docker compose -f deploy/compose.yaml exec pmi-server node dist/server/central/main.js create-user dev@acme.com --org acme --role admin
+docker compose -f deploy/compose.yaml exec pmi-server node dist/server/central/main.js issue-token dev@acme.com --name laptop --days 90
+```
+
+On each developer machine, inside the repository:
+
+```bash
+pmi login https://pmi.acme.com --token pmi_pat_...
+pmi project link --create --org acme     # first developer; others run `pmi project link`
+pmi sync                                 # upload local memory, pull the team's
+```
+
+For a local trial with `PMI_DOMAIN=localhost`, Caddy serves a certificate from its own CA; point Node at it before `pmi login` (`docker compose -f deploy/compose.yaml cp caddy:/data/caddy/pki/authorities/local/root.crt ./caddy-root.crt`, then `export NODE_EXTRA_CA_CERTS=$PWD/caddy-root.crt`).
+
+`pmi sync` keeps working offline: changes stay in the local SQLite store and are sent on the next successful run (exit code 3 means the server was unreachable). `.pmi/project.json` holds no secrets and can be committed; tokens live in `~/.pmi/credentials.json` (mode 0600). Memories containing credential-like values are refused by the server and stay on the machine that wrote them.
+
 ## HTTP control plane and Docker
 
 `pmi serve-http` runs the MCP Streamable HTTP endpoint and the dashboard on port 3211. The repository ships a Dockerfile and `compose.yaml`:
@@ -70,7 +101,7 @@ docker compose up -d
 curl http://127.0.0.1:3211/health
 ```
 
-Outside loopback the server refuses to start without `MEMORIX_HTTP_AUTH_TOKEN` (Bearer). Per-user authentication arrives with the central server in Phase 5.
+This is the local MCP/dashboard process, not the central server. Outside loopback it refuses to start without `MEMORIX_HTTP_AUTH_TOKEN` (Bearer); per-user authentication for MCP over HTTP arrives in Phase 5.
 
 ## Development
 
@@ -79,6 +110,8 @@ npm run build
 npm run lint      # tsc --noEmit
 npm test          # vitest
 ```
+
+Central-server tests start a throwaway `pgvector/pgvector:pg17` container (Docker required) or use `PMI_TEST_PG_URL`; without either they are skipped with a message. TEST 8 also needs `npm run build`.
 
 Work happens on one branch per phase (`pmi/phase-N-*`) with small commits; see [AGENTS.md](AGENTS.md).
 

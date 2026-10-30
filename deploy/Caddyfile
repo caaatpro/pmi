@@ -1,0 +1,9 @@
+# TLS terminates here. With a public PMI_DOMAIN Caddy obtains a certificate
+# automatically; "localhost" uses Caddy's local CA.
+{$PMI_DOMAIN} {
+	encode zstd gzip
+	request_body {
+		max_size 4MB
+	}
+	reverse_proxy pmi-server:7420
+}

@@ -64,6 +64,29 @@
 
 TEST 8: клиент пишет при остановленном сервере → outbox растёт → старт сервера → данные на сервере и у второго клиента.
 
+### Итог Phase 4 (ветка `pmi/phase-4-central`)
+
+| Пункт | Результат | Проверка |
+|---|---|---|
+| 1. Доменная модель | `src/domain/memory.ts`: 16 категорий, 5 уровней confidence, статусы, отображение типов Memorix, правила переходов (агент не может подтвердить знание или изменить `confirmed`) | `tests/domain/memory.test.ts` |
+| 2. Миграция SQLite | `pmi-1-memory-classification`: колонки `category`/`confidence` (NULL = значение по умолчанию для типа, строки не переписываются). Перед первой PMI‑миграцией непустая БД копируется `VACUUM INTO` в `memorix.db.pre-pmi-<ts>` с `integrity_check` | `tests/store/pmi-migration.test.ts` |
+| 3. `pmi-server` | `src/server/central`: `node:http` + zod, JSON‑логи, `/health`, `/ready` (Postgres + миграции), миграции под advisory lock, CLI `migrate/serve/create-org/create-user/add-member/issue-token/revoke-token` | `tests/central/server.test.ts` |
+| 4. Хранилище Postgres | `memory.memories` (+ tsvector, `vector(384)` HNSW), `memory_versions`, `memory_links`, `conflicts`, `work.changes`, `work.project_seq`, `core.*` для пользователей, организаций, токенов, проектов, репозиториев, аудита | тот же набор, реальный Postgres 17 + pgvector |
+| 5. Sync v4 | Центральный сервер подключён к существующему sync‑движку как `SyncRemote` (`src/sync/adapters/pmi-server.ts`). Переиспользованы diff по `sync_row_state`, `sync_outbox`, курсор, порядок `(revision, writer)` из `merge.ts`. Сервер материализует записи, ведёт историю версий, фиксирует конфликты одновременной правки, хранит tombstones, отклоняет записи с секретами | `tests/central/server.test.ts`, `tests/client/config.test.ts` |
+| 6. CLI | `pmi login`, `pmi logout`, `pmi project link|show`, `pmi sync [push|pull|status]`; код возврата 3 при недоступном сервере | TEST 8 |
+| 7. Docker Compose | `deploy/compose.yaml`: `postgres` (pgvector), `pmi-server` (миграции при старте), `caddy` (TLS); healthchecks у всех трёх | ручной `docker compose up --wait`, см. ниже |
+| 8. Тестовая инфраструктура | `tests/central/pg-helper.ts`: одноразовый контейнер pgvector или `PMI_TEST_PG_URL`; явный skip без Docker. CI: обязательная задача `central-postgres` с service container | |
+| **TEST 8** | Реальный CLI двух «машин» (отдельные HOME, данные, клоны), реальный сервер и Postgres: запись при остановленном сервере → `pmi sync status` показывает 2 ожидающих изменения и код 3 → сервер стартует → `pmi sync` выгружает → второй клиент получает | `tests/central/offline-sync.test.ts` ✔ |
+
+**Решения, принятые по ходу** (зафиксированы в DATABASE.md и API.md):
+- Отдельная таблица `outbox` не создавалась: у sync‑движка Memorix уже есть `sync_outbox` и вычисление изменений по `sync_row_state`, второй механизм нарушил бы правило «без дублирования». Офлайн‑записи не теряются: они лежат в `observations`, а неотправленные пакеты — в `sync_outbox`.
+- Доступ в Phase 4 — членство в организации проекта; создавать проекты могут owner/admin. Гранты на проекты, команды, RBAC и RLS — Phase 5, единая точка `assertProjectAccess` будет заменена `authorize()`.
+- Один проект сервера = один Memorix project id (`owner/repo`). Если рабочая копия с тем же root commit имеет другой id, `project link` отвечает `409 identity_mismatch`, а не делит память молча. Сопоставление идентичностей — Phase 5 вместе с `.pmi/project.json` как источником идентичности.
+- Long‑poll `/changes/wait` перенесён в Phase 6: его потребитель — daemon.
+
+**Не выполнено в Phase 4 и перенесено** (с обоснованием):
+- **Разрезка `src/server.ts` и миграция mini‑skills в `coding_convention`.** Не начаты. Ни одна функция Phase 4 от них не зависит: центральный сервер работает через sync‑движок, а не через MCP‑сервер. Делаются отдельным шагом перед PMI‑инструментами MCP, которым и нужен общий объект контекста.
+
 ## Phase 5 — Multi‑user
 
 Схема `core`, токены (`pmi-server issue-token`), `authorize()`, RLS, `audit_log`, гранты проектов, кросс‑проектный поиск с учётом прав, MCP HTTP с per‑user токеном. Замена `team_*` идентичности агентов на пользователей (агент — атрибут).

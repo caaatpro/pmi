@@ -1,0 +1,73 @@
+# PMI central server: Postgres (pgvector) + pmi-server + Caddy (TLS).
+#
+#   cp .env.example .env    # set POSTGRES_PASSWORD and PMI_DOMAIN
+#   docker compose up -d --build
+#   docker compose exec pmi-server node dist/server/central/main.js create-org acme
+#
+# Only Caddy publishes ports; Postgres and pmi-server stay on the internal network.
+name: pmi
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: pmi
+      POSTGRES_USER: pmi
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pmi -d pmi"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [internal]
+
+  pmi-server:
+    build:
+      context: ..
+    image: pmi:local
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PMI_DATABASE_URL: postgres://pmi:${POSTGRES_PASSWORD}@postgres:5432/pmi
+      PMI_HOST: 0.0.0.0
+      PMI_PORT: "7420"
+    # `serve` applies pending migrations under an advisory lock before listening.
+    entrypoint: ["node", "dist/server/central/main.js"]
+    command: ["serve"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:7420/ready').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 6
+    networks: [internal]
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on:
+      pmi-server:
+        condition: service_healthy
+    environment:
+      PMI_DOMAIN: ${PMI_DOMAIN:-localhost}
+    ports:
+      - "${PMI_HTTP_PORT:-80}:80"
+      - "${PMI_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [internal]
+
+volumes:
+  pg-data:
+  caddy-data:
+  caddy-config:
+
+networks:
+  internal:

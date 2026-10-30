@@ -1,6 +1,6 @@
 # PMI — интерфейсы: REST, MCP, CLI
 
-Статус: **проект на согласование** (Phase 2).
+Статус: Phase 2 — проект. **Реализовано в Phase 4:** `/health`, `/ready`, `/v1/me`, `GET /v1/projects`, `POST /v1/projects/resolve`, `GET /v1/projects/:id`, `GET /v1/projects/:id/memories`, `GET /v1/projects/:id/conflicts`, `GET /v1/memories/:mid?include=versions`, `POST /v1/sync/push`, `GET /v1/projects/:id/changes`; CLI `pmi login|logout`, `pmi project link|show`, `pmi sync [push|pull|status]`, `pmi-server migrate|serve|create-org|create-user|add-member|issue-token|revoke-token`. Остальное — по фазам ROADMAP.md.
 
 Все три интерфейса вызывают одни и те же сервисы (`src/session`, `src/context`, …). Ни один не содержит собственной бизнес‑логики.
 
@@ -107,8 +107,8 @@
 
 | Метод | Путь | Описание |
 |---|---|---|
-| POST | `/v1/sync/push` | пакет outbox `{device_id, entries:[{entity, id, op, base_version, payload, idempotency_key}]}` → результат по каждой записи: `applied` / `duplicate` / `conflict{server_version}` |
-| GET | `/v1/projects/:id/changes?after=<seq>&limit=` | changes feed с телами сущностей |
+| POST | `/v1/sync/push` | `{project_id, batch}`, где `batch` — пакет sync‑движка формата 3 (`ChangeBatch`). Результат по каждой записи: `applied` (+`conflict: true`, если перезаписана одновременная правка) / `duplicate` / `stale` (на сервере версия новее) / `rejected` (`reason`: секрет в тексте, чужой проект, та же версия с другим содержимым). Повтор пакета идемпотентен |
+| GET | `/v1/projects/:id/changes?after=<seq>&limit=&legacy=<memorix project id>` | `{changes:[{seq, entry}], hasMore, lastSeq}`; только последнее изменение каждой записи |
 | GET | `/v1/projects/:id/changes/wait?after=<seq>` | long‑poll до 25 с (через `LISTEN/NOTIFY`) |
 
 ## 2. MCP

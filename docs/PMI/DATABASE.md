@@ -1,6 +1,6 @@
 # PMI — модель данных
 
-Статус: **проект на согласование** (Phase 2). Схема — черновик DDL; финальные миграции пишутся в Phase 4–5.
+Статус: Phase 2 — проект; **Phase 4 реализовала** схемы `core` (без команд и грантов), `memory` и `work.changes/project_seq` — миграция `0001-core-memory` в `src/server/central/migrations.ts`. Отличия реализации от черновика ниже перечислены в §6.
 
 ## 1. Что хранится централизованно, а что локально
 
@@ -405,3 +405,17 @@ CREATE TABLE work.metrics_events (
 
 3. **Выгрузка на сервер**: `pmi project link` ставит все подходящие записи (`syncEligibility` из Memorix) в outbox. Сервер дедуплицирует по `(project_id, content_hash)` и `topic_key`.
 4. **Откат**: локальная БД остаётся читаемой версией Memorix (новые колонки игнорируются); сервер можно очистить по `project_id`.
+
+## 6. Отличия реализации Phase 4 от черновика
+
+| Черновик | Реализация | Причина |
+|---|---|---|
+| `memory.memories.id` — ULID | `id` = `syncKey` клиента (`p:<project>:u:<device>:<id>` или `p:<project>:t:<topicKey>`) | Ключ уже глобально уникален и одинаков на всех репликах; ULID потребовал бы второй таблицы соответствий |
+| Нет колонок версии репликации | `revision`, `writer` (порядок `(revision, writer)` из `src/sync/merge.ts`), `deleted_at` (tombstone), `body jsonb` (исходная запись клиента), `content_hash text`, `legacy_project_id` | Сервер применяет тот же LWW, что и клиенты, и отдаёт записи, которые клиент проверяет по хэшу |
+| `content_hash bytea` | `text` (hex SHA‑256 из `journal.contentHash`) | Сравнение без преобразований с хэшем пакета |
+| Уникальный индекс `(project_id, topic_key)` для active | Обычный индекс | Строки с одним topic key уже совпадают по `id`; уникальность на уровне topic key заблокировала бы push |
+| `core.api_tokens.device_id`, `scopes`; `core.devices` | `name`, без устройств и scopes | Устройства и scopes появятся вместе с RBAC (Phase 5); устройство пока идентифицируется `deviceId` sync‑пакета (пишется в аудит и историю версий) |
+| `memory.conflicts(memory_a, memory_b)` | `memory_id`, `winner`, `loser` (jsonb с версией и телом) | Конфликт одновременной правки касается одной записи; проигравшая версия сохраняется целиком для ручного разбора |
+| SQLite `outbox`, `sync_cursors` | Не созданы: используются существующие `sync_outbox`, `sync_meta` (курсор `applied['pmi-server'] = seq`) и `sync_row_state` | Без дублирования механизмов (правило 4) |
+| SQLite `observations` + `category`, `confidence` | Добавлены; `NULL` = значение по умолчанию для типа (`src/domain/memory.ts`) | Существующие строки не переписываются; смена типа не оставляет устаревшую категорию |
+

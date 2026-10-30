@@ -72,7 +72,6 @@ Thumbs.db
 .windsurf/hooks.json
 .windsurf/rules/memorix.md
 .github/copilot-instructions.md
-AGENTS.md
 
 # Test scripts
 test-*.mjs
@@ -105,3 +104,6 @@ packages/*/.tsbuildinfo
 .vscode/
 *.swp
 *.swo
+
+# PMI deployment secrets
+deploy/.env
