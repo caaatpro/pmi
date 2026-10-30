@@ -53,6 +53,9 @@ Commands:
   issue-token <email> [--name N] [--days D]  Print a new personal access token once
   revoke-token <token-id>
   gc                                        Apply snapshot retention and delete unused blobs
+  list-tokens <email>                       Show a user's tokens (never the token values)
+  verify-blobs                              Check every snapshot blob against its SHA-256 (after restoring a backup)
+  reencrypt-blobs                           Rewrite blobs with PMI_BLOB_KEY (enable encryption, rotate keys)
   create-team <org> <name>
   add-team-member <org> <team> <email>
   grant <org>/<project> (--user EMAIL | --team NAME) --role maintainer|developer|viewer|none
@@ -62,7 +65,8 @@ organization; everyone else needs a project grant (directly or via a team).
 
 Environment: PMI_DATABASE_URL (required), PMI_HOST (default 127.0.0.1), PMI_PORT (default 7420),
 PMI_LEASE_TTL (session lease seconds, default 600), PMI_METRICS_TOKEN (enables /metrics),
-MEMORIX_EMBEDDING (fastembed|transformers|api: semantic search, 384 dimensions), PMI_BLOB_DIR (large snapshot blobs, default ./data/blobs)`;
+MEMORIX_EMBEDDING (fastembed|transformers|api: semantic search, 384 dimensions),
+PMI_BLOB_KEY / PMI_BLOB_KEYS_OLD (AES-256-GCM for snapshot blobs at rest), PMI_TRUST_PROXY=1 (behind Caddy), PMI_BLOB_DIR (large snapshot blobs, default ./data/blobs)`;
 
 type Role = 'owner' | 'admin' | 'member';
 
@@ -196,6 +200,29 @@ export async function runServerCli(argv: string[]): Promise<number> {
       const revoked = await withDatabase((db) => revokeToken(db, id));
       console.log(revoked ? `Revoked ${id}` : `No active token ${id}`);
       return revoked ? 0 : 1;
+    }
+    case 'list-tokens': {
+      const [email] = rest;
+      if (!email) throw new Error('usage: pmi-server list-tokens <email>');
+      const rows = await withDatabase((db) => db.query<{ id: string; name: string; created_at: string; expires_at: string | null; revoked_at: string | null; last_used_at: string | null }>(
+        `SELECT t.id, t.name, t.created_at, t.expires_at, t.revoked_at, t.last_used_at FROM core.api_tokens t JOIN core.users u ON u.id = t.user_id
+          WHERE u.email = $1 ORDER BY t.created_at`, [email]));
+      for (const row of rows) {
+        const state = row.revoked_at ? 'revoked' : row.expires_at && new Date(row.expires_at) < new Date() ? 'expired' : 'active';
+        console.log(`${row.id}  ${state.padEnd(8)} ${row.name}  created ${new Date(row.created_at).toISOString()}  last used ${row.last_used_at ? new Date(row.last_used_at).toISOString() : 'never'}${row.expires_at ? `  expires ${new Date(row.expires_at).toISOString()}` : ''}`);
+      }
+      if (!rows.length) console.log(`No tokens for ${email}`);
+      return 0;
+    }
+    case 'verify-blobs': {
+      const report = await withDatabase((db) => new ServerBlobStorage(process.env.PMI_BLOB_DIR ?? path.resolve('data', 'blobs')).verifyAll(db));
+      console.log(`Checked ${report.checked} blob(s); ${report.failed.length} failed${report.failed.length ? `: ${report.failed.join(', ')}` : ''}`);
+      return report.failed.length ? 1 : 0;
+    }
+    case 'reencrypt-blobs': {
+      const report = await withDatabase((db) => new ServerBlobStorage(process.env.PMI_BLOB_DIR ?? path.resolve('data', 'blobs')).reencryptAll(db));
+      console.log(`Re-encrypted ${report.rewritten} blob(s) with the current key; ${report.failed.length} failed${report.failed.length ? `: ${report.failed.join(', ')}` : ''}`);
+      return report.failed.length ? 1 : 0;
     }
     case 'gc': {
       const report = await withDatabase((db) => applyRetention(db, new ServerBlobStorage(process.env.PMI_BLOB_DIR ?? path.resolve('data', 'blobs'))));

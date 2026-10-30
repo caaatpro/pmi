@@ -60,7 +60,7 @@ import {
   upsertSession,
   type SessionRow,
 } from './sessions-repo.js';
-import { ServerBlobStorage, addProjectBlob, getSnapshot, listSnapshots, missingBlobs, registerSnapshot } from './snapshots-repo.js';
+import { ServerBlobStorage, type BlobKeys, addProjectBlob, getSnapshot, listSnapshots, missingBlobs, registerSnapshot } from './snapshots-repo.js';
 import { isSha256 } from '../../workspace-snapshot/blob-store.js';
 import type { SnapshotManifest } from '../../workspace-snapshot/snapshot.js';
 import { SESSION_STATUSES, CHECKPOINT_TRIGGERS, RESUMABLE_STATUSES, type SessionState } from '../../domain/session.js';
@@ -83,6 +83,12 @@ export interface CentralServerOptions {
   overviewMinAgeSeconds?: number;
   /** Bearer token for /metrics; unset disables the endpoint. Default PMI_METRICS_TOKEN. */
   metricsToken?: string;
+  /** Failed authentications per client address per minute before 429 (default 30). */
+  maxAuthFailuresPerMinute?: number;
+  /** Take the client address from X-Forwarded-For (behind Caddy). Default PMI_TRUST_PROXY=1. */
+  trustProxy?: boolean;
+  /** Keys for snapshot blob encryption; default PMI_BLOB_KEY / PMI_BLOB_KEYS_OLD. */
+  blobKeys?: BlobKeys;
   log?: (line: Record<string, unknown>) => void;
 }
 
@@ -565,7 +571,7 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
       const [claimed] = await db.asUser(user.id, (tx) => missingBlobs(tx, project.id, [sha]));
       if (claimed) throw new HttpError(404, 'blob_not_found', 'blob not found');
       const data = await blobStorage.get(db, sha);
-      ctx.res.writeHead(200, { 'content-type': 'application/octet-stream', 'content-length': data.length, 'cache-control': 'no-store' });
+      ctx.res.writeHead(200, { 'content-type': 'application/octet-stream', 'content-length': data.length, ...SECURITY_HEADERS });
       ctx.res.end(data);
       return { raw: true, status: 200 };
     }),
@@ -708,7 +714,7 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
   const metrics = createMetrics();
   const embeddings = options.embeddings ?? null;
   const overviewMinAge = options.overviewMinAgeSeconds ?? 600;
-  const blobStorage = new ServerBlobStorage(options.blobDir ?? process.env.PMI_BLOB_DIR ?? path.resolve('data', 'blobs'));
+  const blobStorage = new ServerBlobStorage(options.blobDir ?? process.env.PMI_BLOB_DIR ?? path.resolve('data', 'blobs'), options.blobKeys);
   const leaseTtl = options.leaseTtlSeconds ?? (Number(process.env.PMI_LEASE_TTL) || 600);
   const handoffReserveHours = options.handoffReserveHours ?? 24;
 
@@ -746,7 +752,14 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
     return { body: { memory } };
   }
 
-  return http.createServer((req, res) => {
+  const authFailures = new FailureLimiter(options.maxAuthFailuresPerMinute ?? 30);
+  const trustProxy = options.trustProxy ?? process.env.PMI_TRUST_PROXY === '1';
+  const clientIp = (req: http.IncomingMessage): string => {
+    const forwarded = trustProxy ? String(req.headers['x-forwarded-for'] ?? '').split(',')[0].trim() : '';
+    return forwarded || req.socket.remoteAddress || 'unknown';
+  };
+
+  const server = http.createServer((req, res) => {
     const started = Date.now();
     const url = new URL(req.url ?? '/', 'http://localhost');
     let user: AuthUser | undefined;
@@ -754,7 +767,7 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
 
     const send = (status: number, body: unknown) => {
       const payload = JSON.stringify(body);
-      res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+      res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', ...SECURITY_HEADERS });
       res.end(payload);
       metrics.inc('pmi_http_requests_total', { route: routeLabel, status: String(status) });
       log({ at: new Date().toISOString(), method: req.method, path: url.pathname, status, ms: Date.now() - started, user: user?.id });
@@ -780,7 +793,15 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
       body: () => readJson(req),
       raw: (limit) => readRaw(req, limit),
       user: async () => {
-        user ??= await authenticate(db, req.headers.authorization);
+        if (user) return user;
+        const ip = clientIp(req);
+        if (authFailures.blocked(ip)) throw new HttpError(429, 'too_many_failures', 'too many failed authentication attempts; try again in a minute');
+        try {
+          user = await authenticate(db, req.headers.authorization);
+        } catch (error) {
+          if (error instanceof HttpError && error.status === 401) authFailures.fail(ip);
+          throw error;
+        }
         return user;
       },
     };
@@ -804,6 +825,43 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
       },
     );
   });
+  // Slow-loris protection: headers within 30 s, a whole request within 2 min.
+  server.headersTimeout = 30_000;
+  server.requestTimeout = 120_000;
+  return server;
+}
+
+const SECURITY_HEADERS = {
+  'cache-control': 'no-store',
+  'x-content-type-options': 'nosniff',
+  'referrer-policy': 'no-referrer',
+  'x-frame-options': 'DENY',
+};
+
+/** Failed authentications per client address in a sliding minute; blocks token guessing and floods. */
+class FailureLimiter {
+  private readonly failures = new Map<string, number[]>();
+
+  constructor(private readonly limit: number) {}
+
+  private recent(key: string): number[] {
+    const now = Date.now();
+    const kept = (this.failures.get(key) ?? []).filter((at) => now - at < 60_000);
+    if (kept.length) this.failures.set(key, kept);
+    else this.failures.delete(key);
+    return kept;
+  }
+
+  blocked(key: string): boolean {
+    return this.recent(key).length >= this.limit;
+  }
+
+  fail(key: string): void {
+    const kept = this.recent(key);
+    kept.push(Date.now());
+    this.failures.set(key, kept);
+    if (this.failures.size > 10_000) this.failures.delete(this.failures.keys().next().value!);
+  }
 }
 
 function readRaw(req: http.IncomingMessage, limit: number): Promise<Buffer> {

@@ -37,6 +37,10 @@ services:
       PMI_HOST: 0.0.0.0
       PMI_PORT: "7420"
       PMI_BLOB_DIR: /data/blobs
+      # Caddy is the only client; take the real address from X-Forwarded-For.
+      PMI_TRUST_PROXY: "1"
+      PMI_METRICS_TOKEN: ${PMI_METRICS_TOKEN:-}
+      PMI_BLOB_KEY: ${PMI_BLOB_KEY:-}
     volumes:
       - blob-data:/data
     # `serve` applies pending migrations under an advisory lock before listening.

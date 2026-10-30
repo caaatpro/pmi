@@ -34,7 +34,10 @@ describe('client configuration', () => {
     writeCredentials({ default: 'https://a', servers: { 'https://a': { token: 'pmi_pat_x', savedAt: 'now' } } }, env);
     expect(readCredentials(env).default).toBe('https://a');
     expect(tokenFor('https://a', env)).toBe('pmi_pat_x');
-    expect(tokenFor('https://a', { ...env, PMI_TOKEN: 'pmi_pat_env' })).toBe('pmi_pat_env');
+    // An environment token only goes to the server PMI_SERVER names, never to one a cloned repository's link points at.
+    expect(tokenFor('https://a', { ...env, PMI_TOKEN: 'pmi_pat_env' })).toBe('pmi_pat_x');
+    expect(tokenFor('https://a', { ...env, PMI_TOKEN: 'pmi_pat_env', PMI_SERVER: 'a' })).toBe('pmi_pat_env');
+    expect(tokenFor('https://evil.example', { ...env, PMI_TOKEN: 'pmi_pat_env', PMI_SERVER: 'https://a' })).toBeUndefined();
     if (process.platform !== 'win32') {
       expect(statSync(path.join(root, 'home', 'credentials.json')).mode & 0o777).toBe(0o600);
     }

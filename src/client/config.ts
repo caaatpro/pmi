@@ -77,9 +77,18 @@ export function writeCredentials(file: CredentialsFile, env?: NodeJS.ProcessEnv)
   fs.chmodSync(target, 0o600);
 }
 
-/** Token for a server: `PMI_TOKEN` wins, then the saved credential. */
+/**
+ * Token for a server: the saved credential, or `PMI_TOKEN` when `PMI_SERVER`
+ * names this same server. `.pmi/project.json` comes from the repository, so
+ * a cloned repository must never be able to point a CI token at its own server.
+ */
 export function tokenFor(server: string, env: NodeJS.ProcessEnv = process.env): string | undefined {
-  if (env.PMI_TOKEN?.trim()) return env.PMI_TOKEN.trim();
+  const envToken = env.PMI_TOKEN?.trim();
+  if (envToken && env.PMI_SERVER?.trim()) {
+    try {
+      if (normalizeServerUrl(env.PMI_SERVER.trim()) === server) return envToken;
+    } catch { /* invalid PMI_SERVER: ignore the env token */ }
+  }
   return readCredentials(env).servers[server]?.token;
 }
 

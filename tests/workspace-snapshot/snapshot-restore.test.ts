@@ -175,6 +175,40 @@ describe('restore protections', () => {
     expect(() => restoreSnapshot(evil, { repoRoot: b, mode: 'worktree', getBlob: (sha) => snaps.blobs.get(sha) })).toThrow(/unsafe path/);
   });
 
+  it('refuses to write through a symlink, even one the snapshot itself creates', () => {
+    const { snaps, snapshot } = snapshotAndBlobs();
+    const outside = path.join(root, 'outside');
+    fs.mkdirSync(outside);
+    const evil = structuredClone(snapshot.manifest);
+    const content = snaps.blobs.put(Buffer.from('pwned'));
+    const linkTarget = snaps.blobs.put(Buffer.from(outside));
+    evil.files.push(
+      { path: 'escape', status: 'U', mode: '120000', sha256: linkTarget, size: outside.length, staged: false },
+      { path: 'escape/owned.txt', status: 'U', mode: '100644', sha256: content, size: 5, staged: false },
+    );
+    expect(() => restoreSnapshot(evil, { repoRoot: b, mode: 'worktree', worktreePath: path.join(root, 'w1'), getBlob: (sha) => snaps.blobs.get(sha) }))
+      .toThrow(/below the symlink escape/);
+
+    // A symlink already in the target is refused at write time as well.
+    const target = path.join(root, 'w2');
+    restoreSnapshot(snapshot.manifest, { repoRoot: b, mode: 'worktree', worktreePath: target, getBlob: (sha) => snaps.blobs.get(sha) });
+    git(b, 'worktree', 'remove', '--force', target);
+    git(b, 'checkout', '-q', snapshot.manifest.git.head);
+    fs.symlinkSync(outside, path.join(b, 'notes-link'));
+    write(b, '.git/info/exclude', 'notes-link\n');
+    const sneaky = structuredClone(snapshot.manifest);
+    sneaky.files.push({ path: 'notes-link/owned.txt', status: 'U', mode: '100644', sha256: content, size: 5, staged: false });
+    expect(() => restoreSnapshot(sneaky, { repoRoot: b, mode: 'in-place', getBlob: (sha) => snaps.blobs.get(sha) })).toThrow(/through the symlink notes-link/);
+    expect(fs.readdirSync(outside)).toEqual([]);
+  });
+
+  it('rejects unsupported file modes such as gitlinks', () => {
+    const { snaps, snapshot } = snapshotAndBlobs();
+    const evil = structuredClone(snapshot.manifest);
+    evil.files[0].mode = '160000';
+    expect(() => restoreSnapshot(evil, { repoRoot: b, mode: 'worktree', getBlob: (sha) => snaps.blobs.get(sha) })).toThrow(/unsupported file mode/);
+  });
+
   it('includes secrets only when asked', () => {
     const snaps = new LocalSnapshots(path.join(root, 'alice-data'));
     const { snapshot } = snaps.take({ root: a, projectId: 'acme/shop', includeSecrets: true });

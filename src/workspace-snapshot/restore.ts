@@ -80,9 +80,49 @@ function safeJoin(root: string, relPath: string): string {
   return full;
 }
 
+/**
+ * Refuse to go through a symlink inside the target: an entry "dir" -> /etc
+ * followed by "dir/passwd" would otherwise write outside the working copy.
+ */
+function assertNoSymlinkParents(root: string, relPath: string): void {
+  const parts = relPath.split(/[\\/]/).slice(0, -1);
+  let current = path.resolve(root);
+  for (const part of parts) {
+    current = path.join(current, part);
+    let stat: fs.Stats;
+    try {
+      stat = fs.lstatSync(current);
+    } catch {
+      return; // the rest does not exist yet and will be created as directories
+    }
+    if (stat.isSymbolicLink()) throw new RestoreRefused('unsafe_path', `refusing to write through the symlink ${path.relative(root, current)}`);
+  }
+}
+
+const ALLOWED_MODES = new Set(['100644', '100755', '120000']);
+
+/** Manifest-level checks that need no disk access: modes, and no entry below a symlink entry. */
+function validateManifestPaths(root: string, manifest: SnapshotManifest): void {
+  const symlinks = new Set<string>();
+  for (const file of manifest.files) {
+    safeJoin(root, file.path);
+    if (file.oldPath) safeJoin(root, file.oldPath);
+    if (file.mode !== undefined && !ALLOWED_MODES.has(file.mode)) throw new RestoreRefused('unsafe_path', `unsupported file mode ${file.mode} for ${file.path}`);
+    if (file.index && !ALLOWED_MODES.has(file.index.mode)) throw new RestoreRefused('unsafe_path', `unsupported index mode ${file.index.mode} for ${file.path}`);
+    if (file.mode === '120000') symlinks.add(file.path);
+  }
+  for (const file of manifest.files) {
+    const parts = file.path.split('/');
+    for (let i = 1; i < parts.length; i++) {
+      if (symlinks.has(parts.slice(0, i).join('/'))) throw new RestoreRefused('unsafe_path', `${file.path} lies below the symlink ${parts.slice(0, i).join('/')}`);
+    }
+  }
+}
+
 /** Git blob id of what is at `relPath` now, or null when nothing is there. */
 function currentBlobId(root: string, relPath: string): string | null {
   const full = safeJoin(root, relPath);
+  assertNoSymlinkParents(root, relPath);
   let stat: fs.Stats;
   try {
     stat = fs.lstatSync(full);
@@ -95,6 +135,7 @@ function currentBlobId(root: string, relPath: string): string | null {
 
 function writeEntry(root: string, relPath: string, mode: string, content: Buffer): void {
   const full = safeJoin(root, relPath);
+  assertNoSymlinkParents(root, relPath);
   fs.mkdirSync(path.dirname(full), { recursive: true });
   try {
     if (fs.lstatSync(full).isDirectory()) throw new RestoreRefused('target_exists', `${relPath} is a directory`);
@@ -114,6 +155,7 @@ function writeEntry(root: string, relPath: string, mode: string, content: Buffer
 
 function readEntry(root: string, relPath: string): Buffer | null {
   const full = safeJoin(root, relPath);
+  assertNoSymlinkParents(root, relPath);
   try {
     const stat = fs.lstatSync(full);
     return stat.isSymbolicLink() ? Buffer.from(fs.readlinkSync(full), 'utf8') : fs.readFileSync(full);
@@ -185,7 +227,7 @@ export function restoreSnapshot(manifest: SnapshotManifest, options: RestoreOpti
   if (options.expectedManifestSha256 && manifestSha256(manifest) !== options.expectedManifestSha256) {
     throw new RestoreRefused('manifest', 'the manifest does not match its recorded SHA-256');
   }
-  for (const file of manifest.files) safeJoin(options.repoRoot, file.path);
+  validateManifestPaths(options.repoRoot, manifest);
 
   // 1. Every blob verified before anything on disk changes.
   const blobs = new Map<string, Buffer>();
@@ -253,11 +295,13 @@ export function restoreSnapshot(manifest: SnapshotManifest, options: RestoreOpti
     }
     if (options.dryRun) continue;
     if (file.status === 'D') {
+      assertNoSymlinkParents(target, file.path);
       fs.rmSync(safeJoin(target, file.path), { force: true });
       report.deleted.push(file.path);
       continue;
     }
     if (file.status === 'R' && file.oldPath) {
+      assertNoSymlinkParents(target, file.oldPath);
       fs.rmSync(safeJoin(target, file.oldPath), { force: true });
       report.deleted.push(file.oldPath);
     }

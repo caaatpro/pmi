@@ -7,6 +7,7 @@
  * one of its members uploaded it (`work.project_blobs`), so the server never
  * answers "does any project have this hash?".
  */
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -18,8 +19,63 @@ import { getSession } from './sessions-repo.js';
 
 export const INLINE_BLOB_LIMIT = 256 * 1024;
 
+/** `PMIE1` + key id (8) + IV (12) + GCM tag (16) + ciphertext. */
+const ENCRYPTED_MAGIC = Buffer.from('PMIE1');
+
+function keyId(key: Buffer): Buffer {
+  return createHash('sha256').update(key).digest().subarray(0, 8);
+}
+
+function parseKey(value: string, name: string): Buffer {
+  const key = Buffer.from(value.trim(), 'base64');
+  if (key.length !== 32) throw new Error(`${name} must be 32 bytes, base64-encoded (openssl rand -base64 32)`);
+  return key;
+}
+
+export interface BlobKeys {
+  /** Encrypts new blobs; absent leaves new blobs unencrypted. */
+  current?: Buffer;
+  /** Previous keys, still accepted for reading during a rotation. */
+  previous: Buffer[];
+}
+
+/** PMI_BLOB_KEY (current) and PMI_BLOB_KEYS_OLD (comma-separated previous keys). */
+export function blobKeysFromEnv(env: NodeJS.ProcessEnv = process.env): BlobKeys {
+  return {
+    ...(env.PMI_BLOB_KEY?.trim() ? { current: parseKey(env.PMI_BLOB_KEY, 'PMI_BLOB_KEY') } : {}),
+    previous: (env.PMI_BLOB_KEYS_OLD ?? '').split(',').filter((value) => value.trim()).map((value) => parseKey(value, 'PMI_BLOB_KEYS_OLD')),
+  };
+}
+
+/**
+ * Encryption at rest for snapshot blobs (AES-256-GCM). The content address
+ * stays the SHA-256 of the plaintext, so deduplication and client
+ * verification are unchanged; blobs stored before encryption was enabled
+ * remain readable.
+ */
+export function encryptBlob(data: Buffer, key: Buffer): Buffer {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', key, iv);
+  const body = Buffer.concat([cipher.update(data), cipher.final()]);
+  return Buffer.concat([ENCRYPTED_MAGIC, keyId(key), iv, cipher.getAuthTag(), body]);
+}
+
+export function decryptBlob(stored: Buffer, keys: BlobKeys): Buffer {
+  if (!stored.subarray(0, ENCRYPTED_MAGIC.length).equals(ENCRYPTED_MAGIC)) return stored;
+  const id = stored.subarray(5, 13);
+  const key = [keys.current, ...keys.previous].find((candidate) => candidate && keyId(candidate).equals(id));
+  if (!key) throw new HttpError(500, 'blob_key_missing', 'a blob is encrypted with a key this server does not have (set PMI_BLOB_KEYS_OLD)');
+  const decipher = createDecipheriv('aes-256-gcm', key, stored.subarray(13, 25));
+  decipher.setAuthTag(stored.subarray(25, 41));
+  return Buffer.concat([decipher.update(stored.subarray(41)), decipher.final()]);
+}
+
 export class ServerBlobStorage {
-  constructor(readonly blobDir: string) {}
+  constructor(readonly blobDir: string, readonly keys: BlobKeys = blobKeysFromEnv()) {}
+
+  private seal(data: Buffer): Buffer {
+    return this.keys.current ? encryptBlob(data, this.keys.current) : data;
+  }
 
   private filePath(sha: string): string {
     return path.join(this.blobDir, sha.slice(0, 2), sha.slice(2, 4), sha);
@@ -34,11 +90,11 @@ export class ServerBlobStorage {
       const target = this.filePath(sha);
       fs.mkdirSync(path.dirname(target), { recursive: true });
       const tmp = `${target}.${process.pid}.tmp`;
-      fs.writeFileSync(tmp, data);
+      fs.writeFileSync(tmp, this.seal(data));
       fs.renameSync(tmp, target);
       await db.query("INSERT INTO work.blobs (sha256, size, storage) VALUES ($1, $2, 'fs') ON CONFLICT DO NOTHING", [sha, data.length]);
     } else {
-      await db.query("INSERT INTO work.blobs (sha256, size, storage, data) VALUES ($1, $2, 'inline', $3) ON CONFLICT DO NOTHING", [sha, data.length, data]);
+      await db.query("INSERT INTO work.blobs (sha256, size, storage, data) VALUES ($1, $2, 'inline', $3) ON CONFLICT DO NOTHING", [sha, data.length, this.seal(data)]);
     }
   }
 
@@ -46,9 +102,60 @@ export class ServerBlobStorage {
   async get(db: Queryable, sha: string): Promise<Buffer> {
     const [row] = await db.query<{ storage: string; data: Buffer | null }>('SELECT storage, data FROM work.blobs WHERE sha256 = $1', [sha]);
     if (!row) throw new HttpError(404, 'blob_not_found', 'blob not found');
-    const data = row.storage === 'fs' ? fs.readFileSync(this.filePath(sha)) : row.data!;
+    const stored = row.storage === 'fs' ? fs.readFileSync(this.filePath(sha)) : row.data!;
+    let data: Buffer;
+    try {
+      data = decryptBlob(stored, this.keys);
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(500, 'blob_corrupted', `stored blob ${sha.slice(0, 12)} failed authenticated decryption`);
+    }
     if (sha256Hex(data) !== sha) throw new HttpError(500, 'blob_corrupted', `stored blob ${sha.slice(0, 12)} failed its integrity check`);
     return data;
+  }
+
+  /**
+   * Re-write every blob with the current key (enabling encryption or
+   * finishing a rotation). Each blob is verified before it is replaced.
+   */
+  async reencryptAll(db: Queryable): Promise<{ rewritten: number; failed: string[] }> {
+    if (!this.keys.current) throw new Error('set PMI_BLOB_KEY before re-encrypting');
+    const currentId = keyId(this.keys.current);
+    let rewritten = 0;
+    const failed: string[] = [];
+    for (const { sha256, storage } of await db.query<{ sha256: string; storage: string }>('SELECT sha256, storage FROM work.blobs')) {
+      try {
+        const stored = storage === 'fs' ? fs.readFileSync(this.filePath(sha256)) : (await db.query<{ data: Buffer }>('SELECT data FROM work.blobs WHERE sha256 = $1', [sha256]))[0].data;
+        if (stored.subarray(0, 5).equals(ENCRYPTED_MAGIC) && stored.subarray(5, 13).equals(currentId)) continue;
+        const plain = await this.get(db, sha256);
+        const sealed = encryptBlob(plain, this.keys.current);
+        if (storage === 'fs') {
+          const target = this.filePath(sha256);
+          fs.writeFileSync(`${target}.${process.pid}.tmp`, sealed);
+          fs.renameSync(`${target}.${process.pid}.tmp`, target);
+        } else {
+          await db.query('UPDATE work.blobs SET data = $2 WHERE sha256 = $1', [sha256, sealed]);
+        }
+        rewritten++;
+      } catch {
+        failed.push(sha256);
+      }
+    }
+    return { rewritten, failed };
+  }
+
+  /** Verify every stored blob against its hash (after a restore from backup). */
+  async verifyAll(db: Queryable): Promise<{ checked: number; failed: string[] }> {
+    const failed: string[] = [];
+    const rows = await db.query<{ sha256: string }>('SELECT sha256 FROM work.blobs');
+    for (const { sha256 } of rows) {
+      try {
+        await this.get(db, sha256);
+      } catch {
+        failed.push(sha256);
+      }
+    }
+    return { checked: rows.length, failed };
   }
 
   async remove(db: Queryable, sha: string): Promise<void> {
