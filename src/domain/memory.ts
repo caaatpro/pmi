@@ -134,7 +134,11 @@ export function canTransitionStatus(from: MemoryStatus, to: MemoryStatus, actor:
   return { ok: true };
 }
 
-/** Map Memorix lifecycle status onto PMI status (Memorix has no `needs_review`). */
-export function toMemoryStatus(status: string | undefined | null): MemoryStatus {
-  return isMemoryStatus(status) ? status : 'active';
+/**
+ * Map Memorix lifecycle status onto PMI status. `needs_review` comes from the
+ * observation's `review` mark (set by git analysis), not from `status`.
+ */
+export function toMemoryStatus(status: string | undefined | null, review?: unknown): MemoryStatus {
+  const base = isMemoryStatus(status) ? status : 'active';
+  return review && base === 'active' ? 'needs_review' : base;
 }

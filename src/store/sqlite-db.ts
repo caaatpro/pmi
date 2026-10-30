@@ -1224,6 +1224,23 @@ const SCHEMA_MIGRATIONS: SchemaMigration[] = [
     },
   },
   {
+    // PMI git intelligence: incremental analysis cursors (Local mode) and the
+    // "needs review" mark that commits put on knowledge they may have outdated.
+    id: 'pmi-4-git-intelligence',
+    apply: (db) => {
+      addColumnIfMissing(db, 'observations', 'review', 'review TEXT');
+      db.exec(`CREATE TABLE IF NOT EXISTS pmi_git_cursors (
+        root_commit            TEXT NOT NULL,
+        branch                 TEXT NOT NULL,
+        project_id             TEXT NOT NULL,
+        cursor                 TEXT NOT NULL,
+        last_full_reconcile_at TEXT,
+        updated_at             TEXT NOT NULL,
+        PRIMARY KEY (root_commit, branch)
+      )`);
+    },
+  },
+  {
     id: '1.9-continuity-v2',
     apply: (db) => {
       addColumnIfMissing(db, 'task_continuity_events', 'event_key', 'event_key TEXT');

@@ -67,6 +67,7 @@ function obsToRow(obs: Observation): Record<string, unknown> {
     writeGeneration: obs.writeGeneration ?? 0,
     category: obs.category ?? null,
     confidence: obs.confidence ?? null,
+    review: obs.review ? JSON.stringify(obs.review) : null,
   };
 }
 
@@ -105,6 +106,7 @@ function rowToObs(row: any): Observation {
     ...(row.writeGeneration ? { writeGeneration: row.writeGeneration } : {}),
     ...(row.category ? { category: row.category } : {}),
     ...(row.confidence ? { confidence: row.confidence } : {}),
+    ...(row.review ? { review: safeJsonParse(row.review, undefined) } : {}),
   } as Observation;
 }
 
@@ -161,13 +163,13 @@ export class SqliteBackend implements ObservationStore {
          createdAt, updatedAt, projectId, hasCausalLanguage, topicKey, revisionCount,
          sessionId, status, progress, source, commitHash, relatedCommits, relatedEntities,
          attachments, sourceDetail, valueCategory, admissionState, admissionReason, visibility, sharedWithAgentIds,
-         createdByAgentId, writeGeneration, category, confidence)
+         createdByAgentId, writeGeneration, category, confidence, review)
       VALUES
         (@id, @entityName, @type, @title, @narrative, @facts, @filesModified, @concepts, @tokens,
          @createdAt, @updatedAt, @projectId, @hasCausalLanguage, @topicKey, @revisionCount,
          @sessionId, @status, @progress, @source, @commitHash, @relatedCommits, @relatedEntities,
          @attachments, @sourceDetail, @valueCategory, @admissionState, @admissionReason, @visibility, @sharedWithAgentIds,
-         @createdByAgentId, @writeGeneration, @category, @confidence)
+         @createdByAgentId, @writeGeneration, @category, @confidence, @review)
       ON CONFLICT(id) DO UPDATE SET
         entityName = excluded.entityName,
         type = excluded.type,
@@ -200,7 +202,8 @@ export class SqliteBackend implements ObservationStore {
         createdByAgentId = excluded.createdByAgentId,
         writeGeneration = excluded.writeGeneration,
         category = excluded.category,
-        confidence = excluded.confidence
+        confidence = excluded.confidence,
+        review = excluded.review
     `);
     this.stmtUpdate = this.stmtInsert;
     this.stmtSetStatus = this.db.prepare(`UPDATE observations SET status = ? WHERE id = ?`);

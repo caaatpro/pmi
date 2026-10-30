@@ -188,6 +188,12 @@ export interface Observation {
   category?: MemoryCategory;
   /** PMI confidence override; absent means the default for `type`. Agents never set `confirmed`. */
   confidence?: MemoryConfidence;
+  /**
+   * Set when a commit (or a full reconcile) may have outdated this knowledge:
+   * PMI status `needs_review`. Kept apart from `status` so Memorix filters on
+   * active records keep working. Cleared when the memory is rewritten.
+   */
+  review?: { reason: string; since: string; commit?: string };
 }
 
 // ============================================================

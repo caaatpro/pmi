@@ -25,7 +25,7 @@ export function observationToContextMemory(obs: Observation): ContextMemory {
     id: `${LOCAL_ID_PREFIX}${obs.id}`,
     category,
     confidence,
-    status: toMemoryStatus(obs.status),
+    status: toMemoryStatus(obs.status, obs.review),
     title: obs.title,
     content: obs.narrative,
     facts: obs.facts ?? [],

@@ -161,7 +161,7 @@ async function applyEntry(
     const row = entry.row!;
     const { category, confidence } = classifyObservation(row);
     const params = [
-      syncKey, project.id, batch.projectId, category, confidence, toMemoryStatus(row.status),
+      syncKey, project.id, batch.projectId, category, confidence, toMemoryStatus(row.status, row.review),
       row.title ?? '', row.narrative ?? '', JSON.stringify(row.facts ?? []), row.entityName ?? null,
       row.topicKey ?? null, row.source ?? 'agent', user.id, row.createdByAgentId ?? null, row.sessionId ?? null,
       row.filesModified ?? [], row.relatedCommits ?? [], JSON.stringify(row), entry.contentHash, row.tokens ?? 0,

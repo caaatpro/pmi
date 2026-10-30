@@ -899,6 +899,8 @@ async function upsertObservation(
   existing.hasCausalLanguage = extracted.hasCausalLanguage;
   existing.revisionCount = (existing.revisionCount ?? 1) + 1;
   existing.status = 'active';
+  // Rewriting a memory is the review a commit asked for.
+  delete existing.review;
   if (input.sessionId) existing.sessionId = input.sessionId;
   if (input.progress) existing.progress = input.progress;
   if (input.sourceDetail !== undefined) existing.sourceDetail = input.sourceDetail;
@@ -1659,4 +1661,27 @@ export async function backfillVectorEmbeddings(options: {
     failed,
     ...(lastFailure ? { lastError: lastFailure } : {}),
   };
+}
+
+/**
+ * Mark observations as possibly outdated (PMI `needs_review`) without
+ * touching their content, e.g. after a commit changed their related files.
+ * The search index is unaffected; the mark clears when the memory is rewritten.
+ */
+export async function markObservationsForReview(
+  updates: Array<{ id: number; review: NonNullable<Observation['review']> }>,
+): Promise<number[]> {
+  const changed: Observation[] = [];
+  for (const update of updates) {
+    const obs = observations.find((o) => o.id === update.id);
+    if (!obs) continue;
+    obs.review = { ...update.review, reason: sanitizeCredentials(update.review.reason) };
+    changed.push(obs);
+  }
+  if (projectDir && changed.length > 0) {
+    await getObservationStore().atomic(async (tx) => {
+      await Promise.all(changed.map((observation) => tx.update(observation)));
+    });
+  }
+  return changed.map((obs) => obs.id);
 }
