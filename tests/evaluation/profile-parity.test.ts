@@ -15,8 +15,6 @@ import { OFFICIAL_MEMORIX_SKILLS } from '../../src/hooks/official-skills.js';
  * offline.
  */
 
-const CLAUDE_MD = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../CLAUDE.md');
-
 const MICRO_TOOLS = [
   'memorix_store',
   'memorix_search',
@@ -87,16 +85,6 @@ describe('profile parity exam', () => {
     expect(toolNames.length, 'guidance should teach MCP tools').toBeGreaterThan(0);
     for (const name of toolNames) {
       expect(isToolInProfile(name, 'lite'), `${name} must be in the lite profile`).toBe(true);
-    }
-  });
-
-  it('full-only tools in the repo CLAUDE.md are marked with the MEMORIX_MODE=full hint', () => {
-    const content = readFileSync(CLAUDE_MD, 'utf-8');
-    for (const name of ['memorix_promote', 'memorix_rules_sync', 'memorix_workspace_sync']) {
-      expect(isToolInProfile(name, 'lite'), name).toBe(false);
-      const row = content.split('\n').find((line) => line.includes(name));
-      expect(row, `${name} should be documented`).toBeTruthy();
-      expect(row, `${name} must carry the full-mode hint`).toContain('MEMORIX_MODE=full');
     }
   });
 });

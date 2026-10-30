@@ -33,6 +33,24 @@
 
 Критерий: все оставшиеся тесты зелёные, `npm pack` не содержит удалённого, MCP smoke‑тесты проходят.
 
+### Итог Phase 3 (ветка `pmi/phase-3-cleanup`)
+
+| Пункт | Результат |
+|---|---|
+| memcode, `packages/*`, `vendor/*`, TUI, `ask`, `workbench` | Удалены (~247 тыс. строк, вместе с медиа). Зависимости ink/react убраны |
+| `src/orchestrate`, `memorix orchestrate`, pipeline guards | Удалены; `worktree.ts` → `src/workspace-snapshot/` |
+| Медиа: `memorix_media`, `memorix_ingest_image`, `media` CLI, медиа‑джобы | Удалены. Таблицы `media_*` в существующих БД сохраняются, старые медиа‑джобы больше не берутся в работу |
+| KG‑compat MCP (9 инструментов) | Удалены; внутренний граф для auto‑relations сохранён |
+| Маркетинг upstream | Удалён; новые README.md и AGENTS.md (CLAUDE.md импортирует AGENTS.md) |
+| Бинарь `pmi` + алиас `memorix` | Готово. Автообновление с npm (там upstream Memorix) по умолчанию выключено |
+| Параллельные сессии | Rollover ограничен тем же агентом; MCP‑подключение привязывает записи к своей сессии. Тесты: `tests/store/concurrency-atomicity.test.ts`, `tests/server/parallel-sessions.test.ts` |
+| Тесты с `E:/tmp`, драйвер `pg` | Исправлено; `pg` — runtime‑зависимость |
+| CI | Существующий workflow (Ubuntu/Windows/macOS, typecheck, Docker) запускается и на ветках `pmi/**` |
+
+**Перенесено в Phase 4** (с обоснованием):
+- **Разрезка `src/server.ts`.** Инструменты используют ~15 изменяемых замыканий (`project`, `projectDir`, `teamStore`, `graphManager`, …), которые меняются при перепривязке проекта. Механический перенос требует общего объекта контекста — его естественно ввести вместе с первыми PMI‑инструментами и сервисным слоем Phase 4. Страховка уже есть: `tests/server/tool-surface-snapshot.test.ts` фиксирует имена и поля всех 37 инструментов.
+- **Mini‑skills (`memorix_skills`, `memorix_promote`, `mini_skills`).** Они встроены в поисковый индекс, session start, dashboard и формат выдачи (25 файлов). В Phase 4 mini‑skills мигрируют в записи категории `coding_convention` единой модели памяти, после чего подсистема удаляется. Удаление сейчас означало бы дважды переписывать один и тот же код.
+
 ## Phase 4 — Centralized memory
 
 1. `src/domain/memory.ts`: категории, confidence, статусы, правила переходов (чистые функции + unit‑тесты).
