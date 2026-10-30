@@ -1153,6 +1153,56 @@ const SCHEMA_MIGRATIONS: SchemaMigration[] = [
     },
   },
   {
+    // PMI session continuity (docs/PMI/SESSION_CONTINUITY.md). Kept beside
+    // the Memorix `sessions` table, which is rewritten with INSERT OR REPLACE
+    // and would drop extra columns. Same id as the Memorix session.
+    id: 'pmi-2-session-continuity',
+    apply: (db) => {
+      db.exec(`CREATE TABLE IF NOT EXISTS pmi_sessions (
+        id                 TEXT PRIMARY KEY,
+        project_id         TEXT NOT NULL,
+        status             TEXT NOT NULL,
+        state_json         TEXT NOT NULL,
+        workspace_root     TEXT,
+        device_id          TEXT NOT NULL,
+        agent_pid          INTEGER,
+        last_activity_at   TEXT NOT NULL,
+        last_fingerprint   TEXT,
+        pending_fingerprint TEXT,
+        pending_since      TEXT,
+        checkpoint_seq     INTEGER NOT NULL DEFAULT 0,
+        last_checkpoint_at TEXT,
+        last_heartbeat_at  TEXT,
+        created_at         TEXT NOT NULL,
+        updated_at         TEXT NOT NULL
+      )`);
+      db.exec(`CREATE TABLE IF NOT EXISTS session_checkpoints (
+        id          TEXT PRIMARY KEY,
+        session_id  TEXT NOT NULL,
+        seq         INTEGER NOT NULL,
+        trigger     TEXT NOT NULL,
+        state_json  TEXT NOT NULL,
+        fingerprint TEXT,
+        created_at  TEXT NOT NULL,
+        UNIQUE (session_id, seq)
+      )`);
+      db.exec(`CREATE TABLE IF NOT EXISTS session_outbox (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id   TEXT NOT NULL,
+        kind         TEXT NOT NULL,
+        payload_json TEXT NOT NULL,
+        state        TEXT NOT NULL DEFAULT 'pending',
+        attempts     INTEGER NOT NULL DEFAULT 0,
+        last_error   TEXT,
+        created_at   TEXT NOT NULL,
+        sent_at      TEXT
+      )`);
+      db.exec('CREATE INDEX IF NOT EXISTS idx_pmi_sessions_project_status ON pmi_sessions(project_id, status, updated_at DESC)');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_session_checkpoints_session ON session_checkpoints(session_id, seq DESC)');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_session_outbox_pending ON session_outbox(state, id)');
+    },
+  },
+  {
     id: '1.9-continuity-v2',
     apply: (db) => {
       addColumnIfMissing(db, 'task_continuity_events', 'event_key', 'event_key TEXT');

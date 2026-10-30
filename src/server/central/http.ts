@@ -40,12 +40,31 @@ import {
   setConfidence,
 } from './memory-repo.js';
 import { pendingMigrations } from './migrations.js';
+import {
+  addCheckpoint,
+  expireLeases,
+  finishSession,
+  getSession,
+  handoffSession,
+  heartbeat,
+  listCheckpoints,
+  listSessions,
+  releaseSession,
+  resumeSession,
+  upsertSession,
+  type SessionRow,
+} from './sessions-repo.js';
+import { SESSION_STATUSES, CHECKPOINT_TRIGGERS, RESUMABLE_STATUSES, type SessionState } from '../../domain/session.js';
 
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
 
 export interface CentralServerOptions {
   db: Database;
   version: string;
+  /** Session lease length; a session not renewed within it becomes resumable. Default PMI_LEASE_TTL or 600 s. */
+  leaseTtlSeconds?: number;
+  /** How long an addressed handoff is reserved for its recipient. Default 24 h. */
+  handoffReserveHours?: number;
   log?: (line: Record<string, unknown>) => void;
 }
 
@@ -130,6 +149,47 @@ const grantSchema = z.object({
 }).refine((value) => Boolean(value.user) !== Boolean(value.team), { message: 'give exactly one of user or team' });
 
 const teamSchema = z.object({ name: z.string().min(1).max(200) });
+
+const deviceIdSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/);
+// The full SessionState is validated structurally where the server relies on
+// fields; the rest is stored as the client sent it (bounded to 64 KiB).
+const sessionStateSchema = z.object({
+  schema: z.literal(1),
+  sessionId: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/),
+  status: z.enum(SESSION_STATUSES),
+  task: z.string().max(2000),
+  objective: z.string().max(4000),
+  agent: z.string().max(100).nullable(),
+  completedSteps: z.array(z.any()).max(200),
+  pendingSteps: z.array(z.any()).max(200),
+  decisions: z.array(z.object({ id: z.string(), title: z.string() })).max(200),
+}).passthrough().refine((state) => Buffer.byteLength(JSON.stringify(state), 'utf8') <= 64 * 1024, { message: 'state exceeds 64 KiB' });
+
+const sessionUpsertSchema = z.object({ device_id: deviceIdSchema, state: sessionStateSchema });
+const checkpointSchema = z.object({
+  device_id: deviceIdSchema,
+  id: z.string().max(200),
+  seq: z.number().int().positive(),
+  trigger: z.enum(CHECKPOINT_TRIGGERS),
+  state: sessionStateSchema,
+  created_at: z.string().datetime(),
+});
+const deviceOnlySchema = z.object({ device_id: deviceIdSchema });
+const handoffSchema = z.object({ device_id: deviceIdSchema, brief: z.string().max(32_000), to: z.string().email().optional() });
+const finishSchema = z.object({ device_id: deviceIdSchema, status: z.enum(['completed', 'failed']), summary: z.string().max(8000).optional() });
+const resumeSchema = z.object({
+  device_id: deviceIdSchema,
+  force: z.boolean().optional(),
+  new_session_id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/).optional(),
+  agent: z.string().max(100).optional(),
+  model: z.string().max(100).optional(),
+  model_provider: z.string().max(100).optional(),
+});
+const sessionListSchema = z.object({
+  status: z.string().optional(),
+  resumable: z.enum(['true', 'false']).optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+});
 const teamMemberSchema = z.object({ email: z.string().email() });
 
 function parse<S extends z.ZodTypeAny>(schema: S, value: unknown): z.output<S> {
@@ -280,12 +340,117 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
       return { body: await db.asUser(user.id, (tx) => readChanges(tx, project.id, query.legacy, query.after, query.limit)) };
     }),
 
+    route('POST', '/v1/projects/:id/sessions', async (ctx) => {
+      const user = await ctx.user();
+      const project = await authorize(db, user, ctx.params.id, 'session.write');
+      const input = parse(sessionUpsertSchema, await ctx.body());
+      const session = await db.asUser(user.id, (tx) => upsertSession(tx, project, user, input.device_id, input.state as unknown as SessionState, leaseTtl));
+      return { body: { session } };
+    }),
+
+    route('GET', '/v1/projects/:id/sessions', async (ctx) => {
+      const user = await ctx.user();
+      const project = await authorize(db, user, ctx.params.id, 'session.read');
+      const query = parse(sessionListSchema, Object.fromEntries(ctx.url.searchParams));
+      await expireLeases(db);
+      const statuses = query.resumable === 'true'
+        ? [...RESUMABLE_STATUSES]
+        : query.status?.split(',').filter((status) => (SESSION_STATUSES as readonly string[]).includes(status)) as SessionRow['status'][] | undefined;
+      const sessions = await db.asUser(user.id, (tx) => listSessions(tx, project.id, { statuses, limit: query.limit }));
+      return { body: { sessions: project.role === 'viewer' ? sessions.map(withoutState) : sessions } };
+    }),
+
+    route('GET', '/v1/sessions/:sid', async (ctx) => {
+      const { user, session } = await loadSession(ctx, 'session.write');
+      const checkpoints = await db.asUser(user.id, (tx) => listCheckpoints(tx, session.id));
+      return { body: { session, checkpoints } };
+    }),
+
+    route('POST', '/v1/sessions/:sid/checkpoints', async (ctx) => {
+      const { user, session } = await loadSession(ctx, 'session.write');
+      const input = parse(checkpointSchema, await ctx.body());
+      const result = await db.asUser(user.id, async (tx) => {
+        const locked = (await getSession(tx, session.id, true))!;
+        return addCheckpoint(tx, locked, user, input.device_id, {
+          id: input.id, seq: input.seq, trigger: input.trigger, state: input.state as unknown as SessionState, createdAt: input.created_at,
+        }, leaseTtl);
+      });
+      return { body: result };
+    }),
+
+    route('POST', '/v1/sessions/:sid/heartbeat', async (ctx) => {
+      const { user, session } = await loadSession(ctx, 'session.write');
+      const input = parse(deviceOnlySchema, await ctx.body());
+      const expires = await db.asUser(user.id, async (tx) => heartbeat(tx, (await getSession(tx, session.id, true))!, user, input.device_id, leaseTtl));
+      return { body: { leaseExpiresAt: expires } };
+    }),
+
+    route('POST', '/v1/sessions/:sid/handoff', async (ctx) => {
+      const { user, session, project } = await loadSession(ctx, 'session.write');
+      const input = parse(handoffSchema, await ctx.body());
+      let toUserId: string | undefined;
+      if (input.to) {
+        const target = await findUserByEmail(db, input.to);
+        if (!target) throw new HttpError(404, 'user_not_found', `no user ${input.to}`);
+        toUserId = target.id;
+      }
+      const updated = await db.asUser(user.id, async (tx) => handoffSession(tx, project, (await getSession(tx, session.id, true))!, user, input.device_id, {
+        brief: sanitizeCredentials(input.brief), toUserId, reserveHours: handoffReserveHours,
+      }));
+      return { body: { session: updated } };
+    }),
+
+    route('POST', '/v1/sessions/:sid/finish', async (ctx) => {
+      const { user, session, project } = await loadSession(ctx, 'session.write');
+      const input = parse(finishSchema, await ctx.body());
+      const updated = await db.asUser(user.id, async (tx) => finishSession(tx, project, (await getSession(tx, session.id, true))!, user, input.device_id, {
+        status: input.status, summary: input.summary ? sanitizeCredentials(input.summary) : undefined,
+      }));
+      return { body: { session: updated } };
+    }),
+
+    route('POST', '/v1/sessions/:sid/release', async (ctx) => {
+      const { user, session } = await loadSession(ctx, 'session.write');
+      const input = parse(deviceOnlySchema, await ctx.body());
+      const updated = await db.asUser(user.id, async (tx) => releaseSession(tx, (await getSession(tx, session.id, true))!, user, input.device_id));
+      return { body: { session: updated } };
+    }),
+
+    route('POST', '/v1/sessions/:sid/resume', async (ctx) => {
+      const { user, session, project } = await loadSession(ctx, 'session.write');
+      const input = parse(resumeSchema, await ctx.body());
+      if (input.force) await authorize(db, user, project.id, 'session.force');
+      await expireLeases(db);
+      const pkg = await db.asUser(user.id, (tx) => resumeSession(tx, project, user, input.device_id, session.id, {
+        force: input.force, newSessionId: input.new_session_id, agent: input.agent, model: input.model, modelProvider: input.model_provider,
+      }, leaseTtl));
+      return { body: pkg };
+    }),
+
     route('POST', '/mcp', async (ctx) => {
       const user = await ctx.user();
       await handleMcpRequest(db, user, options.version, ctx.req, ctx.res, await ctx.body());
       return { raw: true, status: ctx.res.statusCode };
     }),
   ];
+
+  const leaseTtl = options.leaseTtlSeconds ?? (Number(process.env.PMI_LEASE_TTL) || 600);
+  const handoffReserveHours = options.handoffReserveHours ?? 24;
+
+  function withoutState(session: SessionRow): Omit<SessionRow, 'state' | 'handoffBrief'> {
+    const { state: _state, handoffBrief: _brief, ...rest } = session;
+    return rest;
+  }
+
+  /** Resolve a session id through RLS (invisible → 404), then check the caller's role on its project. */
+  async function loadSession(ctx: RequestContext, action: 'session.read' | 'session.write') {
+    const user = await ctx.user();
+    const id = decodeURIComponent(ctx.params.sid);
+    const session = await db.asUser(user.id, (tx) => getSession(tx, id));
+    if (!session) throw new HttpError(404, 'session_not_found', 'session not found');
+    const project = await authorize(db, user, session.projectId, action);
+    return { user, session, project };
+  }
 
   async function assertOrgAdmin(user: AuthUser, orgSlug: string): Promise<void> {
     const membership = (await listMemberships(db, user.id)).find((org) => org.slug === orgSlug);

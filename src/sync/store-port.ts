@@ -21,6 +21,25 @@ const DEVICE_KEY = 'device_id';
 const FINGERPRINT_KEY = 'device_fingerprint';
 const LEGACY_PROJECT_ID = '';
 
+/**
+ * Stable id of this replica (one per data directory). Shared by memory sync,
+ * session leases and checkpoints so a machine has one identity everywhere.
+ */
+export function localDeviceId(db: any, fingerprint = defaultDeviceFingerprint()): string {
+  db.exec(CREATE_SYNC_TABLES);
+  const row = db.prepare('SELECT value FROM sync_meta WHERE key = ?').get(DEVICE_KEY) as { value: string } | undefined;
+  if (row?.value) return row.value;
+  const id = `dev_${randomUUID().replaceAll('-', '')}`;
+  const set = db.prepare('INSERT OR REPLACE INTO sync_meta (key, value) VALUES (?, ?)');
+  set.run(DEVICE_KEY, id);
+  set.run(FINGERPRINT_KEY, fingerprint);
+  return id;
+}
+
+function defaultDeviceFingerprint(): string {
+  return process.env.MEMORIX_SYNC_DEVICE_FINGERPRINT?.trim() || `${process.platform}|${os.hostname()}|${os.homedir()}`;
+}
+
 export interface SqliteSyncStore extends SyncStorePort {
   /** Stable device id for this store (generated once, persisted in sync_meta). */
   deviceId(): string;
@@ -77,16 +96,10 @@ export function createSqliteSyncStore(
   );
 
   const namespace = scope === 'user' ? userSyncNamespace() : syncNamespace(projectId);
-  const deviceFingerprint = process.env.MEMORIX_SYNC_DEVICE_FINGERPRINT?.trim()
-    || `${process.platform}|${os.hostname()}|${os.homedir()}`;
+  const deviceFingerprint = defaultDeviceFingerprint();
 
   function ensureDevice(): string {
-    const row = getMeta.get(DEVICE_KEY) as { value: string } | undefined;
-    if (row?.value) return row.value;
-    const id = `dev_${randomUUID().replaceAll('-', '')}`;
-    setMeta.run(DEVICE_KEY, id);
-    setMeta.run(FINGERPRINT_KEY, deviceFingerprint);
-    return id;
+    return localDeviceId(db, deviceFingerprint);
   }
 
   function assertCanPublish(): void {

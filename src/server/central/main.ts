@@ -34,6 +34,7 @@ import {
   type ProjectRecord,
 } from './identity.js';
 import { migrate } from './migrations.js';
+import { expireLeases } from './sessions-repo.js';
 
 declare const __MEMORIX_VERSION__: string | undefined;
 const VERSION = typeof __MEMORIX_VERSION__ === 'string' ? __MEMORIX_VERSION__ : 'dev';
@@ -55,7 +56,8 @@ Commands:
 Organization owners/admins have full access to every project of their
 organization; everyone else needs a project grant (directly or via a team).
 
-Environment: PMI_DATABASE_URL (required), PMI_HOST (default 127.0.0.1), PMI_PORT (default 7420)`;
+Environment: PMI_DATABASE_URL (required), PMI_HOST (default 127.0.0.1), PMI_PORT (default 7420),
+PMI_LEASE_TTL (session lease seconds, default 600)`;
 
 type Role = 'owner' | 'admin' | 'member';
 
@@ -113,6 +115,11 @@ export async function runServerCli(argv: string[]): Promise<number> {
       const host = values.host ?? process.env.PMI_HOST ?? '127.0.0.1';
       const port = Number(values.port ?? process.env.PMI_PORT ?? 7420);
       const server = createCentralServer({ db, version: VERSION });
+      // Sessions whose lease ran out become resumable even if nobody asks.
+      const leaseJob = setInterval(() => {
+        expireLeases(db).catch((error: Error) => console.error(`[pmi-server] lease expiry failed: ${error.message}`));
+      }, 30_000);
+      leaseJob.unref();
       await new Promise<void>((resolve) => server.listen(port, host, resolve));
       console.log(JSON.stringify({ at: new Date().toISOString(), msg: 'pmi-server listening', host, port, version: VERSION }));
       await new Promise<void>((resolve) => {

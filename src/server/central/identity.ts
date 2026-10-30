@@ -50,6 +50,9 @@ export type ProjectAction =
   | 'memory.read'
   | 'memory.write'
   | 'memory.confirm'
+  | 'session.read'
+  | 'session.write'
+  | 'session.force'
   | 'project.manage';
 
 const ROLE_RANK: Record<ProjectRole, number> = { viewer: 1, developer: 2, maintainer: 3, admin: 4 };
@@ -59,6 +62,10 @@ export const ACTION_MIN_ROLE: Record<ProjectAction, ProjectRole> = {
   'memory.read': 'viewer',
   'memory.write': 'developer',
   'memory.confirm': 'developer',
+  // Viewers see the session list without state; state, briefs and resume need developer.
+  'session.read': 'viewer',
+  'session.write': 'developer',
+  'session.force': 'maintainer',
   'project.manage': 'maintainer',
 };
 
