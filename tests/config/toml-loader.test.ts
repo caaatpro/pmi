@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import {
   getGlobalConfigTomlPath,
   getProjectConfigTomlPath,
@@ -14,11 +15,15 @@ describe('config paths', () => {
   });
 });
 
-const TMP = join(process.cwd(), '.tmp-toml-loader-test');
+const TMP = join(tmpdir(), `pmi-toml-loader-test-${process.pid}`);
 const HOME = join(TMP, 'home');
 const PROJECT = join(TMP, 'project');
 
 describe('loadTomlConfig', () => {
+  afterAll(() => {
+    rmSync(TMP, { recursive: true, force: true });
+  });
+
   beforeEach(() => {
     rmSync(TMP, { recursive: true, force: true });
     mkdirSync(join(HOME, '.memorix'), { recursive: true });

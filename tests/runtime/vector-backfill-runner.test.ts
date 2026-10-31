@@ -22,7 +22,7 @@ describe('detached vector backfill runner', () => {
   const request = {
     projectId: 'AVIDS2/memorix',
     projectRoot: path.resolve('work', 'memorix'),
-    dataDir: path.resolve('data', 'memorix'),
+    dataDir: path.join(os.tmpdir(), 'pmi-vector-backfill-test', 'memorix'),
   };
 
   it('resolves the compiled worker beside both library and CLI bundles', () => {

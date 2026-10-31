@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import {
   getResolvedAgentLane,
   getResolvedConfig,
@@ -15,7 +16,7 @@ import { resetYamlConfigCache } from '../../src/config/yaml-loader.js';
 import { resetDotenv } from '../../src/config/dotenv-loader.js';
 import { getGitConfig, resetConfigCache } from '../../src/config.js';
 
-const TMP = join(process.cwd(), '.tmp-resolved-config-test');
+const TMP = join(tmpdir(), `pmi-resolved-config-test-${process.pid}`);
 const HOME = join(TMP, 'home');
 const PROJECT = join(TMP, 'project');
 
@@ -51,6 +52,10 @@ const ENV_KEYS = [
 ];
 
 describe('resolved config', () => {
+  afterAll(() => {
+    rmSync(TMP, { recursive: true, force: true });
+  });
+
   beforeEach(() => {
     vi.resetModules();
     rmSync(TMP, { recursive: true, force: true });
