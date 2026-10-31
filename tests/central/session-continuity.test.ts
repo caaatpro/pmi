@@ -168,7 +168,7 @@ describe.skipIf(!pgAvailable || !cliBuilt)('session continuity end to end', () =
     expect((await pmi(alice, 'session', 'checkpoint', '--done', 'Cart model', '--pending', 'Tax rules; Discount codes')).code).toBe(0);
     expect((await pmi(alice, 'session', 'checkpoint', '--done', 'Tax rules', '--progress', 'tax done, discounts next')).code).toBe(0);
     const handoff = await pmi(alice, 'session', 'handoff', '--next', 'Implement discount code validation in cart.ts', '--json');
-    expect(handoff.code, handoff.stderr).toBe(0);
+    expect(handoff.code, handoff.stderr || handoff.stdout).toBe(0);
     expect(handoff.json.delivered).toBe(true);
 
     const list = await pmi(bob, 'session', 'list', '--json');

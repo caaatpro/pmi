@@ -18,6 +18,8 @@ import {
   type Step,
 } from '../domain/session.js';
 import { readWorkspace } from './git-state.js';
+import { acquireLock, releaseLock } from '../store/file-lock.js';
+import path from 'node:path';
 import { LocalSnapshots } from '../workspace-snapshot/local.js';
 import { downloadSnapshot, reportRestore, uploadSnapshot } from '../workspace-snapshot/remote.js';
 import { restoreSnapshot, type RestoreReport } from '../workspace-snapshot/restore.js';
@@ -238,6 +240,29 @@ export interface FlushReport {
  * operation and the rest continue, so one conflict never blocks a device.
  */
 export async function flushOutbox(store: LocalSessionStore, env: NodeJS.ProcessEnv = process.env): Promise<FlushReport> {
+  // The CLI, the MCP server and the daemon share one outbox. Without the lock
+  // two of them send the same operations, and the slower one has its stale
+  // copy refused (a session upsert after the handoff it already delivered).
+  const lockPath = path.join(store.dataDir, 'session-outbox.lock');
+  const deadline = Date.now() + OUTBOX_LOCK_WAIT_MS;
+  for (;;) {
+    try {
+      await acquireLock(lockPath);
+      break;
+    } catch (error) {
+      if (Date.now() >= deadline) throw error;
+    }
+  }
+  try {
+    return await flushOutboxLocked(store, env);
+  } finally {
+    await releaseLock(lockPath);
+  }
+}
+
+const OUTBOX_LOCK_WAIT_MS = 60_000;
+
+async function flushOutboxLocked(store: LocalSessionStore, env: NodeJS.ProcessEnv): Promise<FlushReport> {
   const report: FlushReport = { sent: 0, rejected: [], pending: 0, offline: false };
   const blockedSessions = new Set<string>();
   for (const op of store.pendingOps()) {

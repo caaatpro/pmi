@@ -201,6 +201,8 @@ export async function handoffSession(
   deviceId: string,
   input: { brief: string; toUserId?: string; reserveHours: number },
 ): Promise<SessionRow> {
+  // The same handoff delivered twice (the CLI and the daemon flush one outbox).
+  if (session.releasedAt && session.userId === user.id && RESUMABLE_STATUSES.includes(session.status)) return session;
   assertOwner(session, user, deviceId);
   if (!session.lastCheckpointId) throw new HttpError(412, 'checkpoint_required', 'push the handoff checkpoint before handing off');
   await tx.query(

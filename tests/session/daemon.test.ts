@@ -1,4 +1,6 @@
 import { execFileSync, spawnSync } from 'node:child_process';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -9,6 +11,7 @@ import { parsePorcelain, readWorkspace } from '../../src/session/git-state.js';
 import { LocalSessionStore } from '../../src/session/local-store.js';
 import { applyUpdate, checkpointSession, flushOutbox, handoffSession, startSession, updateSession } from '../../src/session/service.js';
 import { closeAllDatabases } from '../../src/store/sqlite-db.js';
+import { writeProjectLink } from '../../src/client/config.js';
 import { emptySessionState } from '../../src/domain/session.js';
 
 let root = '';
@@ -165,6 +168,42 @@ describe('outbox', () => {
     // the handoff re-registers the same snapshot to pin it.
     expect(store.pendingOps().map((op) => op.kind)).toEqual(['session.upsert', 'snapshot', 'checkpoint', 'snapshot', 'checkpoint', 'handoff']);
     expect(store.checkpoints(session.id).map((c) => c.seq)).toEqual([1, 2]);
+  });
+
+  it('delivers each operation once when two processes flush the same outbox', async () => {
+    const received: string[] = [];
+    const server = createServer((req, res) => {
+      received.push(`${req.method} ${req.url}`);
+      req.resume();
+      setTimeout(() => res.writeHead(200, { 'content-type': 'application/json' }).end('{}'), 20);
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    try {
+      const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+      writeProjectLink(repo, { server: url, projectId: 'p1', slug: 'app', legacyProjectId: 'acme/app', linkedAt: 'x' });
+      // Nothing unpushed or dirty, so no snapshots: only session operations go out.
+      writeFileSync(path.join(repo, '.git', 'info', 'exclude'), '.pmi/\n');
+      git('update-ref', 'refs/remotes/origin/main', 'HEAD');
+      git('config', 'branch.main.remote', 'origin');
+      git('config', 'branch.main.merge', 'refs/heads/main');
+      const connected = { ...env, PMI_SERVER: url, PMI_TOKEN: 'pmi_pat_test' } as NodeJS.ProcessEnv;
+      const session = startSession(store, { projectId: 'acme/app', projectRoot: repo, agentPid: process.pid });
+      checkpointSession(store, session.id, 'manual', { completed: ['a'] });
+      handoffSession(store, session.id, { next: 'b' });
+      const kinds = store.pendingOps().map((op) => op.kind);
+      expect(kinds).toEqual(['session.upsert', 'checkpoint', 'checkpoint', 'handoff']);
+
+      // The CLI and the daemon: separate stores on one data dir.
+      const daemonStore = new LocalSessionStore(store.dataDir);
+      const [cli, daemon] = await Promise.all([flushOutbox(store, connected), flushOutbox(daemonStore, connected)]);
+      expect(cli.rejected).toEqual([]);
+      expect(daemon.rejected).toEqual([]);
+      expect(cli.sent + daemon.sent).toBe(kinds.length);
+      expect(received).toHaveLength(kinds.length);
+      expect(store.pendingOps()).toEqual([]);
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
   });
 
   it('refuses status changes the state machine forbids', () => {

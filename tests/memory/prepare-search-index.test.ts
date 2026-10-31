@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -7,6 +7,11 @@ import path from 'node:path';
 // Some writes are not mocked, so the fake project must live in a temp dir
 // rather than a Windows-style path that becomes a relative directory elsewhere.
 const TEST_PROJECT_DIR = path.join(tmpdir(), `pmi-prepare-search-index-${process.pid}`);
+// Each test imports fresh modules (resetModules), so close that test's SQLite
+// handles before the next reset; Windows cannot delete an open database.
+afterEach(async () => {
+  (await import('../../src/store/sqlite-db.js')).closeAllDatabases();
+});
 afterAll(() => rmSync(TEST_PROJECT_DIR, { recursive: true, force: true }));
 
 const mockResetDb = vi.fn();
