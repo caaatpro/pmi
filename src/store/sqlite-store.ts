@@ -12,7 +12,7 @@
  * are stored as JSON strings in SQLite columns.
  *
  * Uses the shared database handle from sqlite-db.ts so that observations,
- * mini-skills, and sessions all share one connection and one DB file.
+ * sessions and the other stores all share one connection and one DB file.
  */
 
 import type { Observation } from '../types.js';
@@ -310,9 +310,9 @@ export class SqliteBackend implements ObservationStore {
     await withFileLock(this.dataDir, async () => {
       // Re-check under the cross-process lock. Another initializer may have
       // completed the migration while this process was waiting.
-      // Mini-skills converted by migration pmi-4 do not count: they were
+      // Mini-skills converted by migration pmi-5 do not count: they were
       // allocated ids past this JSON source, which is still to be imported.
-      const count = this.db.prepare(`SELECT COUNT(*) AS cnt FROM observations WHERE topicKey IS NULL OR topicKey NOT LIKE 'mini-skill/%'`).get();
+      const count = this.db.prepare(`SELECT COUNT(*) AS cnt FROM observations WHERE topicKey IS NULL OR topicKey NOT LIKE 'mini-skill/%/%'`).get();
       if (count.cnt > 0) return;
 
       const raw = fs.readFileSync(jsonPath, 'utf-8');
@@ -556,7 +556,7 @@ export class SqliteBackend implements ObservationStore {
 
   close(): void {
     // Detach from the shared handle without closing it — other stores
-    // (MiniSkillSqliteStore, SessionSqliteStore) may still be using it.
+    // (SessionSqliteStore, team stores) may still be using it.
     // Use closeDatabase(dataDir) or closeAllDatabases() for full shutdown.
     this.db = null;
   }

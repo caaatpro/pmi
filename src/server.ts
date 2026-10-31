@@ -17,7 +17,6 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { KnowledgeGraphManager } from './memory/graph.js';
 import { initObservations, prepareSearchIndex, migrateProjectIds, getAllObservations } from './memory/observations.js';
 import { initObservationStore, getObservationStore } from './store/obs-store.js';
-import { initMiniSkillStore } from './store/mini-skill-store.js';
 import { initSessionStore } from './store/session-store.js';
 import { detectProject } from './project/detector.js';
 import { isHomeDirectory, writeLastProjectRoot } from './project/launch-root.js';
@@ -50,7 +49,6 @@ import { registerRetrievalTools } from './mcp/tools/retrieval.js';
 import { registerProjectBriefTools } from './mcp/tools/project-brief.js';
 import { registerMaintenanceTools } from './mcp/tools/maintenance.js';
 import { registerIntegrationTools } from './mcp/tools/integrations.js';
-import { registerSkillTools } from './mcp/tools/skills.js';
 import { registerMemorixSessionTools } from './mcp/tools/memorix-session.js';
 import { registerDashboardTools } from './mcp/tools/dashboard.js';
 import { registerTeamTools } from './mcp/tools/team.js';
@@ -237,7 +235,6 @@ export async function createMemorixServer(
   // deferred for stdio so MCP initialize/tools/list are not blocked by a large
   // local memory corpus or embedding provider startup.
   await initObservationStore(projectDir);
-  await initMiniSkillStore(projectDir);
   await initSessionStore(projectDir);
   {
     const store = getObservationStore();
@@ -255,7 +252,6 @@ export async function createMemorixServer(
 
   const initializeProjectRuntime = async (logPrefix: 'startup' | 'switch'): Promise<void> => {
     await initObservationStore(projectDir);
-    await initMiniSkillStore(projectDir);
     await initSessionStore(projectDir);
     graphManager = new KnowledgeGraphManager(projectDir, project.id);
     await graphManager.init();
@@ -389,7 +385,6 @@ export async function createMemorixServer(
     if (!projectResolved) return;
 
     await initObservationStore(projectDir);
-    await initMiniSkillStore(projectDir);
     await initSessionStore(projectDir);
     await initObservations(projectDir, { skipCorpusLoad: true });
 
@@ -655,7 +650,6 @@ export async function createMemorixServer(
   registerProjectBriefTools(server, ctx);
   registerMaintenanceTools(server, ctx);
   registerIntegrationTools(server, ctx);
-  registerSkillTools(server, ctx);
   registerMemorixSessionTools(server, ctx);
   registerSessionTools(server, {
     dataDir: () => projectDir,

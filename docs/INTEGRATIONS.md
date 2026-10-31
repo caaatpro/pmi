@@ -47,7 +47,7 @@ That command installs the recommended Memorix package or config for the target a
 | MCP server | Gives an agent live tools for search, recall, storage, reasoning, and coordination | bundled by setup, host MCP config, or `memorix serve` |
 | Usage guidance | Tells the agent when and how to use memory | `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, Cursor/Windsurf/Kiro/Trae rules, DeepSeek Harness AGENTS.md |
 | Hooks | Captures useful session events when the agent exposes hook events | bundled by plugin packages or generated hook files |
-| Skills | Turns durable project knowledge into reusable task guidance | plugin skills, `memorix skills`, `memorix_promote` |
+| Skills | Turns durable project knowledge into reusable task guidance | plugin skills, `memorix skills` |
 | memcode | Opens a terminal coding agent that already uses Memorix memory | `memorix`, `memcode` |
 | HTTP service | Runs one shared MCP endpoint plus dashboard | `memorix background start` |
 
@@ -199,25 +199,18 @@ Memorix ships an official skill set for agents that support skills:
 - `memorix-reasoning`
 - `memorix-sessions`
 - `memorix-git-memory`
-- `memorix-mini-skills`
 - `memorix-orchestrate`
 - `memorix-troubleshooting`
 
 These skills are operational guidance for agents: when to search, when to store, when to use CLI fallbacks, when Git Memory is evidence, and when orchestration coordination is appropriate.
 
-Memorix can also promote durable observations into reusable mini-skills. Use this when a project pattern, gotcha, or workflow should become guidance that agents can rediscover later.
-
-Useful commands and tools:
+Reusable project conventions are memories of category `coding_convention` (record them with `memory_save`); `memorix_session_start` injects them. Former mini-skills were converted into such memories by SQLite migration `pmi-5`. To generate `SKILL.md` files from memory patterns:
 
 ```bash
 memorix skills
 ```
 
-MCP tools:
-
-- `memorix_skills`
-- `memorix_promote`
-- `memorix_rules_sync`
+Rules sync stays an MCP tool in the `full` profile: `memorix_rules_sync`.
 
 Plugin and package integrations include the official Memorix skill set where the agent supports skills.
 

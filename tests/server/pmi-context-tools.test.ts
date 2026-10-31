@@ -68,6 +68,28 @@ function text(result: any): string {
 }
 
 describe('PMI context tools (Local mode)', () => {
+  it('memorix_session_start injects coding conventions, which replaced mini-skills', async () => {
+    const { server, projectId } = await createMemorixServer(projectDir, undefined, undefined, { toolProfile: 'lite' } as any);
+    await storeObservation({
+      entityName: 'http-client',
+      type: 'how-it-works',
+      title: 'Always pass a timeout',
+      narrative: 'Pass `timeout` to every fetch call.',
+      facts: ['default 5s'],
+      category: 'coding_convention',
+      projectId,
+    });
+    await storeObservation({ entityName: 'demo', type: 'how-it-works', title: 'Sandbox demo convention', narrative: 'noise', category: 'coding_convention', projectId });
+    await storeObservation({ entityName: 'cart', type: 'decision', title: 'Cart totals are server-side', narrative: 'Decision, not a convention.', projectId });
+
+    const card = text(await handler(server, 'memorix_session_start')({ agent: 'claude-code' }));
+    expect(card).toContain('Project Coding Conventions (1 active)');
+    expect(card).toContain('### Always pass a timeout');
+    expect(card).toContain('- default 5s');
+    expect(card).not.toContain('Sandbox demo convention');
+    expect(card).not.toContain('Mini-Skills');
+  });
+
   it('TEST 6 locally: 500 memories and 200 sessions stay within budget, without session history', async () => {
     const { server, projectId } = await createMemorixServer(projectDir, undefined, undefined, { toolProfile: 'lite' } as any);
     const types: ObservationType[] = ['how-it-works', 'decision', 'problem-solution', 'gotcha', 'discovery', 'what-changed', 'session-request', 'trade-off'];

@@ -54,7 +54,7 @@ export function formatIndexTable(
   const hasExplanation = entries.some((entry) => (entry.matchedFields?.length ?? 0) > 0);
   // Show Src column when at least one entry has provenance (sourceDetail or legacy source='git')
   const hasSrc = entries.some((e) => !!e.sourceDetail || e.source === 'git');
-  // Show Layer column when results contain mixed document types (observations + mini-skills)
+  // Show Layer column when results contain mixed document types
   const distinctDocTypes = new Set(entries.map((e) => e.documentType || 'observation'));
   const hasLayer = distinctDocTypes.size > 1;
 
@@ -333,7 +333,7 @@ function getProgressiveDisclosureHint(hasProject: boolean, surface: RetrievalSur
   const timelineCommand = surface === 'cli' ? 'memorix memory timeline' : 'memorix_timeline';
   const lines = [
     '[TIP] **Progressive Disclosure:** This index shows WHAT exists and retrieval COST.',
-    `- Use \`${detailCommand}\` with typed refs (obs:42@org/project, skill:3) to fetch full details`,
+    `- Use \`${detailCommand}\` with typed refs (obs:42@org/project) to fetch full details`,
     `- Use \`${timelineCommand}\` to see chronological context around an observation`,
     '- Critical types ([GOTCHA] gotcha, [DECISION] decision, [TRADEOFF] trade-off) are often worth fetching immediately',
   ];
@@ -349,13 +349,11 @@ function getProgressiveDisclosureHint(hasProject: boolean, surface: RetrievalSur
 
 /** Format an entry reference as a canonical typed ref usable in memorix_detail */
 export function formatEntryRef(entry: IndexEntry): string {
-  if (entry.documentType === 'mini-skill') return `skill:${entry.id}`;
   return entry.projectId ? `obs:${entry.id}@${entry.projectId}` : `obs:${entry.id}`;
 }
 
 /** Short badge for knowledge layer */
 function formatLayerBadge(layer?: string): string {
-  if (layer === 'promoted') return 'core';
   if (layer === 'evidence') return 'ev';
   return '-';
 }

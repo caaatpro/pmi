@@ -2,17 +2,19 @@
  * Shared SQLite Database Handle
  *
  * Provides a singleton-per-dataDir better-sqlite3 connection shared across
- * all SQLite-backed stores (observations, mini-skills, sessions, team).
+ * all SQLite-backed stores (observations, sessions, team).
  *
  * Responsibilities:
  *   - Dynamic require of better-sqlite3 (optionalDependencies)
  *   - WAL mode and busy_timeout configuration
- *   - Schema creation for ALL tables (observations, mini_skills, sessions, meta, team_*)
+ *   - Schema creation for ALL tables (observations, sessions, meta, team_*; the
+ *     legacy mini_skills table is kept as the source of migration pmi-5)
  *   - Singleton caching per dataDir
  *   - Graceful close
  */
 
 import { createRequire } from 'node:module';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import fs from 'node:fs';
 import { createDatabase, loadSqlite } from './bun-sqlite-compat.js';
@@ -1244,7 +1246,7 @@ const SCHEMA_MIGRATIONS: SchemaMigration[] = [
   {
     // PMI: mini-skills become ordinary memories of category coding_convention
     // (docs/PMI/ROADMAP.md, Phase 3 deferral). The mini_skills table is left
-    // as it was; each skill is copied once, keyed by topicKey mini-skill/<id>.
+    // as it was; each skill is copied once, keyed by topicKey mini-skill/<id>/<fingerprint>.
     id: 'pmi-5-mini-skills-to-conventions',
     apply: (db, dataDir) => { convertMiniSkillsToConventions(db, dataDir); },
   },
@@ -1262,9 +1264,23 @@ const SCHEMA_MIGRATIONS: SchemaMigration[] = [
   },
 ];
 
-/** topicKey of the coding_convention memory a mini-skill was converted into. */
-export function miniSkillTopicKey(skillId: number): string {
-  return `mini-skill/${skillId}`;
+/** topicKey prefix of the coding_convention memories converted from mini-skill `skillId`. */
+export function miniSkillTopicKeyPrefix(skillId: number): string {
+  return `mini-skill/${skillId}/`;
+}
+
+/**
+ * topicKey of the coding_convention memory a mini-skill was converted into.
+ * Mini-skill ids are local to one store, and a topicKey is the sync identity
+ * of a memory (`p:<project>:t:<topicKey>`), so the key carries a fingerprint
+ * of the skill: skill #3 of two developers must not merge into one record.
+ */
+export function miniSkillTopicKey(skill: { id: number; projectId: string; createdAt: string; title: string }): string {
+  const fingerprint = createHash('sha256')
+    .update(`${skill.projectId}\n${skill.createdAt}\n${skill.title}`)
+    .digest('hex')
+    .slice(0, 12);
+  return `${miniSkillTopicKeyPrefix(skill.id)}${fingerprint}`;
 }
 
 interface LegacyMiniSkill {
@@ -1343,7 +1359,7 @@ function convertMiniSkillsToConventions(db: any, dataDir?: string): void {
   if (skills.length === 0) return;
 
   const exists = db.prepare('SELECT 1 FROM observations WHERE projectId = ? AND topicKey = ?');
-  const pending = skills.filter((skill) => !exists.get(skill.projectId, miniSkillTopicKey(skill.id)));
+  const pending = skills.filter((skill) => !exists.get(skill.projectId, miniSkillTopicKey(skill)));
   if (pending.length === 0) return;
 
   const counter = Number(db.prepare("SELECT value FROM meta WHERE key = 'next_id'").get()?.value ?? 1);
@@ -1388,7 +1404,7 @@ function convertMiniSkillsToConventions(db: any, dataDir?: string): void {
       createdAt: skill.createdAt,
       updatedAt: skill.updatedAt ?? skill.createdAt,
       projectId: skill.projectId,
-      topicKey: miniSkillTopicKey(skill.id),
+      topicKey: miniSkillTopicKey(skill),
     });
   }
   db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('next_id', ?)").run(String(nextId));
@@ -1473,7 +1489,7 @@ function touchDatabase(normalized: string, db: any): void {
  * Get or create a shared SQLite database handle for the given data directory.
  *
  * The handle is cached per normalized dataDir path. All stores (observations,
- * mini-skills, sessions) share the same connection and the same DB file.
+ * sessions) share the same connection and the same DB file.
  *
  * Callers must NOT close the returned handle directly — use closeDatabase().
  */

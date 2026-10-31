@@ -481,8 +481,8 @@ export async function ensureCorpusLoaded(): Promise<void> {
 /**
  * @internal Observation-only freshness gate.
  *
- * Public callers should use `withFreshIndex()` from freshness.ts instead,
- * which also covers mini-skills. This function remains for internal use
+ * Public callers should use `withFreshIndex()` from freshness.ts instead.
+ * This function remains for internal use
  * by the freshness module and legacy test code only.
  */
 export async function withFreshObservations<T>(fn: () => T | Promise<T>): Promise<T> {

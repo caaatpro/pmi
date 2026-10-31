@@ -2,15 +2,13 @@
  * Concurrency atomicity regression tests
  *
  * PR #60 review findings:
- * 1. Concurrent promoteToMiniSkill must not produce duplicate IDs or overwrite skills
- * 2. Concurrent startSession must leave exactly one active session per project
+ * Concurrent startSession must leave exactly one active session per project
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { initMiniSkillStore, getMiniSkillStore, resetMiniSkillStore } from '../../src/store/mini-skill-store.js';
 import { initSessionStore, getSessionStore, resetSessionStore } from '../../src/store/session-store.js';
 import { closeAllDatabases } from '../../src/store/sqlite-db.js';
 import type { Observation } from '../../src/types.js';
@@ -19,105 +17,14 @@ let tmpDir: string;
 
 beforeEach(async () => {
   tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-atomicity-'));
-  resetMiniSkillStore();
   resetSessionStore();
 });
 
 afterEach(async () => {
-  resetMiniSkillStore();
   resetSessionStore();
   closeAllDatabases();
   await fs.rm(tmpDir, { recursive: true, force: true });
 });
-
-// ── Fix 1: Mini-skill atomic ID allocation ──────────────────────────
-
-describe('Concurrent promoteToMiniSkill — atomic ID allocation', () => {
-  it('should assign unique IDs when N promotes run concurrently', async () => {
-    await initMiniSkillStore(tmpDir);
-    const store = getMiniSkillStore();
-
-    const N = 20;
-    const promises = Array.from({ length: N }, (_, i) =>
-      store.atomicInsertWithId({
-        sourceObservationIds: [i + 1],
-        sourceEntity: `entity-${i}`,
-        title: `Skill ${i}`,
-        instruction: `Do thing ${i}`,
-        trigger: `When thing ${i}`,
-        facts: [`fact-${i}`],
-        projectId: 'org/test-project',
-        createdAt: new Date().toISOString(),
-        usedCount: 0,
-        tags: [`tag-${i}`],
-      }),
-    );
-
-    const skills = await Promise.all(promises);
-
-    // All IDs must be unique
-    const ids = skills.map(s => s.id);
-    const uniqueIds = new Set(ids);
-    expect(uniqueIds.size).toBe(N);
-
-    // All skills must be persisted (no overwrites)
-    const allSkills = await store.loadAll();
-    expect(allSkills).toHaveLength(N);
-
-    // Counter must be at N+1 (started at 1)
-    const nextId = await store.loadIdCounter();
-    expect(nextId).toBe(N + 1);
-  });
-
-  it('should not overwrite earlier skill when two promotes race', async () => {
-    await initMiniSkillStore(tmpDir);
-    const store = getMiniSkillStore();
-
-    // Two concurrent promotes
-    const [skillA, skillB] = await Promise.all([
-      store.atomicInsertWithId({
-        sourceObservationIds: [100],
-        sourceEntity: 'auth-module',
-        title: 'Auth gotcha',
-        instruction: 'Avoid auth pitfall',
-        trigger: 'Working on auth',
-        facts: ['Token expires silently'],
-        projectId: 'org/test',
-        createdAt: new Date().toISOString(),
-        usedCount: 0,
-        tags: ['gotcha'],
-      }),
-      store.atomicInsertWithId({
-        sourceObservationIds: [200],
-        sourceEntity: 'billing-service',
-        title: 'Billing decision',
-        instruction: 'Use Stripe',
-        trigger: 'Working on billing',
-        facts: ['Stripe webhook retries'],
-        projectId: 'org/test',
-        createdAt: new Date().toISOString(),
-        usedCount: 0,
-        tags: ['decision'],
-      }),
-    ]);
-
-    // Different IDs
-    expect(skillA.id).not.toBe(skillB.id);
-
-    // Both persisted with correct content
-    const all = await store.loadAll();
-    expect(all).toHaveLength(2);
-
-    const authSkill = all.find(s => s.title === 'Auth gotcha');
-    const billingSkill = all.find(s => s.title === 'Billing decision');
-    expect(authSkill).toBeDefined();
-    expect(billingSkill).toBeDefined();
-    expect(authSkill!.sourceObservationIds).toEqual([100]);
-    expect(billingSkill!.sourceObservationIds).toEqual([200]);
-  });
-});
-
-// ── Fix 2: Session atomic rollover ──────────────────────────────────
 
 describe('Concurrent startSession — atomic rollover', () => {
   it('should leave exactly one active session after N concurrent starts of the same agent', async () => {

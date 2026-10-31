@@ -839,8 +839,8 @@ and include the exact error when filing an issue.
 ## 10. Does `doctor` report degraded or unavailable storage?
 
 Treat this as a real storage failure, not as an empty project. The active
-SQLite backend is the source of truth for observations, sessions, and
-mini-skills; derived search indexes may fall back, but they must not hide a
+SQLite backend is the source of truth for observations and sessions;
+derived search indexes may fall back, but they must not hide a
 database failure.
 
 Run `memorix doctor --json` and keep the reported error. A transient

@@ -108,7 +108,7 @@ describe('hydrateIndex – status handling', () => {
     expect(getByID(db, makeOramaObservationId('test/hydrate-project', 549))).toBeDefined();
   });
 
-  it('hydrates missing observations when a mini-skill already populated the index', async () => {
+  it('hydrates missing observations when another document already populated the index', async () => {
     const observations = [
       makeObs(30, 'active', 'First hydration'),
       makeObs(31, 'resolved', 'First hydration resolved'),
@@ -117,11 +117,11 @@ describe('hydrateIndex – status handling', () => {
     const { getDb } = await import('../../src/store/orama-store.js');
     const db = await getDb();
     await insert(db, {
-      id: 'skill:test%2Fhydrate-project:1',
+      id: 'preloaded:test%2Fhydrate-project:1',
       observationId: 1,
-      entityName: 'test-skill',
-      type: 'mini-skill',
-      title: 'Preloaded mini-skill',
+      entityName: 'test-preloaded',
+      type: 'how-it-works',
+      title: 'Preloaded document',
       narrative: 'This document makes the shared index non-empty.',
       facts: '',
       filesModified: '',
@@ -135,8 +135,8 @@ describe('hydrateIndex – status handling', () => {
       source: 'agent',
       sourceDetail: 'explicit',
       valueCategory: 'core',
-      documentType: 'mini-skill',
-      knowledgeLayer: 'promoted',
+      documentType: 'observation',
+      knowledgeLayer: 'project-truth',
     });
 
     const first = await hydrateIndex(observations);

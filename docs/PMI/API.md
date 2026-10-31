@@ -139,7 +139,7 @@
 | `git_analyze` | — | Инкрементальный анализ с курсора; `full=true` — полная сверка |
 | `project_sync` | — | Принудительный push/pull, статус outbox |
 
-Удаляемые из MCP (Phase 3): `memorix_media`, `memorix_ingest_image`, `memorix_promote`, `memorix_skills`, KG‑compat (9 шт.). Сохраняемые в `full`: `memorix_timeline`, `memorix_graph_context`, `memorix_retention`, `memorix_feedback`, `memorix_evidence`, `memorix_suggest_topic_key`, `memorix_transfer`, `memorix_deduplicate`, `memorix_consolidate`, `memorix_audit_project`, `memorix_rules_sync`, `memorix_workspace_sync`.
+Удаляемые из MCP (Phase 3): `memorix_media`, `memorix_ingest_image`, `memorix_promote`, `memorix_skills` (удалены после миграции mini‑skills в `coding_convention`, `pmi-5`), KG‑compat (9 шт.). Сохраняемые в `full`: `memorix_timeline`, `memorix_graph_context`, `memorix_retention`, `memorix_feedback`, `memorix_evidence`, `memorix_suggest_topic_key`, `memorix_transfer`, `memorix_deduplicate`, `memorix_consolidate`, `memorix_audit_project`, `memorix_rules_sync`, `memorix_workspace_sync`.
 
 `team_*` и `memorix_poll` заменяются `session_*` + `tasks` (Phase 5–6); на переходный период остаются в профиле `team`.
 

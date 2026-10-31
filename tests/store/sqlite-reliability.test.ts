@@ -12,12 +12,6 @@ import {
   initSessionStore,
   resetSessionStore,
 } from '../../src/store/session-store.js';
-import {
-  MiniSkillGracefulDegrade,
-  MiniSkillSqliteStore,
-  initMiniSkillStore,
-  resetMiniSkillStore,
-} from '../../src/store/mini-skill-store.js';
 import { isTransientSqliteError, retrySqliteBusy } from '../../src/store/sqlite-reliability.js';
 
 let tempDir = '';
@@ -25,7 +19,6 @@ let tempDir = '';
 afterEach(async () => {
   vi.restoreAllMocks();
   resetSessionStore();
-  resetMiniSkillStore();
   closeAllDatabases();
   if (tempDir) await rm(tempDir, { recursive: true, force: true });
   tempDir = '';
@@ -130,30 +123,16 @@ setTimeout(() => { db.prepare('COMMIT').run(); db.close(); }, 350);`,
     await expect(initSessionStore(tempDir)).rejects.toThrow(/malformed/i);
   });
 
-  it('does not convert a persistent mini-skill initialization error into a fallback', async () => {
-    tempDir = await mkdtemp(path.join(os.tmpdir(), 'memorix-skill-error-'));
-    vi.spyOn(MiniSkillSqliteStore.prototype, 'init').mockRejectedValue(
-      Object.assign(new Error('database schema is malformed'), { code: 'SQLITE_CORRUPT' }),
-    );
-
-    await expect(initMiniSkillStore(tempDir)).rejects.toThrow(/malformed/i);
-  });
-
-  it('makes degraded session and mini-skill writes explicit failures', async () => {
+  it('makes degraded session writes explicit failures', async () => {
     const observationStore = new DegradedBackend('SQLite driver is missing');
     const sessionStore = new SessionGracefulDegrade();
-    const skillStore = new MiniSkillGracefulDegrade();
     await sessionStore.init(os.tmpdir());
-    await skillStore.init(os.tmpdir());
 
     expect(observationStore.getBackendReason()).toBe('SQLite driver is missing');
     expect(sessionStore.getBackendReason()).toBe('SQLite runtime unavailable');
-    expect(skillStore.getBackendReason()).toBe('SQLite runtime unavailable');
     await expect(observationStore.loadAll()).rejects.toThrow(/memory is not loaded/i);
     await expect(sessionStore.loadAll()).rejects.toThrow(/memory is not loaded/i);
     await expect(sessionStore.insert({ id: 's1' } as any)).rejects.toThrow(/read-only/i);
-    await expect(skillStore.loadAll()).rejects.toThrow(/memory is not loaded/i);
-    await expect(skillStore.atomicInsertWithId({ title: 'skill' } as any)).rejects.toThrow(/read-only/i);
   });
 
   it('does not retry a non-transient operation failure', async () => {

@@ -119,14 +119,6 @@ describe('CLI identity control plane', () => {
     expect(ownerSearch.exitCode).toBe(0);
     expect(JSON.parse(ownerSearch.stdout).entries).toHaveLength(1);
 
-    const unsafePromotion = await runCommand(memoryCommand, {
-      _: ['promote'],
-      ids: String(privateObservation.id),
-      json: true,
-    });
-    expect(unsafePromotion.exitCode).toBe(1);
-    expect(JSON.parse(unsafePromotion.stderr).error).toContain('cannot be promoted into shared skills');
-
     const task = await runCommand(taskCommand, {
       _: ['create'],
       description: 'Verify the identity-aware task command',

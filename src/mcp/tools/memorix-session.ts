@@ -15,6 +15,7 @@ import { filterReadableObservations } from '../../memory/visibility.js';
 import { homeProjectRootError, isHomeDirectory } from '../../project/launch-root.js';
 import { registerAlias } from '../../project/aliases.js';
 import { isLLMEnabled, getLLMConfig } from '../../llm/provider.js';
+import type { Observation } from '../../types.js';
 import type { ServerToolContext } from './server-context.js';
 import { coerceNumber, createDeterministicInstanceId, finishPmiContinuity, startPmiContinuity } from './helpers.js';
 
@@ -240,27 +241,24 @@ export function registerMemorixSessionTools(server: McpServer, ctx: ServerToolCo
         '',
       ];
 
-      // Inject mini-skills (permanent, never-decaying project knowledge)
-      // Filter out demo/test/system-self skills so they don't pollute unrelated projects.
+      // Inject coding conventions (permanent project knowledge; former
+      // mini-skills became coding_convention memories in migration pmi-5).
+      // Filter out demo/test/system-self entries so they don't pollute unrelated projects.
       try {
-        const { loadMiniSkills, formatMiniSkillsForInjection, recordMiniSkillUsage } = await import('../../skills/mini-skills.js');
-        const SKILL_NOISE = [
+        const CONVENTION_NOISE = [
           /\bdemo\b/i, /展示/i, /全能力/i, /\[test\]/i, /\[测试\]/i, /测试/i,
           /验证/i, /兼容/i, /compat/i, /memmcp/i, /memorix-demo/i, /sandbox/i,
           /playground/i, /benchmark/i, /handoff/i, /交接/i, /for_memmcp/i,
         ];
-        const allSkills = await loadMiniSkills(ctx.projectDir, ctx.project.id);
-        const miniSkills = allSkills.filter(s => {
-          const text = `${s.title}\n${s.sourceEntity}\n${s.instruction}`.toLowerCase();
-          return !SKILL_NOISE.some(p => p.test(text));
-        });
-        if (miniSkills.length > 0) {
-          const formatted = formatMiniSkillsForInjection(miniSkills);
-          lines.push('---', '', formatted);
-          // Record usage asynchronously (don't block response)
-          recordMiniSkillUsage(ctx.projectDir, miniSkills.map(s => s.id)).catch(() => {});
+        const conventions = filterReadableObservations(
+          await getObservationStore().loadByProject(ctx.project.id, { status: 'active' }),
+          ctx.getObservationReader(),
+        ).filter((obs) => obs.category === 'coding_convention'
+          && !CONVENTION_NOISE.some((p) => p.test(`${obs.title}\n${obs.entityName}\n${obs.narrative}`)));
+        if (conventions.length > 0) {
+          lines.push('---', '', formatConventionsForInjection(conventions));
         }
-      } catch { /* mini-skills not available yet — skip */ }
+      } catch { /* conventions are optional context — skip */ }
 
       if (result.previousContext) {
         lines.push('---', '[TASK] **Continuation card:**', '', result.previousContext);
@@ -578,4 +576,22 @@ export function registerMemorixSessionTools(server: McpServer, ctx: ServerToolCo
       }
     },
   );
+}
+
+const MAX_INJECTED_CONVENTIONS = 20;
+
+/** Markdown block of the project's coding conventions for the session card. */
+function formatConventionsForInjection(conventions: Observation[]): string {
+  const shown = conventions.slice(0, MAX_INJECTED_CONVENTIONS);
+  const lines = [`## [SESSION] Project Coding Conventions (${conventions.length} active)`, ''];
+  for (const obs of shown) {
+    lines.push(`### ${obs.title}`);
+    if (obs.narrative) lines.push(obs.narrative);
+    for (const fact of obs.facts) lines.push(`- ${fact}`);
+    lines.push('');
+  }
+  if (conventions.length > shown.length) {
+    lines.push(`+${conventions.length - shown.length} more: memory_search with category coding_convention.`, '');
+  }
+  return lines.join('\n');
 }

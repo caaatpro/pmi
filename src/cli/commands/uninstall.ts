@@ -453,7 +453,7 @@ export default defineCommand({
     },
     'purge-data': {
       type: 'boolean',
-      description: 'Delete ~/.memorix data directory (memories, mini-skills, sessions, logs, local config)',
+      description: 'Delete ~/.memorix data directory (memories, sessions, logs, local config)',
       default: false,
     },
   },

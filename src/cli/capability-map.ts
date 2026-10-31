@@ -46,8 +46,6 @@ export const CLI_NATIVE_PARITY: Record<string, string> = Object.freeze({
   memorix_deduplicate: 'memorix memory deduplicate',
   memorix_consolidate: 'memorix memory consolidate',
   memorix_formation_metrics: 'memorix formation metrics',
-  memorix_skills: 'memorix skills list|generate|show',
-  memorix_promote: 'memorix memory promote',
   memorix_rules_sync: 'memorix sync rules',
   memorix_workspace_sync: 'memorix sync workspace',
 });

@@ -62,7 +62,7 @@ the durable store into an empty project.
 - A runtime lock (`SQLITE_BUSY`) is retried with bounded backoff. A persistent
   runtime error is surfaced to the caller; it is never converted into a fake
   successful read or write.
-- Observations, sessions, and mini-skills follow the same initialization rule.
+- Observations and sessions follow the same initialization rule.
   Degraded writes fail loudly so an agent cannot believe a session or promotion
   was saved when it was not.
 - SQLite connections configure `busy_timeout` before WAL setup. A connection

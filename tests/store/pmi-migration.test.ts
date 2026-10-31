@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { createDatabase } from '../../src/store/bun-sqlite-compat.js';
-import { closeAllDatabases, getDatabase } from '../../src/store/sqlite-db.js';
+import { closeAllDatabases, getDatabase, miniSkillTopicKey } from '../../src/store/sqlite-db.js';
 import { SqliteBackend } from '../../src/store/sqlite-store.js';
 import type { Observation } from '../../src/types.js';
 
@@ -116,7 +116,7 @@ describe('PMI SQLite migration', () => {
     const migrated = getDatabase(dir);
     expect(migrated.prepare('SELECT * FROM mini_skills ORDER BY id').all()).toEqual(skillsBefore);
     const rows = migrated.prepare(
-      "SELECT id, projectId, entityName, title, narrative, facts, concepts, category, confidence, status, valueCategory, topicKey FROM observations WHERE category = 'coding_convention' ORDER BY topicKey",
+      "SELECT id, projectId, entityName, title, narrative, facts, concepts, category, confidence, status, valueCategory, topicKey FROM observations WHERE category = 'coding_convention' ORDER BY projectId",
     ).all();
     expect(rows).toHaveLength(2);
     expect(rows[0]).toMatchObject({
@@ -128,12 +128,13 @@ describe('PMI SQLite migration', () => {
       confidence: 'observed',
       status: 'active',
       valueCategory: 'core',
-      topicKey: 'mini-skill/3',
     });
+    expect(rows[0].topicKey).toMatch(/^mini-skill\/3\/[0-9a-f]{12}$/);
     expect(rows[0].narrative).toContain('Pass `timeout` to every fetch call.');
     expect(rows[0].narrative).toContain('When: When calling external APIs');
     expect(rows[0].narrative).toContain('#1');
-    expect(rows[1]).toMatchObject({ projectId: 'acme/other', title: 'Use pnpm', topicKey: 'mini-skill/7' });
+    expect(rows[1]).toMatchObject({ projectId: 'acme/other', title: 'Use pnpm' });
+    expect(rows[1].topicKey).toMatch(/^mini-skill\/7\//);
     expect(rows.map((row: { id: number }) => row.id).every((id: number) => id > 2)).toBe(true);
     expect(readdirSync(dir).some((name) => name.startsWith('memorix.db.pre-pmi-'))).toBe(true);
     closeAllDatabases();
@@ -142,7 +143,7 @@ describe('PMI SQLite migration', () => {
     // with their category and allocates new ids past them.
     const reopened = new SqliteBackend();
     await reopened.init(dir);
-    const converted = (await reopened.loadByProject('acme/app')).find((obs) => obs.topicKey === 'mini-skill/3');
+    const converted = (await reopened.loadByProject('acme/app')).find((obs) => obs.topicKey?.startsWith('mini-skill/3/'));
     expect(converted).toMatchObject({ category: 'coding_convention', confidence: 'observed', type: 'how-it-works' });
     expect(await reopened.loadIdCounter()).toBeGreaterThan(Math.max(...rows.map((row: { id: number }) => row.id)));
 
@@ -151,6 +152,15 @@ describe('PMI SQLite migration', () => {
     again.prepare("DELETE FROM schema_migrations WHERE id = 'pmi-5-mini-skills-to-conventions'").run();
     closeAllDatabases();
     expect(getDatabase(dir).prepare("SELECT COUNT(*) AS n FROM observations WHERE category = 'coding_convention'").get()).toEqual({ n: 2 });
+  });
+
+  it('keeps same-id mini-skills of two machines apart (topicKey is the sync identity)', () => {
+    const skill = { id: 3, projectId: 'acme/app', createdAt: '2026-09-01T00:00:00.000Z' };
+    const alice = miniSkillTopicKey({ ...skill, title: 'Always pass a timeout' });
+    const bob = miniSkillTopicKey({ ...skill, title: 'Use pnpm' });
+    expect(alice).not.toBe(bob);
+    expect(alice.startsWith('mini-skill/3/')).toBe(true);
+    expect(miniSkillTopicKey({ ...skill, title: 'Always pass a timeout' })).toBe(alice);
   });
 
   it('converts mini-skills that only exist in a legacy mini-skills.json', () => {
@@ -163,7 +173,7 @@ describe('PMI SQLite migration', () => {
     const db = getDatabase(dir);
     db.prepare("DELETE FROM schema_migrations WHERE id = 'pmi-5-mini-skills-to-conventions'").run();
     closeAllDatabases();
-    const row = getDatabase(dir).prepare("SELECT title, category FROM observations WHERE topicKey = 'mini-skill/1'").get();
+    const row = getDatabase(dir).prepare("SELECT title, category FROM observations WHERE topicKey LIKE 'mini-skill/1/%'").get();
     expect(row).toEqual({ title: 'Migrations are additive', category: 'coding_convention' });
   });
 });

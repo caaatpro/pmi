@@ -20,7 +20,7 @@ import {
 import { normalizeHookInput } from './normalizer.js';
 import { detectBestPattern, patternToObservationType } from './pattern-detector.js';
 import { isSignificantKnowledge, isRetrievedResult, isTrivialCommand } from './significance-filter.js';
-import type { AgentName, HookEvent, HookOutput, NormalizedHookInput } from './types.js';
+import type { AgentName, HookOutput, NormalizedHookInput } from './types.js';
 import {
   hookObservationRuntimeOptions,
   readHookStdin,
@@ -312,7 +312,6 @@ async function buildHookProjectContext(
     const { detectProject } = await import('../project/detector.js');
     const { getProjectDataDir } = await import('../store/persistence.js');
     const { initObservationStore, getObservationStore: getStore } = await import('../store/obs-store.js');
-    const { initMiniSkillStore } = await import('../store/mini-skill-store.js');
     const { initSessionStore } = await import('../store/session-store.js');
     const { initAliasRegistry, registerAlias } = await import('../project/aliases.js');
     const { MaintenanceTargetStore } = await import('../runtime/maintenance-targets.js');
@@ -331,7 +330,6 @@ async function buildHookProjectContext(
       dataDir,
     });
     await initObservationStore(dataDir);
-    await initMiniSkillStore(dataDir);
     await initSessionStore(dataDir);
     const activeObservations = filterReadableObservations(
       await getStore().loadByProject(canonicalId, { status: 'active' }),
@@ -814,7 +812,6 @@ export async function runHook(agentOverride?: string, eventOverride?: string): P
     try {
       const { storeObservation, initObservations } = await import('../memory/observations.js');
       const { initObservationStore } = await import('../store/obs-store.js');
-      const { initMiniSkillStore: initMSStore } = await import('../store/mini-skill-store.js');
       const { initSessionStore: initSessStore } = await import('../store/session-store.js');
       const { detectProject } = await import('../project/detector.js');
       const { getProjectDataDir } = await import('../store/persistence.js');
@@ -836,7 +833,6 @@ export async function runHook(agentOverride?: string, eventOverride?: string): P
       });
       
       await initObservationStore(dataDir);
-      await initMSStore(dataDir);
       await initSessStore(dataDir);
       await initObservations(dataDir, hookObservationRuntimeOptions(rawProject.rootPath));
       await storeObservation({ ...observation, projectId, sourceDetail: 'hook' });

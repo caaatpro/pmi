@@ -364,35 +364,6 @@ export default defineCommand({
         issues.push(`Session storage is unavailable: ${message}`);
         (report.data as any).sessions = null;
       }
-
-      // Mini-skills — read from SQLite (canonical store)
-      let skillBackend = 'unknown';
-      let skillReason: string | undefined;
-      try {
-        const { initMiniSkillStore, getMiniSkillStore } = await import('../../store/mini-skill-store.js');
-        await initMiniSkillStore(dataDir);
-        const skillStore = getMiniSkillStore();
-        skillBackend = skillStore.getBackendName();
-        skillReason = skillStore.getBackendReason?.();
-        if (skillBackend === 'degraded') {
-          lines.push(fail(`Mini-skills: unavailable — read-only degraded backend${skillReason ? `; ${skillReason}` : ''}`));
-          issues.push('Mini-skill storage is in degraded read-only mode.');
-          (report.data as any).miniSkills = null;
-          if (skillReason) (report.data as any).miniSkillBackendReason = skillReason;
-        } else {
-          const skills = await skillStore.loadAll();
-          const skillCount = skills.length;
-          if (skillCount > 0) {
-            lines.push(ok(`Mini-skills: ${skillCount}`));
-            (report.data as any).miniSkills = skillCount;
-          }
-        }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        lines.push(fail(`Mini-skills: unavailable (${message})`));
-        issues.push(`Mini-skill storage is unavailable: ${message}`);
-        (report.data as any).miniSkills = null;
-      }
     } else {
       lines.push(warn('No data directory found for current project'));
       if (!projectId) {
@@ -691,7 +662,7 @@ export default defineCommand({
       console.log(lines.join('\n'));
     }
 
-    if (issues.some((issue) => /^(Observation store could not be opened|Observation storage |Session storage |Mini-skill storage |SQLite backend unavailable)/.test(issue))) {
+    if (issues.some((issue) => /^(Observation store could not be opened|Observation storage |Session storage |SQLite backend unavailable)/.test(issue))) {
       process.exitCode = 1;
     }
   },

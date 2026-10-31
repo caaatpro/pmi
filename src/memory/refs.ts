@@ -2,11 +2,12 @@
  * Typed Memory Reference Protocol (Phase 3a)
  *
  * Provides a formal, unambiguous way to reference memory objects
- * (observations and mini-skills) across internal code and the MCP API.
+ * across internal code and the MCP API.
  *
  * String format:
  *   obs:42          — observation #42
- *   skill:3         — mini-skill #3
+ *   skill:3         — legacy mini-skill #3, now the coding_convention memory
+ *                     with topicKey mini-skill/3/<fingerprint> (PMI migration pmi-5)
  *   obs:42@org/proj — observation #42 in project org/proj
  *
  * Legacy support:
@@ -15,7 +16,7 @@
  *
  * Display short forms (presentation only):
  *   #42  — observation
- *   S3   — mini-skill
+ *   S3   — legacy mini-skill
  */
 
 import type { MemoryRef } from '../types.js';

@@ -1565,17 +1565,13 @@ export default defineCommand({
         if (apiPath === '/knowledge') {
           const { projectId: kbProjectId, dataDir: kbDataDir } = await resolveRequestProject(url);
           const { generateKnowledgeBase } = await import('../../wiki/generator.js');
-          const { initMiniSkillStore, getMiniSkillStore } = await import('../../store/mini-skill-store.js');
 
-          await initMiniSkillStore(kbDataDir);
 
           const allObs = await loadDashboardProjectObservations(kbDataDir, kbProjectId, 'active');
-          const skills = await getMiniSkillStore().loadByProject(kbProjectId);
 
           const overview = generateKnowledgeBase({
             projectId: kbProjectId,
             observations: allObs,
-            miniSkills: skills,
           });
 
           sendJson(overview);
@@ -1585,14 +1581,11 @@ export default defineCommand({
         if (apiPath === '/knowledge-graph') {
           const { projectId: kgProjectId, dataDir: kgDataDir } = await resolveRequestProject(url);
           const { generateKnowledgeGraph } = await import('../../wiki/knowledge-graph.js');
-          const { initMiniSkillStore, getMiniSkillStore } = await import('../../store/mini-skill-store.js');
           const { initGraphStore } = await import('../../store/graph-store.js');
 
-          await initMiniSkillStore(kgDataDir);
           const gStore = await initGraphStore(kgDataDir, kgProjectId);
 
           const allObs = await loadDashboardProjectObservations(kgDataDir, kgProjectId, 'active');
-          const skills = await getMiniSkillStore().loadByProject(kgProjectId);
 
           const fullGraph = { entities: gStore.loadEntities(), relations: gStore.loadRelations() };
           const scoped = scopeKnowledgeGraphToProject(fullGraph, allObs);
@@ -1600,7 +1593,6 @@ export default defineCommand({
           const graph = generateKnowledgeGraph({
             projectId: kgProjectId,
             observations: allObs,
-            miniSkills: skills,
             graphEntities: scoped.entities,
             graphRelations: scoped.relations,
           });

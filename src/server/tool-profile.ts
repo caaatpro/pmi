@@ -1,7 +1,7 @@
 /**
  * Tool Profile System — Progressive Disclosure for MCP tools
  *
- * The full tool set contains 51 tools, but most users only ever
+ * The full tool set contains 49 tools, but most users only ever
  * use a small subset (store / search / detail). Exposing all of them at
  * tools/list time causes cognitive overload.
  *
@@ -13,7 +13,7 @@
  *   - "team" (HTTP default): lite + coordination tools, dashboard, and Knowledge Workspace — 42 tools.
  *     Suitable when an operator explicitly wants task/message/lock surfaces.
  *   - "full": Everything, including niche / advanced tools (consolidate, dedup,
- *     formation metrics, skills, rules/workspace sync).
+ *     formation metrics, rules/workspace sync).
  *     Opt in via `MEMORIX_MODE=full` or `--mode full`.
  *
  * Users can override at any time via the `MEMORIX_MODE` env var, the `--mode`
@@ -87,8 +87,6 @@ export const TOOL_PROFILES: Record<string, ReadonlyArray<ToolProfile>> = Object.
   memorix_deduplicate:        ['full'],
   memorix_consolidate:        ['full'],
   memorix_formation_metrics:  ['full'],
-  memorix_skills:             ['full'],
-  memorix_promote:            ['full'],
   memorix_rules_sync:         ['full'],
   memorix_workspace_sync:     ['full'],
   memorix_compaction_checkpoint: ['full'],

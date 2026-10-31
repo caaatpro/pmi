@@ -26,7 +26,8 @@
 | `memory_feedback_*`, `outcome_signals` | ✔ агрегат веса | ✔ события | Ранжирование |
 | `chat_transcript` | ✘ | ✔ (опционально) | ТЗ: не грузить истории переписки; не синхронизируется |
 | `mcp_bindings`, `maintenance_*`, `agent_effects`, `meta` | ✘ | ✔ | Служебное, локальное |
-| `media_*`, `mini_skills`, `knowledge_pages/workflows` | ✘ | ✘ (удаляются по Phase 3) | Вне PMI |
+| `media_*`, `knowledge_pages/workflows` | ✘ | ✘ (удаляются по Phase 3) | Вне PMI |
+| `mini_skills` | ✘ (строки скопированы в `observations` как `coding_convention`, миграция `pmi-5`) | только чтение миграцией; таблица не меняется | Источник миграции |
 
 ## 2. PostgreSQL: схемы
 

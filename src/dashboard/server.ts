@@ -560,20 +560,15 @@ async function handleApi(
 
             case '/knowledge': {
                 const { generateKnowledgeBase } = await import('../wiki/generator.js');
-                const { initMiniSkillStore, getMiniSkillStore } = await import('../store/mini-skill-store.js');
-
-                await initMiniSkillStore(effectiveDataDir);
 
                 const allObs = filterDashboardObservations(
                     await getObservationStore().loadByProject(effectiveProjectId, { status: 'active' }),
                     effectiveProjectId,
                 );
-                const skills = await getMiniSkillStore().loadByProject(effectiveProjectId);
 
                 const overview = generateKnowledgeBase({
                     projectId: effectiveProjectId,
                     observations: allObs,
-                    miniSkills: skills,
                 });
 
                 sendJson(res, overview);
@@ -582,17 +577,14 @@ async function handleApi(
 
             case '/knowledge-graph': {
                 const { generateKnowledgeGraph } = await import('../wiki/knowledge-graph.js');
-                const { initMiniSkillStore, getMiniSkillStore } = await import('../store/mini-skill-store.js');
                 const { initGraphStore } = await import('../store/graph-store.js');
 
-                await initMiniSkillStore(effectiveDataDir);
                 const gStore = await initGraphStore(effectiveDataDir, effectiveProjectId);
 
                 const allObs = filterDashboardObservations(
                     await getObservationStore().loadByProject(effectiveProjectId, { status: 'active' }),
                     effectiveProjectId,
                 );
-                const skills = await getMiniSkillStore().loadByProject(effectiveProjectId);
 
                 const fullGraph = { entities: gStore.loadEntities(), relations: gStore.loadRelations() };
                 const scoped = scopeKnowledgeGraphToProject(fullGraph, allObs);
@@ -600,7 +592,6 @@ async function handleApi(
                 const graph = generateKnowledgeGraph({
                     projectId: effectiveProjectId,
                     observations: allObs,
-                    miniSkills: skills,
                     graphEntities: scoped.entities,
                     graphRelations: scoped.relations,
                 });

@@ -9,19 +9,18 @@
  * - deterministic output: fixed input → fixed output
  * - section clusters match KB section definitions
  * - edges inferred between same-entity observations
- * - mini-skill derived_from edges
+ * - coding_convention memories form their own cluster
  * - stats are accurate
  */
 
 import { describe, it, expect } from 'vitest';
 import { generateKnowledgeGraph } from '../../src/wiki/knowledge-graph.js';
-import type { Observation, MiniSkill } from '../../src/types.js';
+import type { Observation } from '../../src/types.js';
 
 const PROJECT_ID = 'test/kg-project';
 const OTHER_PROJECT_ID = 'other/kg-project';
 const FIXED_TIMESTAMP = '2026-01-01T00:00:00.000Z';
 let nextObservationId = 1;
-let nextSkillId = 1;
 
 function makeObs(overrides: Partial<Observation> = {}): Observation {
   return {
@@ -44,40 +43,27 @@ function makeObs(overrides: Partial<Observation> = {}): Observation {
   };
 }
 
-function makeSkill(overrides: Partial<MiniSkill> = {}): MiniSkill {
-  return {
-    id: overrides.id ?? nextSkillId++,
-    sourceObservationIds: [100],
-    sourceEntity: 'test-entity',
-    title: 'Test skill',
-    instruction: 'Do the right thing',
-    trigger: 'When you encounter this scenario',
-    facts: ['fact 1'],
-    projectId: PROJECT_ID,
-    createdAt: FIXED_TIMESTAMP,
-    usedCount: 0,
-    tags: [],
-    ...overrides,
-  };
-}
-
 // Project scope isolation
 
 describe('Project scope isolation', () => {
   it('other project observations do not leak into graph', () => {
     const obs1 = makeObs({ id: 1, type: 'decision', title: 'In-project', projectId: PROJECT_ID });
     const obs2 = makeObs({ id: 2, type: 'decision', title: 'Other-project', projectId: OTHER_PROJECT_ID });
-    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: [obs1, obs2], miniSkills: [] });
+    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: [obs1, obs2] });
     expect(kg.nodes.length).toBe(1);
     expect(kg.nodes[0].label).toBe('In-project');
   });
 
-  it('other project mini-skills do not leak into graph', () => {
-    const skill1 = makeSkill({ id: 1, title: 'Project skill', projectId: PROJECT_ID });
-    const skill2 = makeSkill({ id: 2, title: 'Other skill', projectId: OTHER_PROJECT_ID });
-    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: [], miniSkills: [skill1, skill2] });
+  it('other project conventions do not leak into graph', () => {
+    const kg = generateKnowledgeGraph({
+      projectId: PROJECT_ID,
+      observations: [
+        makeObs({ id: 1, title: 'Project convention', category: 'coding_convention' }),
+        makeObs({ id: 2, title: 'Other convention', category: 'coding_convention', projectId: OTHER_PROJECT_ID }),
+      ],
+    });
     expect(kg.nodes.length).toBe(1);
-    expect(kg.nodes[0].label).toBe('Project skill');
+    expect(kg.nodes[0].label).toBe('Project convention');
   });
 });
 
@@ -86,25 +72,25 @@ describe('Project scope isolation', () => {
 describe('Exclusion rules', () => {
   it('probe observations are excluded from graph nodes', () => {
     const obs = makeObs({ type: 'probe', title: 'Probe heartbeat' });
-    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: [obs], miniSkills: [] });
+    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: [obs] });
     expect(kg.nodes.length).toBe(0);
   });
 
   it('resolved observations are excluded', () => {
     const obs = makeObs({ status: 'resolved', title: 'Resolved obs' });
-    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: [obs], miniSkills: [] });
+    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: [obs] });
     expect(kg.nodes.length).toBe(0);
   });
 
   it('archived observations are excluded', () => {
     const obs = makeObs({ status: 'archived', title: 'Archived obs' });
-    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: [obs], miniSkills: [] });
+    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: [obs] });
     expect(kg.nodes.length).toBe(0);
   });
 
   it('ephemeral observations are excluded', () => {
     const obs = makeObs({ valueCategory: 'ephemeral', title: 'Ephemeral obs' });
-    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: [obs], miniSkills: [] });
+    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: [obs] });
     expect(kg.nodes.length).toBe(0);
   });
 });
@@ -114,7 +100,7 @@ describe('Exclusion rules', () => {
 describe('No graph relations — still useful nodes from KB semantics', () => {
   it('produces nodes even when no edges exist (single entity)', () => {
     const obs = makeObs({ id: 10, type: 'decision', title: 'Solo decision', entityName: 'unique-entity' });
-    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: [obs], miniSkills: [] });
+    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: [obs] });
     expect(kg.nodes.length).toBe(1);
     expect(kg.edges.length).toBe(0);
     expect(kg.clusters.length).toBe(1);
@@ -127,7 +113,7 @@ describe('No graph relations — still useful nodes from KB semantics', () => {
       makeObs({ id: 11, type: 'gotcha', title: 'G1' }),
       makeObs({ id: 12, type: 'how-it-works', title: 'H1' }),
     ];
-    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: obs, miniSkills: [] });
+    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: obs });
     expect(kg.nodes.length).toBe(3);
     expect(kg.clusters.length).toBe(3);
     const sectionIds = kg.clusters.map(c => c.sectionId).sort();
@@ -140,8 +126,8 @@ describe('No graph relations — still useful nodes from KB semantics', () => {
 describe('Determinism', () => {
   it('returns equal output for the same inputs and fixed generatedAt', () => {
     const observations = [makeObs({ id: 500, type: 'decision', title: 'Stable decision' })];
-    const skills = [makeSkill({ id: 600, title: 'Stable skill' })];
-    const options = { projectId: PROJECT_ID, observations, miniSkills: skills, generatedAt: FIXED_TIMESTAMP };
+    observations.push(makeObs({ id: 600, title: 'Stable convention', category: 'coding_convention' }));
+    const options = { projectId: PROJECT_ID, observations, generatedAt: FIXED_TIMESTAMP };
 
     const first = generateKnowledgeGraph(options);
     const second = generateKnowledgeGraph(options);
@@ -159,7 +145,7 @@ describe('Edge inference', () => {
       makeObs({ id: 1, type: 'decision', title: 'D1', entityName: 'auth-module' }),
       makeObs({ id: 2, type: 'decision', title: 'D2', entityName: 'auth-module' }),
     ];
-    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: obs, miniSkills: [] });
+    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: obs });
     const relatesEdges = kg.edges.filter(e => e.edgeType === 'relates_to');
     // Bidirectional: 2 relates_to edges
     expect(relatesEdges.length).toBeGreaterThanOrEqual(2);
@@ -170,25 +156,15 @@ describe('Edge inference', () => {
       makeObs({ id: 1, type: 'decision', title: 'D1', entityName: 'auth-module' }),
       makeObs({ id: 2, type: 'how-it-works', title: 'H1', entityName: 'auth-module' }),
     ];
-    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: obs, miniSkills: [] });
+    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: obs });
     const supportsEdges = kg.edges.filter(e => e.edgeType === 'supports');
     // decision supports operational-knowledge
     expect(supportsEdges.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('infers derived_from edges from mini-skill to source observations', () => {
-    const obs = makeObs({ id: 10, type: 'decision', title: 'Source obs' });
-    const skill = makeSkill({ id: 1, title: 'Promoted skill', sourceObservationIds: [10] });
-    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: [obs], miniSkills: [skill] });
-    const derivedEdges = kg.edges.filter(e => e.edgeType === 'derived_from');
-    expect(derivedEdges.length).toBe(1);
-    expect(derivedEdges[0].source).toBe('skill:1');
-    expect(derivedEdges[0].target).toBe('obs:10');
-  });
-
   it('no self-edges', () => {
     const obs = makeObs({ id: 1, type: 'decision', title: 'D1', entityName: 'auth' });
-    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: [obs], miniSkills: [] });
+    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: [obs] });
     for (const edge of kg.edges) {
       expect(edge.source).not.toBe(edge.target);
     }
@@ -205,7 +181,7 @@ describe('Edge inference', () => {
       }),
     );
 
-    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: obs, miniSkills: [] });
+    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: obs });
     const relatesEdges = kg.edges.filter(e => e.edgeType === 'relates_to');
     const degree = new Map<string, number>();
     for (const edge of relatesEdges) {
@@ -227,7 +203,7 @@ describe('Edge inference', () => {
       }),
     );
 
-    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: obs, miniSkills: [] });
+    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: obs });
     const mentionsEdges = kg.edges.filter(e => e.edgeType === 'mentions');
 
     expect(mentionsEdges.length).toBe(0);
@@ -243,11 +219,11 @@ describe('Section clusters', () => {
       makeObs({ id: 2, type: 'gotcha', title: 'G1' }),
       makeObs({ id: 3, type: 'how-it-works', title: 'H1' }),
       makeObs({ id: 4, source: 'git', sourceDetail: 'git-ingest', title: 'Git1' }),
+      makeObs({ id: 5, type: 'how-it-works', title: 'C1', category: 'coding_convention' }),
     ];
-    const skill = makeSkill({ id: 1, title: 'Skill1' });
-    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: obs, miniSkills: [skill] });
+    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: obs });
     const sectionIds = kg.clusters.map(c => c.sectionId).sort();
-    expect(sectionIds).toEqual(['core-decisions', 'git-backed-facts', 'known-gotchas', 'operational-knowledge', 'promoted-skills']);
+    expect(sectionIds).toEqual(['coding-conventions', 'core-decisions', 'git-backed-facts', 'known-gotchas', 'operational-knowledge']);
   });
 
   it('nodeCount in cluster matches actual nodes in that section', () => {
@@ -256,7 +232,7 @@ describe('Section clusters', () => {
       makeObs({ id: 2, type: 'decision', title: 'D2' }),
       makeObs({ id: 3, type: 'gotcha', title: 'G1' }),
     ];
-    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: obs, miniSkills: [] });
+    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: obs });
     const coreCluster = kg.clusters.find(c => c.sectionId === 'core-decisions');
     expect(coreCluster!.nodeCount).toBe(2);
     const gotchaCluster = kg.clusters.find(c => c.sectionId === 'known-gotchas');
@@ -272,7 +248,7 @@ describe('Stats', () => {
       makeObs({ id: 1, type: 'decision', title: 'D1', entityName: 'auth' }),
       makeObs({ id: 2, type: 'gotcha', title: 'G1', entityName: 'auth' }),
     ];
-    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: obs, miniSkills: [] });
+    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: obs });
     expect(kg.stats.totalNodes).toBe(2);
     expect(kg.stats.clusterCount).toBe(2);
     expect(kg.stats.sectionCounts['core-decisions']).toBe(1);
@@ -285,26 +261,20 @@ describe('Stats', () => {
 describe('Node properties', () => {
   it('node id uses obs:<id> format for observations', () => {
     const obs = makeObs({ id: 42, type: 'decision', title: 'D1' });
-    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: [obs], miniSkills: [] });
+    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: [obs] });
     expect(kg.nodes[0].id).toBe('obs:42');
-  });
-
-  it('node id uses skill:<id> format for mini-skills', () => {
-    const skill = makeSkill({ id: 7, title: 'Skill' });
-    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: [], miniSkills: [skill] });
-    expect(kg.nodes[0].id).toBe('skill:7');
   });
 
   it('node has provenance refs', () => {
     const obs = makeObs({ id: 42, type: 'decision', title: 'D1' });
-    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: [obs], miniSkills: [] });
+    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: [obs] });
     expect(kg.nodes[0].refs.length).toBeGreaterThan(0);
     expect(kg.nodes[0].refs[0].id).toBe('obs:42');
   });
 
   it('evidenceCount reflects facts + concepts + filesModified', () => {
     const obs = makeObs({ id: 1, type: 'decision', title: 'D1', facts: ['f1', 'f2'], concepts: ['c1'], filesModified: ['a.ts', 'b.ts'] });
-    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: [obs], miniSkills: [] });
+    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: [obs] });
     expect(kg.nodes[0].evidenceCount).toBe(5);
   });
 });
@@ -313,7 +283,7 @@ describe('Node properties', () => {
 
 describe('Title and metadata', () => {
   it('has correct title and projectId', () => {
-    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: [], miniSkills: [] });
+    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: [] });
     expect(kg.title).toBe('Memory Map');
     expect(kg.kind).toBe('deterministic-memory-map');
     expect(kg.semantic).toBe(false);
@@ -321,7 +291,7 @@ describe('Title and metadata', () => {
   });
 
   it('uses generatedAt when provided', () => {
-    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: [], miniSkills: [], generatedAt: FIXED_TIMESTAMP });
+    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: [], generatedAt: FIXED_TIMESTAMP });
     expect(kg.generatedAt).toBe(FIXED_TIMESTAMP);
   });
 });
@@ -340,7 +310,6 @@ describe('Graph-store relation merging', () => {
     const kg = generateKnowledgeGraph({
       projectId: PROJECT_ID,
       observations: obs,
-      miniSkills: [],
       graphEntities: [],
       graphRelations: relations,
     });
@@ -363,7 +332,6 @@ describe('Graph-store relation merging', () => {
     const kg = generateKnowledgeGraph({
       projectId: PROJECT_ID,
       observations: obs,
-      miniSkills: [],
       graphEntities: [],
       graphRelations: relations,
     });
@@ -384,7 +352,6 @@ describe('Graph-store relation merging', () => {
     const kg = generateKnowledgeGraph({
       projectId: PROJECT_ID,
       observations: obs,
-      miniSkills: [],
       graphEntities: [],
       graphRelations: relations,
     });
@@ -409,7 +376,6 @@ describe('Graph-store relation merging', () => {
     const kg = generateKnowledgeGraph({
       projectId: PROJECT_ID,
       observations: obs,
-      miniSkills: [],
       graphEntities: [],
       graphRelations: relations,
     });
@@ -432,9 +398,9 @@ describe('Cluster labels are i18n-ready', () => {
       makeObs({ id: 1, type: 'decision', title: 'D1' }),
       makeObs({ id: 2, type: 'gotcha', title: 'G1' }),
     ];
-    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: obs, miniSkills: [] });
+    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: obs });
     // Clusters must have sectionId that maps to a known i18n key
-    const knownSectionIds = ['core-decisions', 'operational-knowledge', 'known-gotchas', 'git-backed-facts', 'promoted-skills'];
+    const knownSectionIds = ['core-decisions', 'operational-knowledge', 'known-gotchas', 'git-backed-facts', 'coding-conventions'];
     for (const cluster of kg.clusters) {
       expect(knownSectionIds).toContain(cluster.sectionId);
     }
@@ -442,7 +408,7 @@ describe('Cluster labels are i18n-ready', () => {
 
   it('cluster label is present but frontend should use i18n key, not API label', () => {
     const obs = [makeObs({ id: 1, type: 'decision', title: 'D1' })];
-    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: obs, miniSkills: [] });
+    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: obs });
     // API returns English label as default, but frontend must use sectionId -> i18n
     const cluster = kg.clusters.find(c => c.sectionId === 'core-decisions');
     expect(cluster).toBeDefined();
@@ -461,8 +427,7 @@ describe('EdgeType style data', () => {
       makeObs({ id: 2, type: 'how-it-works', title: 'H1', entityName: 'auth' }),
       makeObs({ id: 3, type: 'gotcha', title: 'G1', entityName: 'auth' }),
     ];
-    const skill = makeSkill({ id: 1, title: 'Skill', sourceObservationIds: [1] });
-    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: obs, miniSkills: [skill] });
+    const kg = generateKnowledgeGraph({ projectId: PROJECT_ID, observations: obs });
 
     // All edge types produced must be in the known set
     const knownEdgeTypes = ['supports', 'relates_to', 'mentions', 'derived_from'];

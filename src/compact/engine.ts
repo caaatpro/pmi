@@ -9,7 +9,7 @@
  * Layer 3 (detail)   → Full observation content (~500-1000 tokens/result)
  */
 
-import type { SearchOptions, IndexEntry, TimelineContext, MemorixDocument, ObservationRef, MemoryRef, MiniSkill, SourceSnapshot, ObservationReader } from '../types.js';
+import type { SearchOptions, IndexEntry, TimelineContext, MemorixDocument, ObservationRef, MemoryRef, ObservationReader } from '../types.js';
 import {
   searchObservations,
   getTimeline,
@@ -26,9 +26,7 @@ import { countTextTokens } from './token-budget.js';
 import { resolveAliases } from '../project/aliases.js';
 import { parseMemoryRef } from '../memory/refs.js';
 import { getObservationStore } from '../store/obs-store.js';
-import { getMiniSkillStore } from '../store/mini-skill-store.js';
-import { miniSkillToDocument, resolveProvenanceStatus, type ProvenanceStatus } from '../skills/mini-skills.js';
-import { redactCredentials } from '../memory/secret-filter.js';
+import { miniSkillTopicKeyPrefix } from '../store/sqlite-db.js';
 import { canReadObservation, filterReadableObservations } from '../memory/visibility.js';
 import { getProjectDataDir } from '../store/persistence.js';
 import { MemoryFeedbackStore, feedbackWeightMultiplier } from '../memory/feedback.js';
@@ -220,11 +218,11 @@ export async function compactTimeline(
 }
 
 /**
- * Layer 3: Get full observation or mini-skill details by IDs or typed refs.
+ * Layer 3: Get full observation details by IDs or typed refs.
  * Only called after the agent has filtered via L1/L2.
  *
- * Phase 3a: Accepts typed MemoryRef inputs (obs:42, skill:3) alongside
- * legacy bare numbers and ObservationRef objects.
+ * Accepts typed MemoryRef inputs (obs:42, legacy skill:3) alongside bare
+ * numbers and ObservationRef objects.
  */
 export async function compactDetail(
   idsOrRefs: number[] | ObservationRef[] | string[],
@@ -268,26 +266,20 @@ export async function compactDetail(
   const slotDoc = new Map<number, MemorixDocument>();
   const slotFormatted = new Map<number, string>();
 
-  // --- Resolve mini-skill refs ---
+  // --- Legacy mini-skill refs (skill:3) ---
+  // Mini-skills were converted into coding_convention memories by migration
+  // pmi-5, keyed by topicKey mini-skill/<id>/<fingerprint>; such a ref opens that memory.
   if (skillRefsIndexed.length > 0) {
-    try {
-      const store = getMiniSkillStore();
-      const allSkills = await store.loadAll();
-      const skillMap = new Map(allSkills.map((s) => [s.id, s]));
-      for (const { ref, idx } of skillRefsIndexed) {
-        const skill = skillMap.get(ref.id);
-        if (skill) {
-          slotDoc.set(idx, miniSkillToDocument(skill));
-          const obsLookup = (id: number) => getObservation(id);
-          const status = resolveProvenanceStatus(skill, obsLookup);
-          slotFormatted.set(idx, formatMiniSkillDetail(skill, status));
-        } else {
-          slotFormatted.set(idx, `Mini-skill S${ref.id} not found.`);
-        }
-      }
-    } catch {
-      for (const { ref, idx } of skillRefsIndexed) {
-        slotFormatted.set(idx, `Mini-skill S${ref.id}: store unavailable.`);
+    const readable = filterReadableObservations(getAllObservations(), options.reader);
+    for (const { ref, idx } of skillRefsIndexed) {
+      const converted = readable.find((obs) =>
+        obs.topicKey?.startsWith(miniSkillTopicKeyPrefix(ref.id))
+        && (!options.reader?.projectId || obs.projectId === options.reader.projectId));
+      if (converted) {
+        parsedRefs[idx] = { kind: 'obs', id: converted.id, projectId: converted.projectId };
+        obsRefsIndexed.push({ ref: parsedRefs[idx], idx });
+      } else {
+        slotFormatted.set(idx, `Mini-skill S${ref.id} not found (mini-skills are now coding_convention memories).`);
       }
     }
   }
@@ -300,7 +292,7 @@ export async function compactDetail(
   // Security: refs WITHOUT projectId are treated as ambiguous — the in-memory
   // lookup may return a wrong-project observation. Callers (memorix_detail tool)
   // should always inject projectId for bare numeric IDs.
-  await ensureFreshIndex(); // unified freshness gate: observations + mini-skills
+  await ensureFreshIndex(); // freshness gate for the observation index
   const toRefKey = (ref: ObservationRef) => `${ref.projectId ?? ''}::${ref.id}`;
   const documentMap = new Map<string, MemorixDocument>();
   const missingRefs: ObservationRef[] = [];
@@ -512,54 +504,4 @@ function observationToDocument(obs: ReturnType<typeof getAllObservations>[number
     createdByAgentId: obs.createdByAgentId ?? '',
     sharedWithAgentIds: JSON.stringify(obs.sharedWithAgentIds ?? []),
   };
-}
-
-/**
- * Format a mini-skill detail view with provenance status.
- */
-function formatMiniSkillDetail(skill: MiniSkill, provenanceStatus: ProvenanceStatus): string {
-  const lines: string[] = [];
-
-  lines.push(`S${skill.id} core ${skill.title}`);
-  lines.push('='.repeat(50));
-  lines.push(`Type: promoted knowledge (mini-skill)`);
-  lines.push(`Entity: ${skill.sourceEntity}`);
-  lines.push(`Project: ${skill.projectId}`);
-  lines.push(`Created: ${new Date(skill.createdAt).toLocaleString()}`);
-  lines.push(`Used: ${skill.usedCount} time(s)`);
-  lines.push(`Provenance: ${provenanceStatus}`);
-  lines.push('');
-  lines.push(`Instruction: ${redactCredentials(skill.instruction)}`);
-  lines.push(`Trigger: ${skill.trigger}`);
-
-  if (skill.facts.length > 0) {
-    lines.push('');
-    lines.push('Facts:');
-    for (const fact of skill.facts) {
-      lines.push(`- ${redactCredentials(fact)}`);
-    }
-  }
-
-  if (skill.tags.length > 0) {
-    lines.push('');
-    lines.push(`Tags: ${skill.tags.join(', ')}`);
-  }
-
-  // Show source observation IDs with status
-  if (skill.sourceObservationIds.length > 0) {
-    lines.push('');
-    lines.push(`Source observations: ${skill.sourceObservationIds.map(id => `#${id}`).join(', ')}`);
-  }
-
-  // Show snapshot summary if available
-  if (skill.sourceSnapshot) {
-    try {
-      const snapshot: SourceSnapshot = JSON.parse(skill.sourceSnapshot);
-      if (snapshot.observations && snapshot.observations.length > 0) {
-        lines.push(`Snapshot: ${snapshot.observations.length} observation(s), frozen at ${new Date(snapshot.promotedAt).toLocaleString()}`);
-      }
-    } catch { /* malformed snapshot — skip */ }
-  }
-
-  return lines.join('\n');
 }

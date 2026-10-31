@@ -4,7 +4,7 @@ import { withFreshIndex } from '../../memory/freshness.js';
 import { getAllObservations, getObservation, getProjectObservations, resolveObservations, storeObservation, suggestTopicKey } from '../../memory/observations.js';
 import { buildGraphContextPacket, formatGraphContextPrompt } from '../../memory/graph-context.js';
 import { applyDeduplicationPlan, planMemoryDeduplication } from '../../memory/deduplication.js';
-import { canManageObservation, filterReadableObservations, resolveObservationVisibility } from '../../memory/visibility.js';
+import { canManageObservation, filterReadableObservations } from '../../memory/visibility.js';
 import { getObservationStore } from '../../store/obs-store.js';
 import {
   asStringArg,
@@ -51,10 +51,7 @@ export default defineCommand({
     threshold: { type: 'string', description: 'Similarity threshold for consolidate' },
     dryRun: { type: 'boolean', description: 'Preview changes without mutating data' },
     'dry-run': { type: 'boolean', description: 'Kebab-case alias for --dryRun' },
-    trigger: { type: 'string', description: 'Custom trigger text for promoted mini-skills' },
-    instruction: { type: 'string', description: 'Custom instruction for promoted mini-skills' },
-    tags: { type: 'string', description: 'Comma-separated extra tags for promoted mini-skills' },
-    skillId: { type: 'string', description: 'Mini-skill ID for list/delete actions' },
+    tags: { type: 'string', description: 'Comma-separated tags for long-term memories' },
     kind: { type: 'string', description: 'Long-term memory kind: episodic, semantic, or procedural' },
     scope: { type: 'string', description: 'Long-term memory scope: project, user, or team' },
     portability: { type: 'string', description: 'Long-term memory portability: project-bound or portable' },
@@ -370,64 +367,6 @@ export default defineCommand({
           return;
         }
 
-        case 'promote': {
-          const promoteAction = (args.action as string | undefined) || 'promote';
-          const { promoteToMiniSkill, loadAllMiniSkills, deleteMiniSkill } = await import('../../skills/mini-skills.js');
-          const { initMiniSkillStore } = await import('../../store/mini-skill-store.js');
-          await initMiniSkillStore(dataDir);
-
-          if (promoteAction === 'list') {
-            const skills = await loadAllMiniSkills(project.rootPath);
-            emitResult(
-              { project, skills, action: promoteAction },
-              skills.length === 0 ? 'No mini-skills found.' : skills.map((skill) => `- #${skill.id} ${skill.title}`).join('\n'),
-              asJson,
-            );
-            return;
-          }
-
-          if (promoteAction === 'delete') {
-            const skillId = Number.parseInt((args.skillId as string | undefined) || '', 10);
-            if (!Number.isFinite(skillId)) {
-              emitError('skillId is required for "memorix memory promote --action delete"', asJson);
-              return;
-            }
-            const deleted = await deleteMiniSkill(project.rootPath, skillId);
-            if (!deleted) {
-              emitError(`Mini-skill #${skillId} not found`, asJson);
-              return;
-            }
-            emitResult({ project, skillId, deleted: true }, `Deleted mini-skill #${skillId}.`, asJson);
-            return;
-          }
-
-          const ids = parseObservationIds(getIdArg(args, positional));
-          if (ids.length === 0) {
-            emitError('Provide --id <n> or --ids 1,2,3 for "memorix memory promote"', asJson);
-            return;
-          }
-          const observations = await withFreshIndex(() => getAllObservations());
-          const matched = filterReadableObservations(
-            observations.filter((obs) => obs.projectId === project.id && ids.includes(obs.id)),
-            reader,
-          ).filter((observation) => resolveObservationVisibility(observation) === 'project');
-          if (matched.length === 0) {
-            emitError(`No project-visible observations found for IDs: ${ids.join(', ')}. Private and team records cannot be promoted into shared skills.`, asJson);
-            return;
-          }
-          const skill = await promoteToMiniSkill(project.rootPath, project.id, matched, {
-            trigger: args.trigger as string | undefined,
-            instruction: args.instruction as string | undefined,
-            tags: parseCsvList(args.tags as string | undefined),
-          });
-          emitResult(
-            { project, action: promoteAction, skill, sourceObservationIds: matched.map((obs) => obs.id) },
-            `Created mini-skill #${skill.id}: ${skill.title}`,
-            asJson,
-          );
-          return;
-        }
-
         case 'long-term': {
           const resolvedLongTermAction = longTermAction ?? 'list';
           const longTermPositional = positional.slice(1);
@@ -678,7 +617,6 @@ function printMemoryUsage(): void {
   console.log('  memorix memory resolve --ids 42,43 [--status resolved|archived] [--dry-run]');
   console.log('  memorix memory deduplicate [--query "..."] [--dryRun]');
   console.log('  memorix memory consolidate [--action preview|execute] [--threshold 0.45]');
-  console.log('  memorix memory promote --ids 42,43 [--trigger "..."] [--instruction "..."]');
   console.log('  memorix memory long-term list [--all]');
   console.log('  memorix memory long-term add --kind semantic --scope user --portability portable --title "..." --text "..." [--tags "..."] [--applicability "..."]');
   console.log('  memorix memory long-term promote --fromObservation 42 --kind procedural --scope project');

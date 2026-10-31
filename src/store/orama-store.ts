@@ -9,9 +9,8 @@
  */
 
 import { components, create, insert, insertMultiple, search, remove, update, count, getByID, type AnyOrama } from '@orama/orama';
-import type { MemorixDocument, SearchOptions, IndexEntry, KnowledgeLayer, Observation, ObservationReader } from '../types.js';
+import type { DocumentType, MemorixDocument, SearchOptions, IndexEntry, KnowledgeLayer, Observation, ObservationReader } from '../types.js';
 import { OBSERVATION_ICONS, type ObservationType } from '../types.js';
-import { resolveKnowledgeLayer } from '../skills/mini-skills.js';
 import { canReadObservation } from '../memory/visibility.js';
 import {
   getEmbeddingProvider,
@@ -42,6 +41,15 @@ import {
   sanitizeDerivedViewFailureReason,
   type RetrievalDerivedViews,
 } from '../search/derived-view-receipt.js';
+
+/**
+ * Knowledge layer of an indexed observation, computed at index time and not
+ * stored in SQLite: git evidence vs. project truth.
+ */
+function resolveKnowledgeLayer(_documentType: DocumentType, sourceDetail?: string, source?: string): KnowledgeLayer {
+  if (sourceDetail === 'git-ingest' || source === 'git') return 'evidence';
+  return 'project-truth';
+}
 
 let db: AnyOrama | null = null;
 let dbInitPromise: Promise<AnyOrama> | null = null;
@@ -1260,7 +1268,7 @@ export async function searchObservations(options: SearchOptions): Promise<IndexE
         admissionState: (doc.admissionState || undefined) as IndexEntry['admissionState'],
         visibility: (doc.visibility || undefined) as IndexEntry['visibility'],
         entityName: doc.entityName || undefined,
-        documentType: (doc.documentType || 'observation') as 'observation' | 'mini-skill',
+        documentType: (doc.documentType || 'observation') as DocumentType,
         knowledgeLayer: (doc.knowledgeLayer || 'project-truth') as KnowledgeLayer,
         _isCommandLog: isCommandLogEntry(doc.title),
       };

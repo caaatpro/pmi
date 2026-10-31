@@ -27,10 +27,6 @@ export {
   loadObservationsJson,
   saveIdCounter,
   loadIdCounter,
-  saveMiniSkillsJson,
-  loadMiniSkillsJson,
-  loadMiniSkillsCounter,
-  saveMiniSkillsCounter,
   saveSessionsJson,
   loadSessionsJson,
 } from './persistence-json.js';
