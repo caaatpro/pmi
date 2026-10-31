@@ -41,7 +41,7 @@
 | GET | `/v1/projects/:id` | проект + репозитории + роль вызывающего |
 | PUT | `/v1/projects/:id/grants` | выдать/отозвать роль (maintainer) |
 | POST | `/v1/projects/:id/repositories` | привязать репозиторий `{root_commit, remote_urls}` |
-| POST | `/v1/projects/resolve` | найти проект по `{root_commit, remote_urls, legacy_project_id}` — используется `pmi project link` |
+| POST | `/v1/projects/resolve` | найти проект по `{root_commit, remote_urls, legacy_project_id, project?, create?}` — используется `pmi project link`. Выигрывает проект, который реплицирует именно этот `legacy_project_id`; совпадение только по `root_commit` (форк, переименованный remote) — `409 identity_mismatch`, а с `create` форк получает свой проект; несколько проектов с тем же id — `409 ambiguous_project`, выбор через `project` (id, `slug` или `org/slug`). В `error.details` — подходящие видимые проекты `{id, org, slug, name, legacyProjectIds}` |
 | GET | `/v1/projects/:id/status` | сводка: активные сессии, открытые конфликты, git‑курсор, свежесть overview |
 | GET | `/v1/projects/:id/stats` | реализованная сводка (Phase 11): знания по категориям, доверию и статусу, `needsReview`, `unconfirmed`, сессии по статусам, открытые конфликты, курсоры git; считается под RLS (viewer+) |
 | GET | `/v1/projects/:id/audit` | журнал аудита проекта, новые сверху, `?limit=&before=<id>` (maintainer+) |

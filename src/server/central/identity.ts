@@ -308,40 +308,77 @@ export interface ResolveProjectInput {
   legacyProjectId: string;
   rootCommit?: string;
   remoteUrls?: string[];
+  /** Pick one of several matching projects: its id, slug or `org/slug`. */
+  project?: string;
   create?: { orgSlug?: string; slug?: string; name?: string };
+}
+
+export interface ProjectCandidate {
+  id: string;
+  slug: string;
+  org: string;
+  name: string;
+  legacyProjectIds: string[];
 }
 
 /**
  * Find the project a working copy belongs to, by Memorix project id or by the
  * repository root commit; optionally create it. Used by `pmi project link`.
+ *
+ * A fork shares the root commit with its upstream. The project replicating
+ * this exact Memorix id wins; a root-commit-only match is refused (or, with
+ * `create`, the fork gets its own project). When several projects replicate
+ * the id, the caller picks one with `project`, only among projects it sees.
  */
 export async function resolveProject(
   db: Queryable,
   user: AuthUser,
   input: ResolveProjectInput,
 ): Promise<{ project: ProjectRecord; created: boolean }> {
-  const visible = await db.query<ProjectRecord>(
-    `SELECT DISTINCT ${PROJECT_COLUMNS}
+  const visible = await db.query<ProjectRecord & { org: string }>(
+    `SELECT DISTINCT ${PROJECT_COLUMNS}, o.slug AS org
        FROM core.projects p
+       JOIN core.organizations o ON o.id = p.org_id
        LEFT JOIN core.repositories r ON r.project_id = p.id
       WHERE p.archived_at IS NULL
         AND core.project_role_of(p.id, $1) IS NOT NULL
         AND ($2 = ANY (p.legacy_project_ids) OR ($3::text IS NOT NULL AND r.root_commit = $3))`,
     [user.id, input.legacyProjectId, input.rootCommit ?? null],
   );
-  if (visible.length > 1) {
-    throw new HttpError(409, 'ambiguous_project', 'several projects match this repository (a fork shares the first commit); ask an organization admin',
-      visible.map((project) => ({ id: project.id, slug: project.slug })));
+  const candidates = (rows: typeof visible): ProjectCandidate[] => rows.map(({ id, slug, org, name, legacyProjectIds }) => ({ id, slug, org, name, legacyProjectIds }));
+  const exact = visible.filter((p) => p.legacyProjectIds.includes(input.legacyProjectId));
+  let chosen: (ProjectRecord & { org: string }) | undefined;
+  if (input.project) {
+    const ref = input.project;
+    const picked = visible.filter((p) => p.id === ref || p.slug === ref || `${p.org}/${p.slug}` === ref);
+    if (picked.length === 0) throw new HttpError(404, 'project_not_found', `no project "${ref}" matches this repository`, candidates(visible));
+    if (picked.length > 1) throw new HttpError(409, 'ambiguous_project', `"${ref}" names several projects; use org/slug or the id`, candidates(picked));
+    chosen = picked[0];
+  } else if (exact.length > 1) {
+    throw new HttpError(409, 'ambiguous_project', 'several projects replicate this repository; choose one with --project <org/slug>', candidates(exact));
+  } else {
+    chosen = exact[0];
   }
-  let project = visible[0];
-  let created = false;
-  if (project && !project.legacyProjectIds.includes(input.legacyProjectId)) {
+  if (chosen && !chosen.legacyProjectIds.includes(input.legacyProjectId)) {
     // Sync rows carry the Memorix project id; mixing two ids in one project
-    // would split its memory silently. Mapping between ids comes with the
-    // `.pmi/project.json` identity in Phase 5.
+    // would split its memory silently.
     throw new HttpError(409, 'identity_mismatch',
-      `this repository is linked to project "${project.slug}" under ${project.legacyProjectIds.join(', ')}, but the local project id is ${input.legacyProjectId}`);
+      `project "${chosen.slug}" replicates ${chosen.legacyProjectIds.join(', ')}, but the local project id is ${input.legacyProjectId}`,
+      candidates([chosen]));
   }
+  if (!chosen && visible.length > 0 && !input.create) {
+    // Only the root commit matched: a fork or a renamed remote. A fork gets a
+    // project of its own with --create.
+    throw new HttpError(409, 'identity_mismatch',
+      `this repository shares its first commit with ${visible.map((p) => `"${p.org}/${p.slug}"`).join(', ')}, but its local project id ${input.legacyProjectId} is not replicated there; ` +
+      'for a fork, create its own project with --create', candidates(visible));
+  }
+  let project: ProjectRecord | undefined;
+  if (chosen) {
+    const { org: _org, ...record } = chosen;
+    project = record;
+  }
+  let created = false;
   if (!project) {
     if (!input.create) throw new HttpError(404, 'project_not_found', 'no project is linked to this repository yet');
     const memberships = await listMemberships(db, user.id);

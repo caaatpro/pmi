@@ -113,11 +113,32 @@ function remoteUrls(cwd: string): string[] {
   return [...new Set(urls.map((url) => url.replace(/^(https?:\/\/)[^@/]+@/, '$1')))];
 }
 
+interface ProjectCandidate {
+  id: string;
+  slug: string;
+  org?: string;
+  name?: string;
+  legacyProjectIds?: string[];
+}
+
+/** The projects the server offered, each with the command that links it. */
+export function describeCandidates(candidates: ProjectCandidate[]): string {
+  return [
+    'Matching projects:',
+    ...candidates.map((candidate) => {
+      const ref = candidate.org ? `${candidate.org}/${candidate.slug}` : candidate.slug;
+      const ids = candidate.legacyProjectIds?.length ? ` [${candidate.legacyProjectIds.join(', ')}]` : '';
+      return `  ${ref}${candidate.name && candidate.name !== candidate.slug ? ` — ${candidate.name}` : ''}${ids}\n    pmi project link --project ${ref}`;
+    }),
+  ].join('\n');
+}
+
 const link = defineCommand({
   meta: { name: 'link', description: 'Link this working copy to a project on the PMI server' },
   args: {
     server: { type: 'string', description: 'Server URL (default: the last one logged in to)' },
-    create: { type: 'boolean', description: 'Create the project when none matches (org owner/admin)', default: false },
+    project: { type: 'string', description: 'Choose among several matching projects: org/slug, slug or id' },
+    create: { type: 'boolean', description: 'Create the project when none matches, or a separate one for a fork (org owner/admin)', default: false },
     org: { type: 'string', description: 'Organization slug for --create' },
     slug: { type: 'string', description: 'Project slug for --create' },
     name: { type: 'string', description: 'Project name for --create' },
@@ -140,6 +161,7 @@ const link = defineCommand({
           legacy_project_id: project.id,
           ...(rootCommit ? { root_commit: rootCommit } : {}),
           remote_urls: remoteUrls(project.rootPath),
+          ...(args.project ? { project: String(args.project) } : {}),
           ...(args.create ? { create: { org: args.org, slug: args.slug, name: args.name } } : {}),
         },
       );
@@ -161,8 +183,15 @@ const link = defineCommand({
         asJson,
       );
     } catch (error) {
-      if (error instanceof PmiApiError && error.code === 'project_not_found') {
+      if (error instanceof PmiApiError && error.code === 'project_not_found' && !args.project) {
         emitError('no project on the server matches this repository; ask an org admin, or pass --create if you are one', asJson);
+        process.exitCode = 1;
+        return;
+      }
+      if (error instanceof PmiApiError && Array.isArray(error.details) && error.details.length > 0) {
+        const candidates = error.details as ProjectCandidate[];
+        if (asJson) console.error(JSON.stringify({ error: error.message, code: error.code, candidates }, null, 2));
+        else console.error(`Error: ${error.message}\n${describeCandidates(candidates)}`);
         process.exitCode = 1;
         return;
       }
