@@ -20,6 +20,7 @@
 | GET | `/ready` | Postgres, миграции, blob store |
 | GET | `/metrics` | Prometheus (auth: отдельный токен `PMI_METRICS_TOKEN`) |
 | GET | `/v1/me` | Пользователь, организации, проекты и роли |
+| GET | `/`, `/ui/` | Веб‑интерфейс (без auth на сами файлы; данные — через `/v1` с токеном), [WEB_UI.md](WEB_UI.md). `PMI_UI=0` отключает |
 
 ### 1.2 Организации, доступ
 
@@ -42,12 +43,14 @@
 | POST | `/v1/projects/:id/repositories` | привязать репозиторий `{root_commit, remote_urls}` |
 | POST | `/v1/projects/resolve` | найти проект по `{root_commit, remote_urls, legacy_project_id}` — используется `pmi project link` |
 | GET | `/v1/projects/:id/status` | сводка: активные сессии, открытые конфликты, git‑курсор, свежесть overview |
+| GET | `/v1/projects/:id/stats` | реализованная сводка (Phase 11): знания по категориям, доверию и статусу, `needsReview`, `unconfirmed`, сессии по статусам, открытые конфликты, курсоры git; считается под RLS (viewer+) |
+| GET | `/v1/projects/:id/audit` | журнал аудита проекта, новые сверху, `?limit=&before=<id>` (maintainer+) |
 
 ### 1.4 Память
 
 | Метод | Путь | Описание |
 |---|---|---|
-| GET | `/v1/projects/:id/memories` | фильтры: `category`, `status`, `confidence`, `component`, `file`, `since_seq`, `limit`, `cursor` |
+| GET | `/v1/projects/:id/memories` | фильтры: `category`, `status`, `confidence`, `component`, `file`, `since_seq`, `limit`, `cursor`; реализованы `category`, `status`, `confidence`, `component`, `file`, `limit`, `offset`. Записи содержат `authorEmail`, версии — `changedByEmail` |
 | POST | `/v1/projects/:id/memories` | создать; если активная запись с тем же `topic_key` есть — новая версия (как upsert в Memorix) |
 | GET | `/v1/memories/:mid` | запись; `?include=versions,links,conflicts` |
 | PATCH | `/v1/memories/:mid` | изменить поля, `If-Match`; создаёт версию |

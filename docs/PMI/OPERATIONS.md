@@ -31,6 +31,8 @@ pmis create-user lead@acme.com --org acme --role admin
 pmis issue-token lead@acme.com --name laptop --days 90
 ```
 
+Веб‑интерфейс открывается по `https://<PMI_DOMAIN>/ui/` с тем же токеном ([WEB_UI.md](WEB_UI.md)).
+
 ## 3. Конфигурация `pmi-server`
 
 | Переменная | По умолчанию | Смысл |
@@ -43,6 +45,7 @@ pmis issue-token lead@acme.com --name laptop --days 90
 | `PMI_BLOB_KEY` | выкл. | 32 байта base64: AES‑256‑GCM для blobs на диске и в БД |
 | `PMI_BLOB_KEYS_OLD` | — | Предыдущие ключи через запятую (на время ротации) |
 | `PMI_METRICS_TOKEN` | выкл. | Bearer‑токен для `/metrics`; без него эндпоинт отвечает 404 |
+| `PMI_UI` | вкл. | `0` — отключить веб‑интерфейс (`/ui/`, [WEB_UI.md](WEB_UI.md)); API не меняется |
 | `MEMORIX_EMBEDDING` | `off` | `fastembed` / `transformers` / `api`: семантический поиск (384 измерения) |
 
 ## 4. Пользователи и доступ

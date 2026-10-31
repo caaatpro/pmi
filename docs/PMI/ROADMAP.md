@@ -18,6 +18,7 @@
 | 8 Context engine | `pmi/phase-8-context` | L1/L2/L3, серверный hybrid search, бюджет, метрики токенов | TEST 6 |
 | 9 Git intelligence | `pmi/phase-9-git` | Курсоры, классификаторы, устаревание знаний | TEST 5 |
 | 10 Hardening | `pmi/phase-10-hardening` | Безопасность, нагрузка, backup/restore, мониторинг, документация | все 10 повторно, end‑to‑end |
+| 11 Web UI | `pmi/phase-11-web-ui` | Веб‑интерфейс `pmi-server`: проекты, знания и актуальность, сессии, конфликты, аудит, подтверждение знаний людьми | `tests/central/web-ui.test.ts`, проверка в браузере |
 
 Порядок 6 → 7 → 8 → 9 можно частично параллелить после Phase 5, но Phase 7 зависит от daemon из Phase 6.
 
@@ -272,6 +273,17 @@ Security review (auth, RLS, path traversal в restore, zip‑slip в bundle, р�
 - **Экономия токенов на живых агентах не измерена**: в этой среде нельзя запускать агентов с учётом их токенов. Есть оценка в каждом receipt (`estimatedSavings`) и проверка на фикстуре. Бенчмарк «с PMI / без PMI» на реальной модели — следующий шаг эксплуатации.
 - **Ручной чек‑лист на живых агентах** (Claude Code, Codex в настоящем IDE) не проводился; TEST 10 запускает MCP‑серверы ровно по конфигам `pmi setup`, но клиент MCP — тестовый.
 - **Разрезка `src/server.ts` и перенос mini‑skills** выполнены отдельной сессией и слиты в ветку `pmi/integration` вместе со всеми фазами: `server.ts` — 909 строк, инструменты в `src/mcp/tools/*`; mini‑skills — записи `coding_convention` (миграция `pmi-5-mini-skills-to-conventions`, ключ с отпечатком навыка, чтобы одинаковые локальные id разных машин не сливались), подсистема и инструменты `memorix_skills`/`memorix_promote` удалены (full — 49 инструментов).
+
+## Phase 11 — Web UI
+
+Вне исходного ТЗ: просмотр состояния без CLI и `curl`, и место, где люди подтверждают знания (ТЗ требует подтверждения человеком, а до этого оно было доступно только через API). Подробности — [WEB_UI.md](WEB_UI.md).
+
+| Пункт | Результат | Проверка |
+|---|---|---|
+| Интерфейс | React 19 + Mantine 9, сборка Vite (`npm run build:ui`) в `dist/server/central/ui` |
+| Раздача | `/ui/` из `pmi-server`: файлы в памяти, CSP без inline‑кода (nonce для стилей Mantine), без cookies; `PMI_UI=0` отключает | `tests/central/web-ui.test.ts` |
+| API | `GET /v1/projects/:id/stats` (подсчёты под RLS), `GET /v1/projects/:id/audit` (maintainer+), `offset` у списка знаний, email авторов в записях и версиях | `tests/central/web-ui.test.ts` |
+| Страницы | проекты; обзор проекта; знания с фильтрами и поиском; запись с историей и кнопками «Подтвердить» / «Пометить устаревшим»; сессии и сессия (handoff brief, checkpoints, снимки); конфликты; журнал аудита; поиск по всем проектам; RU/EN; светлая и тёмная темы; ширина телефона | ручная проверка на демо‑сервере |
 
 ## Риски
 
