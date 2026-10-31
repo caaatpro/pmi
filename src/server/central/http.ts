@@ -131,6 +131,7 @@ const resolveSchema = z.object({
   legacy_project_id: z.string().min(1).max(512),
   root_commit: z.string().regex(/^[0-9a-f]{40,64}$/).optional(),
   remote_urls: z.array(z.string().max(1024)).max(20).optional(),
+  project: z.string().min(1).max(200).optional(),
   create: z.object({
     org: z.string().max(128).optional(),
     slug: z.string().regex(/^[a-z0-9][a-z0-9-]{0,62}$/).optional(),
@@ -347,6 +348,7 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
         legacyProjectId: input.legacy_project_id,
         rootCommit: input.root_commit,
         remoteUrls: input.remote_urls,
+        project: input.project,
         create: input.create ? { orgSlug: input.create.org, slug: input.create.slug, name: input.create.name } : undefined,
       }));
       return { status: result.created ? 201 : 200, body: result };
