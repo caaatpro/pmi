@@ -144,7 +144,7 @@ TEST 2, 4, 7, 10. Для TEST 10 — два реальных адаптера (C
 - **Daemon опрашивает рабочую копию** (`git status` + mtime/size), а не подписывается на события файловой системы: одинаково на всех ОС, без зависимостей; триггеры те же. Git‑хуки → IPC не нужны: сдвиг HEAD виден в следующем тике (по умолчанию 5 с).
 - **Содержимое файлов при resume не переносится** — это Phase 7 (Workspace Recovery). Resume Package уже содержит ветку, HEAD, список изменённых файлов и `snapshot: null`; CLI и MCP прямо об этом сообщают.
 - **`session_events` не выделены в таблицу**: шаги, решения, проблемы и наблюдения живут в state и в каждом checkpoint; миграция `task_continuity_events` — вместе с переносом continuity‑инструментов при разрезке `server.ts`.
-- **Path‑leases и замена `team_*`** — не сделаны; параллельная работа обеспечивается сессионными lease (TEST 7). Замена `team_file_lock` общими path‑leases — следующий шаг после Phase 7, когда restore начнёт писать в рабочие копии.
+- **Path‑leases** — не сделаны; параллельная работа обеспечивается сессионными lease (TEST 7). Локальные `team_file_lock` удалены при очистке после Phase 11.
 - **TEST 9 для сессий**: RLS и роли проверены в `sessions.test.ts` (viewer видит список без state, не может читать детали и писать; чужие сессии недоступны для записи). Полное расширение TEST 9 на snapshots — в Phase 7.
 
 ## Phase 7 — Workspace recovery
@@ -284,6 +284,16 @@ Security review (auth, RLS, path traversal в restore, zip‑slip в bundle, р�
 | Раздача | `/ui/` из `pmi-server`: файлы в памяти, CSP без inline‑кода (nonce для стилей Mantine), без cookies; `PMI_UI=0` отключает | `tests/central/web-ui.test.ts` |
 | API | `GET /v1/projects/:id/stats` (подсчёты под RLS), `GET /v1/projects/:id/audit` (maintainer+), `offset` у списка знаний, email авторов в записях и версиях | `tests/central/web-ui.test.ts` |
 | Страницы | проекты; обзор проекта; знания с фильтрами и поиском; запись с историей и кнопками «Подтвердить» / «Пометить устаревшим»; сессии и сессия (handoff brief, checkpoints, снимки); конфликты; журнал аудита; поиск по всем проектам; RU/EN; светлая и тёмная темы; ширина телефона | ручная проверка на демо‑сервере |
+
+### Очистка после Phase 11 (`pmi/cleanup-2`)
+
+| Удалено | Почему | Что осталось |
+|---|---|---|
+| Публикация upstream: `publish.yml`, `server.json`, синхронизация манифестов MCP Registry и плагинов, проверка обновлений npm | Workflow публиковал пакет `memorix` и запись `io.github.AVIDS2/memorix`; проверка обновлений предлагала `npm install -g memorix@latest` поверх PMI | `package.json` помечен `"private": true` |
+| Старый дашборд: `src/dashboard`, `/api/*` и статика в `serve-http`, `memorix dashboard`, `memorix_dashboard`, `src/wiki` | Заменён веб‑интерфейсом `pmi-server` (Phase 11) | `serve-http` отвечает на `/mcp`, `/health`, `/protocol-diagnostics`, остальное — 404 |
+| Координация агентов: задачи, сообщения, file locks, роли, `poll`, `handoff`‑заметки, event bus; MCP `team_task`, `team_message`, `team_file_lock`, `memorix_poll`, `memorix_handoff`; CLI `task`, `message`, `lock`, `poll`, `handoff`; навык `memorix-orchestrate`; `TEAM.md` | Работали только внутри одной SQLite; передачу работы делают `session_handoff` / `pmi session handoff`, параллельную работу — lease сессий | Реестр агентов (`team_manage join/leave/status`, `memorix identity`, `session_start joinTeam`) — от него зависят атрибуция и видимость `personal`/`team`. Таблицы `team_tasks`, `team_messages`, `team_locks`, `team_roles` не удаляются (данные не теряются), код их больше не читает |
+| Документация и конфиги upstream: `docs/*` вне `docs/PMI`, `CHANGELOG.md`, корневой `compose.yaml`, `examples/`, `.trae/rules`, `.windsurf/workflows`, `bun.lock`, правила игнорирования memcode | Спецификации и история Memorix 1.x, одиночный контейнер Memorix, ручные конфиги агентов (их пишет `pmi setup`), личные настройки авторов upstream; сборка идёт через npm | Документация — `docs/PMI`, развёртывание — `deploy/` |
+| Временные каталоги в корне репозитория | Тесты конфигурации и backfill писали `.tmp-*-test` и `data/memorix` в рабочую копию | Тесты пишут во временный каталог ОС и убирают за собой |
 
 ## Риски
 

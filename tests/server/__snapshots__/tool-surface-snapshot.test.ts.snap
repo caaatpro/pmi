@@ -423,27 +423,6 @@ Example: 10 similar gotchas about Windows paths → 1 consolidated gotcha with a
   {
     "_meta": undefined,
     "annotations": undefined,
-    "description": "Launch the Memorix Web Dashboard in the browser. In HTTP control-plane mode, this reuses the current control-plane dashboard. In stdio/standalone mode, it starts the standalone dashboard server.",
-    "execution": {
-      "taskSupport": "forbidden",
-    },
-    "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": false,
-      "properties": {
-        "port": {
-          "description": "Optional port override for standalone mode. In HTTP control-plane mode, the active dashboard port is reused.",
-          "type": "number",
-        },
-      },
-      "type": "object",
-    },
-    "name": "memorix_dashboard",
-    "title": "Launch Dashboard",
-  },
-  {
-    "_meta": undefined,
-    "annotations": undefined,
     "description": "Scan active memories for duplicates, contradictions, and outdated information using LLM analysis. Automatically resolves redundant memories. Requires LLM to be configured (set MEMORIX_LLM_API_KEY or OPENAI_API_KEY environment variable). Without LLM, falls back to basic similarity-based consolidation.",
     "execution": {
       "taskSupport": "forbidden",
@@ -735,62 +714,6 @@ Example: 10 similar gotchas about Windows paths → 1 consolidated gotcha with a
   {
     "_meta": undefined,
     "annotations": undefined,
-    "description": "Create a structured handoff artifact when passing work to another agent. A targeted handoff is visible only to its sender and recipient; a broadcast handoff is team-visible. The handoff is stored as a durable observation (immune to archival) and a notification message is sent to the recipient. Use this when completing a task and another agent should continue, or when you want to leave context for whoever works on this next.",
-    "execution": {
-      "taskSupport": "forbidden",
-    },
-    "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": false,
-      "properties": {
-        "concepts": {
-          "description": "Key concepts for search discoverability",
-          "items": {
-            "type": "string",
-          },
-          "type": "array",
-        },
-        "context": {
-          "description": "Detailed context for the next agent: what was done, current state, known issues, next steps",
-          "type": "string",
-        },
-        "filesModified": {
-          "description": "Files you modified during this work",
-          "items": {
-            "type": "string",
-          },
-          "type": "array",
-        },
-        "fromAgentId": {
-          "description": "Your agent ID (from team_manage join or session_start with joinTeam=true)",
-          "type": "string",
-        },
-        "summary": {
-          "description": "Human-readable summary of what you did and what needs to happen next",
-          "type": "string",
-        },
-        "taskId": {
-          "description": "Link to a specific team_task ID",
-          "type": "string",
-        },
-        "toAgentId": {
-          "description": "Specific recipient agent ID. Omit to broadcast to all.",
-          "type": "string",
-        },
-      },
-      "required": [
-        "fromAgentId",
-        "summary",
-        "context",
-      ],
-      "type": "object",
-    },
-    "name": "memorix_handoff",
-    "title": "Team Handoff — Agent Context Transfer",
-  },
-  {
-    "_meta": undefined,
-    "annotations": undefined,
     "description": "Manage the reviewable project Knowledge Workspace. Use it only for deliberate knowledge operations: initialize a local or versioned workspace, review source-backed claims, compile proposals, lint, apply a reviewed proposal, or manage canonical workflows. It is intentionally absent from the default micro/lite profiles.",
     "execution": {
       "taskSupport": "forbidden",
@@ -912,31 +835,6 @@ Example: 10 similar gotchas about Windows paths → 1 consolidated gotcha with a
     },
     "name": "memorix_knowledge",
     "title": "Knowledge Workspace",
-  },
-  {
-    "_meta": undefined,
-    "annotations": undefined,
-    "description": "Get a full snapshot of your project coordination state in one call. Returns: your agent info, watermark (new observations since last session), inbox (unread messages), tasks (your in-progress, available to claim, completed, failed), and team roster (active agents). Use this to decide what to work on next.",
-    "execution": {
-      "taskSupport": "forbidden",
-    },
-    "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": false,
-      "properties": {
-        "agentId": {
-          "description": "Your agent ID (from team_manage join or session_start with joinTeam=true). If omitted, returns project-level overview only.",
-          "type": "string",
-        },
-        "markInboxRead": {
-          "description": "If true, mark all inbox messages as read after returning them.",
-          "type": "boolean",
-        },
-      },
-      "type": "object",
-    },
-    "name": "memorix_poll",
-    "title": "Team Poll — Situational Awareness",
   },
   {
     "_meta": undefined,
@@ -2327,44 +2225,7 @@ IMPORTANT for HTTP/control-plane mode: pass \`projectRoot\` with the absolute pa
   {
     "_meta": undefined,
     "annotations": undefined,
-    "description": "Advisory file locks to prevent conflicting edits. Auto-releases after 10 min TTL. Action "lock": acquire lock. Action "unlock": release lock. Action "status": check lock status.",
-    "execution": {
-      "taskSupport": "forbidden",
-    },
-    "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": false,
-      "properties": {
-        "action": {
-          "description": "Operation to perform",
-          "enum": [
-            "lock",
-            "unlock",
-            "status",
-          ],
-          "type": "string",
-        },
-        "agentId": {
-          "description": "Agent ID (required for lock/unlock)",
-          "type": "string",
-        },
-        "file": {
-          "description": "File path (required for lock/unlock, optional for status — omit to list all)",
-          "type": "string",
-        },
-      },
-      "required": [
-        "action",
-      ],
-      "type": "object",
-    },
-    "name": "team_file_lock",
-    "title": "File Lock Management",
-  },
-  {
-    "_meta": undefined,
-    "annotations": undefined,
-    "description": "Register, unregister, or list agents in the project coordination state. Action "join": register this agent (returns agent ID and instance ID for reactivation). Action "leave": mark agent inactive, release locks. Action "status": list all agents with roles and capabilities, plus role occupancy. Action "listRoles": show defined roles for this project. Action "addRole": define a new role for this project. Action "removeRole": remove a role definition.",
+    "description": "Register, unregister, or list agent identities in this project. Action "join": register this agent (returns agent ID and instance ID for reactivation). Action "leave": mark agent inactive. Action "status": list agents with roles and capabilities.",
     "execution": {
       "taskSupport": "forbidden",
     },
@@ -2378,9 +2239,6 @@ IMPORTANT for HTTP/control-plane mode: pass \`projectRoot\` with the absolute pa
             "join",
             "leave",
             "status",
-            "listRoles",
-            "addRole",
-            "removeRole",
           ],
           "type": "string",
         },
@@ -2403,35 +2261,12 @@ IMPORTANT for HTTP/control-plane mode: pass \`projectRoot\` with the absolute pa
           "description": "Stable instance ID for join (preserves identity across restarts)",
           "type": "string",
         },
-        "label": {
-          "description": "Role label (for addRole)",
-          "type": "string",
-        },
-        "maxConcurrent": {
-          "description": "Max concurrent agents for this role (for addRole, default 1)",
-          "type": "number",
-        },
         "name": {
           "description": "Agent display name for join (e.g., "cursor-frontend")",
           "type": "string",
         },
-        "preferredAgentTypes": {
-          "description": "Preferred agent types for this role (for addRole)",
-          "items": {
-            "type": "string",
-          },
-          "type": "array",
-        },
         "role": {
           "description": "Agent role for join (defaults by agentType if omitted)",
-          "type": "string",
-        },
-        "roleDescription": {
-          "description": "Role description (for addRole)",
-          "type": "string",
-        },
-        "roleId": {
-          "description": "Role ID (for addRole/removeRole)",
           "type": "string",
         },
       },
@@ -2441,163 +2276,7 @@ IMPORTANT for HTTP/control-plane mode: pass \`projectRoot\` with the absolute pa
       "type": "object",
     },
     "name": "team_manage",
-    "title": "Coordination Management",
-  },
-  {
-    "_meta": undefined,
-    "annotations": undefined,
-    "description": "Send, broadcast, or read messages between agents. Durable: messages survive restarts and reach inactive recipients. Action "send": direct message to one agent. Action "broadcast": message all agents. Action "inbox": read this agent's inbox.",
-    "execution": {
-      "taskSupport": "forbidden",
-    },
-    "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": false,
-      "properties": {
-        "action": {
-          "description": "Operation to perform",
-          "enum": [
-            "send",
-            "broadcast",
-            "inbox",
-          ],
-          "type": "string",
-        },
-        "agentId": {
-          "description": "Agent ID (for inbox)",
-          "type": "string",
-        },
-        "content": {
-          "description": "Message content (for send/broadcast)",
-          "type": "string",
-        },
-        "from": {
-          "description": "Your sender agent ID. Omit it to use this session identity.",
-          "type": "string",
-        },
-        "handoffStatus": {
-          "description": "Handoff status (for send with type=handoff)",
-          "enum": [
-            "open",
-            "claimed",
-            "completed",
-            "archived",
-          ],
-          "type": "string",
-        },
-        "markRead": {
-          "default": false,
-          "description": "Mark messages as read (for inbox)",
-          "type": "boolean",
-        },
-        "to": {
-          "description": "Receiver agent ID (for send)",
-          "type": "string",
-        },
-        "toRole": {
-          "description": "Target role for role-based messaging/handoff (for send)",
-          "type": "string",
-        },
-        "type": {
-          "description": "Message type (for send/broadcast)",
-          "enum": [
-            "request",
-            "response",
-            "info",
-            "announcement",
-            "contract",
-            "error",
-            "handoff",
-          ],
-          "type": "string",
-        },
-      },
-      "required": [
-        "action",
-      ],
-      "type": "object",
-    },
-    "name": "team_message",
-    "title": "Team Messaging",
-  },
-  {
-    "_meta": undefined,
-    "annotations": undefined,
-    "description": "Create, claim, complete, or list tasks in the team task board. Supports dependencies. Action "create": create a task. Action "claim": assign to yourself (atomic, race-safe). Action "complete": mark done with result. Action "list": show tasks.",
-    "execution": {
-      "taskSupport": "forbidden",
-    },
-    "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": false,
-      "properties": {
-        "action": {
-          "description": "Operation to perform",
-          "enum": [
-            "create",
-            "claim",
-            "complete",
-            "list",
-          ],
-          "type": "string",
-        },
-        "agentId": {
-          "description": "Agent ID (for claim/complete)",
-          "type": "string",
-        },
-        "available": {
-          "description": "Show only claimable tasks (for list)",
-          "type": "boolean",
-        },
-        "deps": {
-          "description": "Dependency task IDs (for create)",
-          "items": {
-            "type": "string",
-          },
-          "type": "array",
-        },
-        "description": {
-          "description": "Task description (for create)",
-          "type": "string",
-        },
-        "metadata": {
-          "description": "JSON metadata for the task (for create). Used by planner/review tasks for autonomous mode.",
-          "type": "string",
-        },
-        "preferredRole": {
-          "description": "Preferred role for this task (for create). Agents with this role are prioritized.",
-          "type": "string",
-        },
-        "requiredRole": {
-          "description": "Required role for this task (for create). Agents without this role cannot claim.",
-          "type": "string",
-        },
-        "result": {
-          "description": "Result summary (for complete)",
-          "type": "string",
-        },
-        "status": {
-          "description": "Filter by status (for list)",
-          "enum": [
-            "pending",
-            "in_progress",
-            "completed",
-            "failed",
-          ],
-          "type": "string",
-        },
-        "taskId": {
-          "description": "Task ID (for claim/complete)",
-          "type": "string",
-        },
-      },
-      "required": [
-        "action",
-      ],
-      "type": "object",
-    },
-    "name": "team_task",
-    "title": "Task Status",
+    "title": "Agent Identity",
   },
   {
     "_meta": undefined,
@@ -2717,9 +2396,6 @@ exports[`MCP tool surface > keeps the full-profile tool names and input fields s
     "verificationId?",
     "verificationStatus?",
   ],
-  "memorix_dashboard": [
-    "port?",
-  ],
   "memorix_deduplicate": [
     "dryRun?",
     "query?",
@@ -2757,15 +2433,6 @@ exports[`MCP tool surface > keeps the full-profile tool names and input fields s
     "limit?",
     "query",
   ],
-  "memorix_handoff": [
-    "concepts?",
-    "context",
-    "filesModified?",
-    "fromAgentId",
-    "summary",
-    "taskId?",
-    "toAgentId?",
-  ],
   "memorix_knowledge": [
     "action",
     "agent?",
@@ -2783,10 +2450,6 @@ exports[`MCP tool surface > keeps the full-profile tool names and input fields s
     "task?",
     "verificationVerdict?",
     "workflowId?",
-  ],
-  "memorix_poll": [
-    "agentId?",
-    "markInboxRead?",
   ],
   "memorix_project_context": [
     "agent?",
@@ -2956,48 +2619,14 @@ exports[`MCP tool surface > keeps the full-profile tool names and input fields s
     "restore?",
     "sessionId",
   ],
-  "team_file_lock": [
-    "action",
-    "agentId?",
-    "file?",
-  ],
   "team_manage": [
     "action",
     "agentId?",
     "agentType?",
     "capabilities?",
     "instanceId?",
-    "label?",
-    "maxConcurrent?",
     "name?",
-    "preferredAgentTypes?",
     "role?",
-    "roleDescription?",
-    "roleId?",
-  ],
-  "team_message": [
-    "action",
-    "agentId?",
-    "content?",
-    "from?",
-    "handoffStatus?",
-    "markRead?",
-    "to?",
-    "toRole?",
-    "type?",
-  ],
-  "team_task": [
-    "action",
-    "agentId?",
-    "available?",
-    "deps?",
-    "description?",
-    "metadata?",
-    "preferredRole?",
-    "requiredRole?",
-    "result?",
-    "status?",
-    "taskId?",
   ],
   "workspace_restore": [
     "dryRun?",

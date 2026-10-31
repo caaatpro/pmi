@@ -4,7 +4,6 @@ import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 
 const allowedTrackedSourceArtifacts = new Set([
-  'src/dashboard/static/app.js',
   'src/embedding/fastembed.d.ts',
   'src/embedding/transformers.d.ts',
   'src/globals.d.ts',

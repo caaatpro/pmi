@@ -6,7 +6,6 @@ import path from 'node:path';
 import identityCommand from '../../src/cli/commands/identity.js';
 import memoryCommand from '../../src/cli/commands/memory.js';
 import sessionCommand from '../../src/cli/commands/session.js';
-import taskCommand from '../../src/cli/commands/task.js';
 import { closeAllDatabases } from '../../src/store/sqlite-db.js';
 import { resetObservationStore } from '../../src/store/obs-store.js';
 import { resetSessionStore } from '../../src/store/session-store.js';
@@ -77,7 +76,7 @@ describe('CLI identity control plane', () => {
     rmSync(sandboxRoot, { recursive: true, force: true });
   });
 
-  it('keeps a plain CLI project-scoped, then restores private memory and coordination ergonomics after identity activation', async () => {
+  it('keeps a plain CLI project-scoped, then restores private memory after identity activation', async () => {
     const denied = await runCommand(memoryCommand, {
       _: ['store'],
       text: 'Private deployment credential rotation notes.',
@@ -118,14 +117,6 @@ describe('CLI identity control plane', () => {
     });
     expect(ownerSearch.exitCode).toBe(0);
     expect(JSON.parse(ownerSearch.stdout).entries).toHaveLength(1);
-
-    const task = await runCommand(taskCommand, {
-      _: ['create'],
-      description: 'Verify the identity-aware task command',
-      json: true,
-    });
-    expect(task.exitCode).toBe(0);
-    expect(JSON.parse(task.stdout).task.created_by).toBe(agent.agent_id);
 
     const cleared = await runCommand(identityCommand, { _: ['clear'], json: true });
     expect(cleared.exitCode).toBe(0);

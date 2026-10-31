@@ -34,7 +34,6 @@ const OFFICIAL_SKILL_NAMES = [
   'memorix-reasoning',
   'memorix-sessions',
   'memorix-git-memory',
-  'memorix-orchestrate',
   'memorix-troubleshooting',
 ];
 

@@ -300,12 +300,12 @@ describe('release-blocker test helpers', () => {
 // B1 + B2: Real embedded serve-http route tests
 //
 // These tests spawn the REAL `memorix serve-http` binary as a child
-// process and hit the actual /api/* routes. This verifies the full
+// process and hit its real HTTP routes. This verifies the full
 // production handler chain, not a mirror or copy of the logic.
 //
 // Requires: `npm run build` must have been run first.
 // ================================================================
-describe('B1+B2: Real embedded serve-http route tests', () => {
+describe('B1: Real serve-http CORS tests', () => {
   let REAL_PORT = 0;
   let REAL_BASE = '';
   const STARTUP_PROJECT_ID = 'test/real-http-blocker';
@@ -422,88 +422,45 @@ describe('B1+B2: Real embedded serve-http route tests', () => {
     process.env.USERPROFILE = originalUserProfile;
   });
 
-  // ── B1: CORS on real embedded /api/* routes ──
+  // ── B1: CORS on the real serve-http server ──
 
-  it('B1: hostile origin → no Access-Control-Allow-Origin on real /api/project', async () => {
-    const res = await fetch(`${REAL_BASE}/api/project`, {
+  it('B1: hostile origin → no Access-Control-Allow-Origin on real /health', async () => {
+    const res = await fetch(`${REAL_BASE}/health`, {
       headers: { 'Origin': 'https://evil.com' },
     });
     expect(res.status).toBe(200);
     expect(res.headers.get('access-control-allow-origin')).toBeNull();
   });
 
-  it('B1: localhost origin → ACAO echoed on real /api/project', async () => {
-    const res = await fetch(`${REAL_BASE}/api/project`, {
+  it('B1: localhost origin → ACAO echoed on real /health', async () => {
+    const res = await fetch(`${REAL_BASE}/health`, {
       headers: { 'Origin': `http://localhost:${REAL_PORT}` },
     });
     expect(res.status).toBe(200);
     expect(res.headers.get('access-control-allow-origin')).toBe(`http://localhost:${REAL_PORT}`);
   });
 
-  it('B1: 127.0.0.1 origin → ACAO echoed on real /api/project', async () => {
-    const res = await fetch(`${REAL_BASE}/api/project`, {
+  it('B1: 127.0.0.1 origin → ACAO echoed on real /health', async () => {
+    const res = await fetch(`${REAL_BASE}/health`, {
       headers: { 'Origin': `http://127.0.0.1:${REAL_PORT}` },
     });
     expect(res.status).toBe(200);
     expect(res.headers.get('access-control-allow-origin')).toBe(`http://127.0.0.1:${REAL_PORT}`);
   });
 
-  it('B1: no Origin → no ACAO on real /api/project', async () => {
-    const res = await fetch(`${REAL_BASE}/api/project`);
+  it('B1: no Origin → no ACAO on real /health', async () => {
+    const res = await fetch(`${REAL_BASE}/health`);
     expect(res.status).toBe(200);
     expect(res.headers.get('access-control-allow-origin')).toBeNull();
   });
 
   it('B1: OPTIONS preflight hostile origin → no ACAO on real route', async () => {
-    const res = await fetch(`${REAL_BASE}/api/project`, {
+    const res = await fetch(`${REAL_BASE}/health`, {
       method: 'OPTIONS',
       headers: { 'Origin': 'https://attacker.io' },
     });
     expect(res.status).toBe(204);
     expect(res.headers.get('access-control-allow-origin')).toBeNull();
-  });
-
-  // ── B2: /api/config leak prevention on real embedded route ──
-
-  it('B2: /api/config?project=other must NOT leak startup YAML', async () => {
-    // The /api/config route uses defaultProject (set at server startup) and
-    // loadYamlConfig(null) for non-startup projects. It does NOT depend on
-    // MCP sessions — no need to create one (which triggers the heavy
-    // createMemorixServer init and causes timeouts on Windows).
-    const configRes = await fetch(`${REAL_BASE}/api/config?project=other/secondary`);
-    expect(configRes.status).toBe(200);
-    const data = await configRes.json() as any;
-
-    // The canary value should NOT appear for non-startup project
-    expect(data.isStartupProject).toBe(false);
-    const providerVal = data.values?.find((v: any) => v.key === 'llm.provider');
-    expect(providerVal?.value).not.toBe('leak-canary-http');
-    const modelVal = data.values?.find((v: any) => v.key === 'llm.model');
-    expect(modelVal?.value).not.toBe('canary-model-http');
-  });
-
-  it('B2: startup project /api/config should still return its own YAML values', async () => {
-    const res = await fetch(`${REAL_BASE}/api/config`);
-    expect(res.status).toBe(200);
-    const data = await res.json() as any;
-    expect(data.isStartupProject).toBe(true);
-    const providerVal = data.values?.find((v: any) => v.key === 'llm.provider');
-    expect(providerVal?.value).toBe('leak-canary-http');
-  });
-
-  it('B2: embedded observation routes must honor requested project scope', async () => {
-    const obsRes = await fetch(`${REAL_BASE}/api/observations?project=${encodeURIComponent(SECONDARY_PROJECT_ID)}`);
-    expect(obsRes.status).toBe(200);
-    const obs = await obsRes.json() as Array<{ projectId?: string; entityName?: string }>;
-    expect(obs).toHaveLength(1);
-    expect(obs[0].projectId).toBe(SECONDARY_PROJECT_ID);
-    expect(obs[0].entityName).toBe('secondary-entity');
-
-    const statsRes = await fetch(`${REAL_BASE}/api/stats?project=${encodeURIComponent(SECONDARY_PROJECT_ID)}`);
-    expect(statsRes.status).toBe(200);
-    const stats = await statsRes.json() as { observations?: number; recentObservations?: Array<{ projectId?: string; entityName?: string }> };
-    expect(stats.observations).toBe(1);
-    expect(stats.recentObservations?.[0]?.entityName).toBe('secondary-entity');
   });
 });
 

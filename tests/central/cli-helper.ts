@@ -66,7 +66,6 @@ export function machine(root: string, name: string, repo: string, extraEnv: Reco
       USERPROFILE: home,
       MEMORIX_DATA_DIR: path.join(home, 'data'),
       PMI_HOME: path.join(home, '.pmi'),
-      MEMORIX_AUTO_UPDATE: 'off',
       MEMORIX_SYNC_DEVICE_FINGERPRINT: `test|${name}`,
       ...extraEnv,
     },

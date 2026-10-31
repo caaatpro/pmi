@@ -50,7 +50,6 @@ import { registerProjectBriefTools } from './mcp/tools/project-brief.js';
 import { registerMaintenanceTools } from './mcp/tools/maintenance.js';
 import { registerIntegrationTools } from './mcp/tools/integrations.js';
 import { registerMemorixSessionTools } from './mcp/tools/memorix-session.js';
-import { registerDashboardTools } from './mcp/tools/dashboard.js';
 import { registerTeamTools } from './mcp/tools/team.js';
 
 /**
@@ -607,13 +606,6 @@ export async function createMemorixServer(
     } else {
       teamStore = await initTeamStore(projectDir);
     }
-
-    // Phase 4b: Wire EventBus for same-process lifecycle notifications.
-    // EventBus is process-local only — NOT a cross-process mechanism.
-    if (!teamStore.getEventBus()) {
-      const { TeamEventBus } = await import('./team/event-bus.js');
-      teamStore.setEventBus(new TeamEventBus());
-    }
   }
 
   const ctx: ServerToolContext = {
@@ -676,7 +668,6 @@ export async function createMemorixServer(
     project: () => ({ id: project.id, rootPath: project.rootPath }),
     connectionSessionId: () => connectionSessionId,
   });
-  registerDashboardTools(server, ctx);
   registerTeamTools(server, ctx);
   // Deferred initialization — runs AFTER transport connect so MCP handshake isn't blocked.
   // Sync advisory scan and file watcher are non-essential for tool functionality.
@@ -838,20 +829,8 @@ export async function createMemorixServer(
     // a project-specific one. In stdio mode, a fresh one is created.
     try {
       if (!initTeamStoreForProject) throw new Error('Team store init unavailable');
-      if (sharedTeam?.teamStore) {
-        // HTTP mode: check if the new projectDir already has a cached TeamStore
-        // For now, reinitialize since the sharedTeam was for the original project
-        teamStore = await initTeamStoreForProject(canonicalProjectDir);
-        // Re-attach EventBus if available
-        if (!teamStore.getEventBus()) {
-          const { TeamEventBus } = await import('./team/event-bus.js');
-          teamStore.setEventBus(new TeamEventBus());
-        }
-      } else {
-        // Stdio mode: always reinitialize
-        teamStore = await initTeamStoreForProject(canonicalProjectDir);
-      }
-    } catch { /* best-effort - coordination features degrade gracefully */ }
+      teamStore = await initTeamStoreForProject(canonicalProjectDir);
+    } catch { /* best-effort - agent identity degrades gracefully */ }
 
     writeLastProjectRoot(project.rootPath);
     runtimeHydratedForDir = null;
@@ -876,8 +855,6 @@ export async function createMemorixServer(
 
     try {
       teamStore.leaveAgent(agentId);
-      teamStore.releaseAllLocks(agentId);
-      teamStore.releaseTasksByAgent(agentId);
     } catch { /* best-effort cleanup on transport close */ }
   };
 

@@ -77,8 +77,8 @@ afterEach(() => {
 });
 
 describe('Workflow Inheritance', () => {
-  it('keeps the repository release workflow parseable and explicit about approval', () => {
-    const sourcePath = path.join(process.cwd(), 'docs', 'knowledge', 'workflows', 'memorix-release.md');
+  it('parses a release workflow fixture and keeps its approval gate', () => {
+    const sourcePath = path.join(process.cwd(), 'tests', 'fixtures', 'workflows', 'memorix-release.md');
     const workflow = parseWorkflowMarkdown(readFileSync(sourcePath, 'utf8'), {
       workspaceId: 'workspace:memorix',
       sourcePath: 'workflows/memorix-release.md',

@@ -172,6 +172,5 @@ export default defineCommand({
 
     console.error(`[memorix] MCP Server running on stdio (profile: ${toolProfile}, project: ${detected?.id ?? 'deferred'})`);
     console.error(`[memorix] Project root: ${detected?.rootPath ?? projectRoot}`);
-    import('../update-checker.js').then(m => m.checkForUpdates()).catch(() => {});
   },
 });

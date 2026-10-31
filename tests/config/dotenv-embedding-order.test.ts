@@ -164,31 +164,4 @@ describe('Issue #46: .env embedding key visibility', () => {
     expect(process.env.MEMORIX_EMBEDDING).toBeUndefined();
   });
 
-  it('standalone dashboard stats preparation loads project .env before embedding status', async () => {
-    writeFileSync(
-      join(PROJECT_DIR, '.env'),
-      'MEMORIX_EMBEDDING=api\nMEMORIX_EMBEDDING_API_KEY=sk-dashboard-stats\n',
-    );
-
-    expect(process.env.MEMORIX_EMBEDDING_API_KEY).toBeUndefined();
-
-    const { prepareDashboardConfig } = await import('../../src/dashboard/server.js');
-    prepareDashboardConfig(PROJECT_DIR);
-
-    expect(process.env.MEMORIX_EMBEDDING).toBe('api');
-    expect(process.env.MEMORIX_EMBEDDING_API_KEY).toBe('sk-dashboard-stats');
-  });
-
-  it('standalone dashboard config preparation clears project YAML when root is unknown', async () => {
-    writeFileSync(join(PROJECT_DIR, 'memorix.yml'), 'llm:\n  provider: dashboard-canary\n');
-
-    const { prepareDashboardConfig } = await import('../../src/dashboard/server.js');
-    prepareDashboardConfig(PROJECT_DIR);
-    expect(loadYamlConfig().llm?.provider).toBe('dashboard-canary');
-
-    prepareDashboardConfig(null);
-    resetYamlConfigCache();
-
-    expect(loadYamlConfig().llm?.provider).not.toBe('dashboard-canary');
-  });
 });

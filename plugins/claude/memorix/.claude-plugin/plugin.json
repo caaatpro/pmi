@@ -14,7 +14,6 @@
     "./skills/memorix-reasoning",
     "./skills/memorix-sessions",
     "./skills/memorix-git-memory",
-    "./skills/memorix-orchestrate",
     "./skills/memorix-troubleshooting"
   ]
 }

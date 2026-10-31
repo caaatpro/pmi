@@ -171,9 +171,8 @@ export function registerMemorixSessionTools(server: McpServer, ctx: ServerToolCo
           ctx.currentAgentId = registeredAgent.agent_id;
 
           // Watermark: project-scoped count of new observations since last seen
-          // Uses computeWatermark (extracted to team/poll.ts for reuse by memorix_poll)
           // withFreshIndex ensures cross-process writes are visible before counting
-          const { computeWatermark } = await import('../../team/poll.js');
+          const { computeWatermark } = await import('../../team/team-store.js');
           const lastSeen = registeredAgent.last_seen_obs_generation;
           const store = getObservationStore();
           const currentGen = store.getGeneration();
@@ -191,19 +190,11 @@ export function registerMemorixSessionTools(server: McpServer, ctx: ServerToolCo
           // Update watermark to current global generation (high-water mark for next session)
           ctx.teamStore.updateWatermark(registeredAgent.agent_id, currentGen);
 
-          // Phase 4b: Rescue detection — detect stale agents and surface rescued tasks
-          // detectAndMarkStale releases tasks from agents with stale heartbeats
-          const STALE_TTL_MS = 5 * 60 * 1000; // 5 minutes without heartbeat = stale
-          const rescuedAgentIds = ctx.teamStore.detectAndMarkStale(ctx.project.id, STALE_TTL_MS);
-          if (rescuedAgentIds.length > 0) {
-            rescueInfo = `[RESCUE] ${rescuedAgentIds.length} stale agent(s) detected and rescued.`;
-          }
-
-          // Check for available tasks (including any just-rescued ones)
-          const availableTasks = ctx.teamStore.listTasks(ctx.project.id, { available: true });
-          if (availableTasks.length > 0) {
-            rescueInfo += rescueInfo ? '\n' : '';
-            rescueInfo += `[TASK] ${availableTasks.length} task(s) available to claim. Use memorix_poll for details.`;
+          // Agents without a heartbeat for 5 minutes are marked inactive
+          const STALE_TTL_MS = 5 * 60 * 1000;
+          const staleAgentIds = ctx.teamStore.detectAndMarkStale(ctx.project.id, STALE_TTL_MS);
+          if (staleAgentIds.length > 0) {
+            rescueInfo = `[STALE] ${staleAgentIds.length} inactive agent(s) marked as left.`;
           }
         } else if (shouldJoinTeam) {
           teamJoinNotice = 'Coordination join skipped: pass `agent` or `agentType` to create a coordination identity.';
@@ -271,22 +262,10 @@ export function registerMemorixSessionTools(server: McpServer, ctx: ServerToolCo
         if (registeredAgent && ctx.teamFeaturesEnabled && typeof ctx.teamStore !== 'undefined') {
           const activeAgents = ctx.teamStore.listAgents(ctx.project.id, { status: 'active' });
           if (activeAgents.length > 0) {
-            lines.push('', '---', '[TEAM] **Team Status:**');
+            lines.push('', '---', '[TEAM] **Active agents:**');
             for (const a of activeAgents) {
               lines.push(`- [CHANGE] ${a.name}${a.role ? ` (${a.role})` : ''}`);
             }
-
-            // Show locked files
-            const locks = ctx.teamStore.listLocks(ctx.project.id);
-            if (locks.length > 0) {
-              lines.push('', '[LOCK] **Locked files:**');
-              for (const l of locks) {
-                const owner = ctx.teamStore.getAgent(l.locked_by);
-                lines.push(`- ${l.file} — ${owner?.name ?? l.locked_by.slice(0, 8)}`);
-              }
-            }
-
-            lines.push('', '[TIP] Use `team_manage` to register, `team_message` to check inbox, `team_task` to see tasks.');
           }
         }
       } catch { /* team context injection is optional */ }

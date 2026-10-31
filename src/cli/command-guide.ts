@@ -156,45 +156,12 @@ const GUIDES: Record<string, CliCommandGuide> = {
     ],
   },
   team: {
-    summary: 'Manage explicit multi-agent coordination state for the current project.',
+    summary: 'Manage explicit agent identities for the current project.',
     usage: [
       'memorix team join --agent-type codex [--name codex-main]',
       'memorix team status [--all]',
       'memorix team leave [--agent-id <id>]',
     ],
-  },
-  task: {
-    summary: 'Create and progress coordination tasks. An active CLI identity fills agentId automatically.',
-    usage: [
-      'memorix task create --description "Review release evidence"',
-      'memorix task claim --task-id <id>',
-      'memorix task complete --task-id <id> --result "Verified"',
-      'memorix task list [--available]',
-    ],
-  },
-  message: {
-    summary: 'Send and read coordination messages. An active CLI identity fills the sender automatically.',
-    usage: [
-      'memorix message send --to <agent-id> --type info --content "..."',
-      'memorix message broadcast --type announcement --content "..."',
-      'memorix message inbox [--mark-read]',
-    ],
-  },
-  lock: {
-    summary: 'Use advisory file locks to reduce overlapping edits between agents.',
-    usage: [
-      'memorix lock lock --file src/server.ts',
-      'memorix lock unlock --file src/server.ts',
-      'memorix lock status [--file src/server.ts]',
-    ],
-  },
-  handoff: {
-    summary: 'Create durable, targeted or team-visible handoff artifacts.',
-    usage: ['memorix handoff send --summary "..." --context "..." [--to-agent-id <id>]'],
-  },
-  poll: {
-    summary: 'Return a compact coordination snapshot for the active CLI identity.',
-    usage: ['memorix poll [--mark-inbox-read]'],
   },
   audit: {
     summary: 'Inspect quality, attribution, and recorded audit evidence.',

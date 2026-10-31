@@ -10,11 +10,9 @@ src/**/*.js
 src/**/*.js.map
 src/**/*.d.ts
 src/**/*.d.ts.map
-!src/dashboard/static/**/*.js
 !src/embedding/fastembed.d.ts
 !src/embedding/transformers.d.ts
 !src/globals.d.ts
-!src/types/memcode.d.ts
 
 # Memorix data
 .memorix-data/
@@ -36,11 +34,8 @@ image/
 !.opencode/plugins/
 !.opencode/plugins/memorix.js
 docs/dev-log/
-docs/memcode/dev-log/
 test-smoke.txt
 /e2e_*.mjs
-/packages/agent-core/test/scratch/
-/packages/memcode/test/fixtures/before-compaction.jsonl
 
 # Test/demo artifacts
 .pipeline/
@@ -85,9 +80,6 @@ scripts/tsconfig.json
 # Reference / cloned repos
 temple/
 
-# memcode packages (built from source)
-packages/*/dist/
-packages/*/.tsbuildinfo
 
 # CodeGraph
 .codegraph/

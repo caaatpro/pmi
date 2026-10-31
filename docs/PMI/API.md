@@ -134,7 +134,7 @@
 | ★ `session_start` | `memorix_session_start` | Новая сессия или подключение к своей активной; возвращает L1 + предложение resume, если есть `resumable` |
 | ★ `session_checkpoint` | `memorix_compaction_checkpoint` | Явный checkpoint: progress, completed/pending steps, next action |
 | ★ `session_finish` | `memorix_session_end` | Завершение |
-| ★ `session_handoff` | `memorix_handoff` | Полный handoff (SESSION_CONTINUITY.md §5) |
+| ★ `session_handoff` | — (`memorix_handoff` удалён) | Полный handoff (SESSION_CONTINUITY.md §5) |
 | ★ `session_resume` | `memorix_session_context` | Resume Package |
 | ★ `session_list` | — | Сессии проекта, фильтр `resumable` |
 | `workspace_snapshot` | — | Снимок рабочей копии (требует локальный клиент) |
@@ -144,7 +144,7 @@
 
 Удаляемые из MCP (Phase 3): `memorix_media`, `memorix_ingest_image`, `memorix_promote`, `memorix_skills` (удалены после миграции mini‑skills в `coding_convention`, `pmi-5`), KG‑compat (9 шт.). Сохраняемые в `full`: `memorix_timeline`, `memorix_graph_context`, `memorix_retention`, `memorix_feedback`, `memorix_evidence`, `memorix_suggest_topic_key`, `memorix_transfer`, `memorix_deduplicate`, `memorix_consolidate`, `memorix_audit_project`, `memorix_rules_sync`, `memorix_workspace_sync`.
 
-`team_*` и `memorix_poll` заменяются `session_*` + `tasks` (Phase 5–6); на переходный период остаются в профиле `team`.
+Координация `team_task`, `team_message`, `team_file_lock`, `memorix_poll`, `memorix_handoff` и `memorix_dashboard` удалены (ROADMAP, очистка после Phase 11). В профиле `team` остался `team_manage` (`join`/`leave`/`status`): он задаёт идентичность агента для видимости `personal`/`team`.
 
 Правила ответов MCP: компактный текст для агента + `structuredContent` с id, чтобы агент мог догрузить детали через `memory_get` (существующий принцип progressive disclosure Memorix).
 

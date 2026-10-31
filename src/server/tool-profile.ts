@@ -1,7 +1,7 @@
 /**
  * Tool Profile System — Progressive Disclosure for MCP tools
  *
- * The full tool set contains 49 tools, but most users only ever
+ * The full tool set contains 43 tools, but most users only ever
  * use a small subset (store / search / detail). Exposing all of them at
  * tools/list time causes cognitive overload.
  *
@@ -10,8 +10,8 @@
  *     Suitable for normal MCP clients where every tool schema costs context tokens.
  *   - "lite": Core memory CRUD, sessions, reasoning, continuity, retention, backup, PMI context, git, sessions and workspace recovery — 34 tools.
  *     Suitable for solo users who want the full memory surface without team tools.
- *   - "team" (HTTP default): lite + coordination tools, dashboard, and Knowledge Workspace — 42 tools.
- *     Suitable when an operator explicitly wants task/message/lock surfaces.
+ *   - "team" (HTTP default): lite + agent identity (team_manage) and Knowledge Workspace — 36 tools.
+ *     Suitable when agents join with an explicit identity for personal/team memory.
  *   - "full": Everything, including niche / advanced tools (consolidate, dedup,
  *     formation metrics, rules/workspace sync).
  *     Opt in via `MEMORIX_MODE=full` or `--mode full`.
@@ -73,14 +73,8 @@ export const TOOL_PROFILES: Record<string, ReadonlyArray<ToolProfile>> = Object.
   workspace_restore:          ['lite', 'team', 'full'],
 
   // ── team: orchestration coordination surfaces — HTTP default ──────
-  memorix_dashboard:          ['team', 'full'],
   memorix_knowledge:          ['team', 'full'],
-  memorix_handoff:            ['team', 'full'],
-  memorix_poll:               ['team', 'full'],
   team_manage:                ['team', 'full'],
-  team_message:               ['team', 'full'],
-  team_task:                  ['team', 'full'],
-  team_file_lock:             ['team', 'full'],
 
   // ── full: advanced / specialized — opt-in only ───────────────────
   memorix_audit_project:      ['full'],
@@ -146,7 +140,7 @@ export function describeProfile(profile: ToolProfile): string {
   switch (profile) {
     case 'micro': return `micro (agent-ready context + bounded recovery, ${count} tools)`;
     case 'lite': return `lite (core memory + sessions, ${count} tools)`;
-    case 'team': return `team (lite + coordination tools + dashboard + knowledge workspace, ${count} tools)`;
+    case 'team': return `team (lite + agent identity + knowledge workspace, ${count} tools)`;
     case 'full': return `full (all tools including advanced, ${count} tools)`;
   }
 }

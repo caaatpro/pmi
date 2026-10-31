@@ -118,12 +118,3 @@ jobs:
       - name: Remove the verification container
         if: always()
         run: docker rm --force memorix-ci || true
-
-  mcp-registry-metadata:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-      - run: npm run check:mcp-registry
