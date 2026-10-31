@@ -1,5 +1,5 @@
 export interface KnowledgeSourceRef {
-  kind: 'observation' | 'mini-skill' | 'git';
+  kind: 'observation' | 'git';
   id: string;
   title?: string;
 }
@@ -33,7 +33,7 @@ export interface ProjectKnowledgeOverview {
   sections: KnowledgeSection[];
   stats: {
     observationsUsed: number;
-    miniSkillsUsed: number;
+    conventionsUsed: number;
     refs: number;
   };
 }
@@ -45,7 +45,7 @@ export type SemanticEdgeType = 'supports' | 'relates_to' | 'mentions' | 'derived
 export interface SemanticNode {
   id: string;
   label: string;
-  /** Observation type or 'mini-skill' or 'section-cluster' */
+  /** Observation type or 'section-cluster' */
   nodeType: string;
   /** Section this node belongs to (e.g. 'core-decisions') */
   sectionId: string;

@@ -6,7 +6,6 @@
  * - Search: default search excludes probe, explicit type: "probe" includes it
  * - Retention: probe is short-lived (~7 days), not immune
  * - Session: probe is heavily penalized, never surfaces as priority context
- * - Mini-skill: probe cannot be promoted to mini-skill
  * - Formation: probe has very low TYPE_WEIGHT (0.10)
  * - CLI: coerceObservationType accepts "probe"
  * - Dashboard: probe excluded from typeCounts and recentObservations
@@ -28,7 +27,6 @@ import { storeObservation, initObservations, getObservation } from '../../src/me
 import { resetDb, searchObservations } from '../../src/store/orama-store.js';
 import { isImmune, getImmunityReason, getEffectiveRetentionDays, getImportanceLevel } from '../../src/memory/retention.js';
 import { scoreObservationForSessionContext } from '../../src/memory/session.js';
-import { promoteToMiniSkill } from '../../src/skills/mini-skills.js';
 import { runEvaluate } from '../../src/memory/formation/evaluate.js';
 import type { ExtractResult } from '../../src/memory/formation/types.js';
 import { coerceObservationType } from '../../src/cli/commands/operator-shared.js';
@@ -331,38 +329,6 @@ describe('Session: probe is excluded from priority context', () => {
     const probeScore = scoreObservationForSessionContext(probeObs, []);
     const decisionScore = scoreObservationForSessionContext(decisionObs, []);
     expect(probeScore).toBeLessThan(decisionScore);
-  });
-});
-
-// Mini-skill promotion
-
-describe('Mini-skill: probe cannot be promoted', () => {
-  it('probe observation is rejected from mini-skill promotion', async () => {
-    const { observation } = await storeObservation({
-      entityName: 'health',
-      type: 'probe',
-      title: 'Agent heartbeat',
-      narrative: 'Connectivity check.',
-      projectId: PROJECT_ID,
-    });
-    const obs = getObservation(observation.id)!;
-    await expect(
-      promoteToMiniSkill(testDir, PROJECT_ID, [obs])
-    ).rejects.toThrow(/Cannot promote probe observations/);
-  });
-
-  it('probe is still rejected with force=true', async () => {
-    const { observation } = await storeObservation({
-      entityName: 'health',
-      type: 'probe',
-      title: 'Agent heartbeat',
-      narrative: 'Connectivity check.',
-      projectId: PROJECT_ID,
-    });
-    const obs = getObservation(observation.id)!;
-    await expect(
-      promoteToMiniSkill(testDir, PROJECT_ID, [obs], { force: true })
-    ).rejects.toThrow(/Cannot promote probe observations/);
   });
 });
 

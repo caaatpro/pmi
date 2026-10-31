@@ -2,17 +2,19 @@
  * Shared SQLite Database Handle
  *
  * Provides a singleton-per-dataDir better-sqlite3 connection shared across
- * all SQLite-backed stores (observations, mini-skills, sessions, team).
+ * all SQLite-backed stores (observations, sessions, team).
  *
  * Responsibilities:
  *   - Dynamic require of better-sqlite3 (optionalDependencies)
  *   - WAL mode and busy_timeout configuration
- *   - Schema creation for ALL tables (observations, mini_skills, sessions, meta, team_*)
+ *   - Schema creation for ALL tables (observations, sessions, meta, team_*; the
+ *     legacy mini_skills table is kept as the source of migration pmi-5)
  *   - Singleton caching per dataDir
  *   - Graceful close
  */
 
 import { createRequire } from 'node:module';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import fs from 'node:fs';
 import { createDatabase, loadSqlite } from './bun-sqlite-compat.js';
@@ -957,7 +959,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_maintenance_jobs_active_dedupe
 
 interface SchemaMigration {
   id: string;
-  apply: (db: any) => void;
+  /** `dataDir` is the store directory, absent for in-memory databases. */
+  apply: (db: any, dataDir?: string) => void;
 }
 
 function hasColumn(db: any, table: string, column: string): boolean {
@@ -1142,6 +1145,112 @@ const SCHEMA_MIGRATIONS: SchemaMigration[] = [
     },
   },
   {
+    // PMI: explicit memory classification. NULL means "derive from the
+    // observation type" (src/domain/memory.ts), so no row is rewritten and a
+    // later type edit can never leave a stale derived category behind.
+    id: 'pmi-1-memory-classification',
+    apply: (db) => {
+      addColumnIfMissing(db, 'observations', 'category', 'category TEXT');
+      addColumnIfMissing(db, 'observations', 'confidence', 'confidence TEXT');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_observations_project_category ON observations(projectId, category, status)');
+    },
+  },
+  {
+    // PMI session continuity (docs/PMI/SESSION_CONTINUITY.md). Kept beside
+    // the Memorix `sessions` table, which is rewritten with INSERT OR REPLACE
+    // and would drop extra columns. Same id as the Memorix session.
+    id: 'pmi-2-session-continuity',
+    apply: (db) => {
+      db.exec(`CREATE TABLE IF NOT EXISTS pmi_sessions (
+        id                 TEXT PRIMARY KEY,
+        project_id         TEXT NOT NULL,
+        status             TEXT NOT NULL,
+        state_json         TEXT NOT NULL,
+        workspace_root     TEXT,
+        device_id          TEXT NOT NULL,
+        agent_pid          INTEGER,
+        last_activity_at   TEXT NOT NULL,
+        last_fingerprint   TEXT,
+        pending_fingerprint TEXT,
+        pending_since      TEXT,
+        checkpoint_seq     INTEGER NOT NULL DEFAULT 0,
+        last_checkpoint_at TEXT,
+        last_heartbeat_at  TEXT,
+        created_at         TEXT NOT NULL,
+        updated_at         TEXT NOT NULL
+      )`);
+      db.exec(`CREATE TABLE IF NOT EXISTS session_checkpoints (
+        id          TEXT PRIMARY KEY,
+        session_id  TEXT NOT NULL,
+        seq         INTEGER NOT NULL,
+        trigger     TEXT NOT NULL,
+        state_json  TEXT NOT NULL,
+        fingerprint TEXT,
+        created_at  TEXT NOT NULL,
+        UNIQUE (session_id, seq)
+      )`);
+      db.exec(`CREATE TABLE IF NOT EXISTS session_outbox (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id   TEXT NOT NULL,
+        kind         TEXT NOT NULL,
+        payload_json TEXT NOT NULL,
+        state        TEXT NOT NULL DEFAULT 'pending',
+        attempts     INTEGER NOT NULL DEFAULT 0,
+        last_error   TEXT,
+        created_at   TEXT NOT NULL,
+        sent_at      TEXT
+      )`);
+      db.exec('CREATE INDEX IF NOT EXISTS idx_pmi_sessions_project_status ON pmi_sessions(project_id, status, updated_at DESC)');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_session_checkpoints_session ON session_checkpoints(session_id, seq DESC)');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_session_outbox_pending ON session_outbox(state, id)');
+    },
+  },
+  {
+    // PMI workspace snapshots (docs/PMI/WORKSPACE_RECOVERY.md). Blob bodies
+    // live in <dataDir>/blobs; this table holds manifests.
+    id: 'pmi-3-workspace-snapshots',
+    apply: (db) => {
+      db.exec(`CREATE TABLE IF NOT EXISTS workspace_snapshots (
+        id              TEXT PRIMARY KEY,
+        project_id      TEXT NOT NULL,
+        session_id      TEXT,
+        manifest_json   TEXT NOT NULL,
+        manifest_sha256 TEXT NOT NULL,
+        content_key     TEXT NOT NULL,
+        total_bytes     INTEGER NOT NULL,
+        pinned          INTEGER NOT NULL DEFAULT 0,
+        created_at      TEXT NOT NULL,
+        registered_at   TEXT
+      )`);
+      db.exec('CREATE INDEX IF NOT EXISTS idx_workspace_snapshots_session ON workspace_snapshots(session_id, created_at DESC)');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_workspace_snapshots_project ON workspace_snapshots(project_id, created_at DESC)');
+    },
+  },
+  {
+    // PMI git intelligence: incremental analysis cursors (Local mode) and the
+    // "needs review" mark that commits put on knowledge they may have outdated.
+    id: 'pmi-4-git-intelligence',
+    apply: (db) => {
+      addColumnIfMissing(db, 'observations', 'review', 'review TEXT');
+      db.exec(`CREATE TABLE IF NOT EXISTS pmi_git_cursors (
+        root_commit            TEXT NOT NULL,
+        branch                 TEXT NOT NULL,
+        project_id             TEXT NOT NULL,
+        cursor                 TEXT NOT NULL,
+        last_full_reconcile_at TEXT,
+        updated_at             TEXT NOT NULL,
+        PRIMARY KEY (root_commit, branch)
+      )`);
+    },
+  },
+  {
+    // PMI: mini-skills become ordinary memories of category coding_convention
+    // (docs/PMI/ROADMAP.md, Phase 3 deferral). The mini_skills table is left
+    // as it was; each skill is copied once, keyed by topicKey mini-skill/<id>/<fingerprint>.
+    id: 'pmi-5-mini-skills-to-conventions',
+    apply: (db, dataDir) => { convertMiniSkillsToConventions(db, dataDir); },
+  },
+  {
     id: '1.9-continuity-v2',
     apply: (db) => {
       addColumnIfMissing(db, 'task_continuity_events', 'event_key', 'event_key TEXT');
@@ -1155,13 +1264,192 @@ const SCHEMA_MIGRATIONS: SchemaMigration[] = [
   },
 ];
 
-function applySchemaMigrations(db: any): void {
+/** topicKey prefix of the coding_convention memories converted from mini-skill `skillId`. */
+export function miniSkillTopicKeyPrefix(skillId: number): string {
+  return `mini-skill/${skillId}/`;
+}
+
+/**
+ * topicKey of the coding_convention memory a mini-skill was converted into.
+ * Mini-skill ids are local to one store, and a topicKey is the sync identity
+ * of a memory (`p:<project>:t:<topicKey>`), so the key carries a fingerprint
+ * of the skill: skill #3 of two developers must not merge into one record.
+ */
+export function miniSkillTopicKey(skill: { id: number; projectId: string; createdAt: string; title: string }): string {
+  const fingerprint = createHash('sha256')
+    .update(`${skill.projectId}\n${skill.createdAt}\n${skill.title}`)
+    .digest('hex')
+    .slice(0, 12);
+  return `${miniSkillTopicKeyPrefix(skill.id)}${fingerprint}`;
+}
+
+interface LegacyMiniSkill {
+  id: number;
+  sourceObservationIds: number[];
+  sourceEntity: string;
+  title: string;
+  instruction: string;
+  trigger: string;
+  facts: string[];
+  projectId: string;
+  createdAt: string;
+  tags: string[];
+  updatedAt?: string | null;
+}
+
+function parseJsonList<T>(value: unknown): T[] {
+  if (Array.isArray(value)) return value as T[];
+  if (typeof value !== 'string' || value === '') return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed as T[] : [];
+  } catch {
+    return [];
+  }
+}
+
+function readJsonFile(file: string | undefined): unknown {
+  if (!file || !fs.existsSync(file)) return undefined;
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf-8'));
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Copy every mini-skill into `observations` as an active, core memory of
+ * category coding_convention. Skills still only in a legacy mini-skills.json
+ * (never imported because the mini_skills table was empty) are included, as
+ * the removed MiniSkillStore would have imported them. Ids are allocated past
+ * every id in use, including a legacy observations.json not yet imported.
+ */
+function convertMiniSkillsToConventions(db: any, dataDir?: string): void {
+  const tableRows = db.prepare('SELECT * FROM mini_skills ORDER BY id').all() as Array<Record<string, any>>;
+  let skills: LegacyMiniSkill[] = tableRows.map((row) => ({
+    id: Number(row.id),
+    sourceObservationIds: parseJsonList<number>(row.sourceObservationIds),
+    sourceEntity: row.sourceEntity || 'unknown',
+    title: String(row.title ?? ''),
+    instruction: row.instruction ?? '',
+    trigger: row.trigger_desc ?? '',
+    facts: parseJsonList<string>(row.facts),
+    projectId: String(row.projectId),
+    createdAt: String(row.createdAt),
+    tags: parseJsonList<string>(row.tags),
+    updatedAt: row.updatedAt || null,
+  }));
+  if (skills.length === 0 && dataDir) {
+    skills = parseJsonList<Record<string, any>>(readJsonFile(path.join(dataDir, 'mini-skills.json')))
+      .filter((skill) => skill && Number.isSafeInteger(skill.id) && typeof skill.projectId === 'string' && typeof skill.title === 'string')
+      .map((skill) => ({
+        id: skill.id,
+        sourceObservationIds: parseJsonList<number>(skill.sourceObservationIds),
+        sourceEntity: skill.sourceEntity || 'unknown',
+        title: skill.title,
+        instruction: skill.instruction ?? '',
+        trigger: skill.trigger ?? '',
+        facts: parseJsonList<string>(skill.facts),
+        projectId: skill.projectId,
+        createdAt: typeof skill.createdAt === 'string' ? skill.createdAt : new Date().toISOString(),
+        tags: parseJsonList<string>(skill.tags),
+        updatedAt: typeof skill.updatedAt === 'string' ? skill.updatedAt : null,
+      }));
+  }
+  if (skills.length === 0) return;
+
+  const exists = db.prepare('SELECT 1 FROM observations WHERE projectId = ? AND topicKey = ?');
+  const pending = skills.filter((skill) => !exists.get(skill.projectId, miniSkillTopicKey(skill)));
+  if (pending.length === 0) return;
+
+  const counter = Number(db.prepare("SELECT value FROM meta WHERE key = 'next_id'").get()?.value ?? 1);
+  const maxRow = Number(db.prepare('SELECT MAX(id) AS id FROM observations').get()?.id ?? 0);
+  let legacyMax = 0;
+  if (dataDir && maxRow === 0) {
+    const legacy = parseJsonList<{ id?: unknown }>(readJsonFile(path.join(dataDir, 'observations.json')));
+    for (const obs of legacy) if (Number.isSafeInteger(obs?.id)) legacyMax = Math.max(legacyMax, Number(obs.id));
+    const legacyCounter = readJsonFile(path.join(dataDir, 'counter.json')) as { nextId?: unknown; next_id?: unknown } | undefined;
+    const legacyNext = Number(legacyCounter?.nextId ?? legacyCounter?.next_id ?? 0);
+    if (Number.isSafeInteger(legacyNext)) legacyMax = Math.max(legacyMax, legacyNext - 1);
+  }
+  let nextId = Math.max(Number.isSafeInteger(counter) ? counter : 1, maxRow + 1, legacyMax + 1);
+
+  const insert = db.prepare(`
+    INSERT INTO observations
+      (id, entityName, type, title, narrative, facts, filesModified, concepts, tokens,
+       createdAt, updatedAt, projectId, topicKey, revisionCount, status, source,
+       sourceDetail, valueCategory, category, confidence)
+    VALUES
+      (@id, @entityName, 'how-it-works', @title, @narrative, @facts, '[]', @concepts, @tokens,
+       @createdAt, @updatedAt, @projectId, @topicKey, 1, 'active', 'agent',
+       'explicit', 'core', 'coding_convention', 'observed')
+  `);
+  for (const skill of pending) {
+    const narrative = [
+      skill.instruction.trim(),
+      skill.trigger.trim() ? `When: ${skill.trigger.trim()}` : '',
+      skill.sourceObservationIds.length > 0
+        ? `Promoted from observations ${skill.sourceObservationIds.map((id) => `#${id}`).join(', ')} (mini-skill S${skill.id}).`
+        : `Converted from mini-skill S${skill.id}.`,
+    ].filter(Boolean).join('\n\n');
+    const facts = skill.facts.map(String);
+    insert.run({
+      id: nextId++,
+      entityName: skill.sourceEntity,
+      title: skill.title,
+      narrative,
+      facts: JSON.stringify(facts),
+      concepts: JSON.stringify(skill.tags.map(String)),
+      tokens: Math.ceil((skill.title.length + narrative.length + facts.join(' ').length) / 4),
+      createdAt: skill.createdAt,
+      updatedAt: skill.updatedAt ?? skill.createdAt,
+      projectId: skill.projectId,
+      topicKey: miniSkillTopicKey(skill),
+    });
+  }
+  db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('next_id', ?)").run(String(nextId));
+  db.prepare("UPDATE meta SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT) WHERE key = 'storage_generation'").run();
+}
+
+/** Migrations introduced by PMI; a store holding data is backed up before the first one runs. */
+const PMI_MIGRATION_PREFIX = 'pmi-';
+
+/**
+ * Copy the database to `memorix.db.pre-pmi-<timestamp>` with `VACUUM INTO` and
+ * verify the copy before any PMI migration touches the schema
+ * (docs/PMI/DATABASE.md §5). Empty stores have nothing to protect.
+ */
+export function backupBeforePmiMigrations(db: any, dbPath: string, pendingIds: string[]): string | null {
+  if (!pendingIds.some((id) => id.startsWith(PMI_MIGRATION_PREFIX))) return null;
+  const hasData = db.prepare('SELECT 1 FROM observations LIMIT 1').get();
+  if (!hasData) return null;
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const backupPath = `${dbPath}.pre-pmi-${stamp}`;
+  db.prepare('VACUUM INTO ?').run(backupPath);
+  const copy = createDatabase(backupPath);
+  try {
+    const result = copy.prepare('PRAGMA integrity_check').get() as Record<string, unknown> | undefined;
+    const verdict = result ? Object.values(result)[0] : undefined;
+    if (verdict !== 'ok') throw new Error(`[pmi] pre-migration backup failed integrity check: ${String(verdict)}`);
+  } finally {
+    copy.close();
+  }
+  return backupPath;
+}
+
+function applySchemaMigrations(db: any, dbPath?: string): void {
   db.exec(CREATE_SCHEMA_MIGRATIONS_TABLE);
+  if (dbPath) {
+    const pending = SCHEMA_MIGRATIONS
+      .filter((migration) => !db.prepare('SELECT 1 FROM schema_migrations WHERE id = ?').get(migration.id))
+      .map((migration) => migration.id);
+    backupBeforePmiMigrations(db, dbPath, pending);
+  }
   for (const migration of SCHEMA_MIGRATIONS) {
     const applied = db.prepare('SELECT 1 FROM schema_migrations WHERE id = ?').get(migration.id);
     if (applied) continue;
     const apply = db.transaction(() => {
-      migration.apply(db);
+      migration.apply(db, dbPath ? path.dirname(dbPath) : undefined);
       db.prepare('INSERT INTO schema_migrations (id, applied_at) VALUES (?, ?)').run(
         migration.id,
         new Date().toISOString(),
@@ -1201,7 +1489,7 @@ function touchDatabase(normalized: string, db: any): void {
  * Get or create a shared SQLite database handle for the given data directory.
  *
  * The handle is cached per normalized dataDir path. All stores (observations,
- * mini-skills, sessions) share the same connection and the same DB file.
+ * sessions) share the same connection and the same DB file.
  *
  * Callers must NOT close the returned handle directly — use closeDatabase().
  */
@@ -1271,7 +1559,7 @@ export function getDatabase(dataDir: string): any {
 
   // New migrations are transactional and tracked. Older idempotent migrations
   // remain untouched for backwards compatibility with existing local stores.
-  applySchemaMigrations(db);
+  applySchemaMigrations(db, dbPath);
 
   // Create indexes AFTER all ALTER TABLE migrations so referenced columns exist
   db.exec(CREATE_INDEXES);

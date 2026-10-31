@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'pmi/**']
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -36,9 +36,6 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # Root source imports the private @memorix/* workspaces through their
-      # published dist/type entrypoints, so typecheck needs those artifacts.
-      - run: npm run build:workspaces
       - run: npm run lint
 
   native-sqlite-node26:
@@ -56,6 +53,47 @@ jobs:
       - name: Verify the optional SQLite runtime loads on Node 26
         run: >-
           node -e "const Database = require('better-sqlite3'); const db = new Database(':memory:'); const row = db.prepare('select 1 as value').get(); db.close(); if (row.value !== 1) process.exit(1);"
+
+  central-postgres:
+    # Central-server and TEST 8 suites against a real pgvector service; they
+    # skip elsewhere when Docker is missing, so this job is the mandatory gate.
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: pmi
+          POSTGRES_PASSWORD: pmi
+          POSTGRES_DB: pmi
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U pmi -d pmi"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      PMI_TEST_PG_URL: postgres://pmi:pmi@127.0.0.1:5432/pmi
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npx vitest run tests/central
+
+  compose-acceptance:
+    # All acceptance suites against the Docker Compose deployment, plus the
+    # deployed server over HTTPS and a backup -> destroy -> restore drill.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: deploy/acceptance.sh
 
   docker-control-plane:
     runs-on: ubuntu-latest

@@ -460,9 +460,9 @@ export async function startSession(
     await getSessionResumeBrief(projectId, undefined, opts?.reader),
   );
 
-  // Atomic rollover: complete all active sessions for this project's aliases
-  // and insert the new session in a single SQLite transaction.
-  // Prevents concurrent startSession() from leaving multiple active sessions.
+  // Atomic rollover: complete this agent's active sessions for the project's
+  // aliases and insert the new session in a single SQLite transaction. Other
+  // agents' sessions stay active so developers and agents can work in parallel.
   const sessionStore = getSessionStore();
   const aliasSet = await resolveProjectIds(projectId);
   await sessionStore.atomicRolloverInsert(session, [...aliasSet], now);

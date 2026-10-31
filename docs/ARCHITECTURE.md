@@ -152,7 +152,7 @@ Responsibilities:
 
 ### Persistence Contract
 
-SQLite is the canonical local record for observations, sessions, mini-skills,
+SQLite is the canonical local record for observations, sessions,
 knowledge, coordination, and CodeGraph metadata. Search indexes and in-memory
 structures are derived views and may be rebuilt; they must never decide that a
 failed database is an empty project.
@@ -214,7 +214,7 @@ Responsibilities:
 - Git Memory ingestion
 - workspace and rule sync across agents
 - orchestration coordination state
-- mini-skills and memory-driven workflows
+- memory-driven workflows (coding conventions are memories of category `coding_convention`)
 - dashboard and HTTP service APIs
 
 ---

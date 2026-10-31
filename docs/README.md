@@ -68,7 +68,7 @@ The public docs are organized by user intent:
 | Plugin, rules, hooks, skills, and MCP support matrix | [INTEGRATIONS.md](INTEGRATIONS.md) |
 | TypeScript SDK | [../README.md#sdk](../README.md#sdk) |
 | Workspace and rules sync | [API_REFERENCE.md § Workspace and Rules](API_REFERENCE.md#8-workspace-and-rules-tools) |
-| Project skills and mini-skill promotion | [API_REFERENCE.md § Skills](API_REFERENCE.md#7-skills-and-promotion-tools) |
+| Coding conventions (former mini-skills) | [API_REFERENCE.md § Skills](API_REFERENCE.md#7-skills-and-promotion-tools) |
 | Hook architecture | [hooks-architecture.md](hooks-architecture.md) |
 
 ---

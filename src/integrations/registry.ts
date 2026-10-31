@@ -17,7 +17,7 @@ export type IntegrationLifecycleAction = 'install' | 'repair' | 'doctor' | 'unin
 
 export interface IntegrationCapabilityManifest {
   schemaVersion: '1';
-  agent: AgentName | 'memcode' | 'any-mcp';
+  agent: AgentName | 'any-mcp';
   name: string;
   transport: {
     supported: IntegrationTransport[];
@@ -55,7 +55,7 @@ export interface IntegrationCapabilityManifest {
 }
 
 export interface MemorixIntegration {
-  agent: AgentName | 'memcode' | 'any-mcp';
+  agent: AgentName | 'any-mcp';
   name: string;
   entry: IntegrationEntry;
   status: IntegrationStatus;
@@ -233,14 +233,6 @@ const integrationEntries: Array<Omit<MemorixIntegration, 'capabilities'>> = [
     note: 'WorkBuddy support writes a memorix MCP server row into ~/.workbuddy/mcp.json (or <project>/.workbuddy/mcp.json for project installs) and guidance into AGENTS.md.',
   },
   {
-    agent: 'memcode',
-    name: 'memcode',
-    entry: 'native',
-    status: 'ready',
-    install: 'memorix memcode',
-    surfaces: ['native agent', 'Memorix runtime'],
-  },
-  {
     agent: 'pi',
     name: 'pi coding agent',
     entry: 'official-package',
@@ -296,7 +288,7 @@ function capabilityManifest(entry: Omit<MemorixIntegration, 'capabilities'>): In
     'src/integrations/registry.ts',
     ...(hasMcp ? ['src/workspace/mcp-adapters/' + entry.agent + '.ts'] : []),
     ...(hasHooks || hasRules || hasSkills ? ['src/hooks/installers/index.ts'] : []),
-    ...(entry.agent !== 'any-mcp' && entry.agent !== 'memcode' ? ['src/cli/commands/setup.ts'] : []),
+    ...(entry.agent !== 'any-mcp' ? ['src/cli/commands/setup.ts'] : []),
   ];
   const packageFiles = PACKAGE_ENTRIES.has(entry.entry)
     ? [packageRoot(entry.agent)]
@@ -325,8 +317,8 @@ function capabilityManifest(entry: Omit<MemorixIntegration, 'capabilities'>): In
       uninstall: true,
     },
     hostCompatibility: {
-      range: entry.agent === 'memcode' ? 'Memorix runtime' : 'unknown',
-      verified: entry.agent === 'memcode',
+      range: 'unknown',
+      verified: false,
     },
     requirements: {
       projectRoot: entry.agent !== 'any-mcp',
@@ -348,7 +340,7 @@ export const MEMORIX_INTEGRATIONS: MemorixIntegration[] = integrationEntries.map
 }));
 
 function isAgentEntry(item: MemorixIntegration): item is MemorixIntegration & { agent: AgentName } {
-  return item.agent !== 'memcode' && item.agent !== 'any-mcp';
+  return item.agent !== 'any-mcp';
 }
 
 export function getAgentIntegrationEntries(): Array<MemorixIntegration & { agent: AgentName }> {

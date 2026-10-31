@@ -29,6 +29,7 @@ import { CodeGraphStore } from '../../src/codegraph/store.js';
 import { resetResolvedConfigCache } from '../../src/config/resolved-config.js';
 import { resetTomlConfigCache } from '../../src/config/toml-loader.js';
 import { storeObservation } from '../../src/memory/observations.js';
+import { KnowledgeGraphManager } from '../../src/memory/graph.js';
 import { endSession, startSession } from '../../src/memory/session.js';
 import { getProjectDataDir } from '../../src/store/persistence.js';
 import { resetDb } from '../../src/store/orama-store.js';
@@ -114,7 +115,6 @@ describe('Tool profile registration', () => {
       'memorix_codegraph_status',
       'memorix_context_pack',
       'memorix_detail',
-      'memorix_media',
       'memorix_project_context',
       'memorix_resolve',
       'memorix_search',
@@ -164,7 +164,7 @@ describe('Tool profile registration', () => {
     const fullTools = getToolNames(fullServer as any);
     expect(fullTools).toContain('team_manage');
     expect(fullTools).toContain('memorix_rules_sync');
-    expect(fullTools).toContain('create_entities');
+    expect(fullTools).not.toContain('create_entities');
     expect(fullTools).toContain('memorix_graph_context');
     expect(fullTools).toContain('memorix_knowledge');
     expect(fullTools).toContain('memorix_compaction_checkpoint');
@@ -332,7 +332,7 @@ describe('Tool profile registration', () => {
     }
   }, 30000);
 
-  it('keeps raw graph compatibility output limited to entities and relations while persisting explicit links', async () => {
+  it('persists explicit relatedEntities links into the project knowledge graph', async () => {
     const isolatedDataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-profile-graph-data-'));
     const previousDataDir = process.env.MEMORIX_DATA_DIR;
     process.env.MEMORIX_DATA_DIR = isolatedDataDir;
@@ -342,14 +342,13 @@ describe('Tool profile registration', () => {
     await resetDb();
     try {
       const dir = await createGitProjectDir('memorix-profile-graph-');
-      const { server } = await createMemorixServer(
+      const { server, projectId } = await createMemorixServer(
         dir,
         undefined,
         undefined,
         { toolProfile: 'full' } as any,
       );
       const store = getHandler(server as any, 'memorix_store');
-      const readGraph = getHandler(server as any, 'read_graph');
       await store({
         entityName: 'release-process',
         type: 'decision',
@@ -358,8 +357,9 @@ describe('Tool profile registration', () => {
         relatedEntities: ['token-refresh'],
       });
 
-      const graph = JSON.parse(getText(await readGraph({})));
-      expect(Object.keys(graph).sort()).toEqual(['entities', 'relations']);
+      const graphManager = new KnowledgeGraphManager(await getProjectDataDir(projectId), projectId);
+      await graphManager.init();
+      const graph = await graphManager.readGraph();
       expect(graph.relations).toEqual(expect.arrayContaining([
         { from: 'release-process', to: 'token-refresh', relationType: 'related_entity' },
       ]));

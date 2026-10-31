@@ -256,7 +256,11 @@ export async function runSync(
   }
 }
 
-function validateBatches(batches: ChangeBatch[], projectId: string, namespace: string, scope: SyncScope = 'project'): void {
+/**
+ * Envelope and payload checks shared by every replica and by the central
+ * server, which runs the same validation before materializing a pushed batch.
+ */
+export function validateBatches(batches: ChangeBatch[], projectId: string, namespace: string, scope: SyncScope = 'project'): void {
   for (const batch of batches) {
     if (batch.formatVersion !== 3 || batch.projectId !== projectId || batch.namespace !== namespace) {
       throw new Error('[memorix] sync batch rejected: wrong format, project, or remote namespace');

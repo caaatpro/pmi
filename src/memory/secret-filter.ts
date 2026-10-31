@@ -22,7 +22,7 @@
  *      Requires a real value (6+ non-whitespace chars) to avoid matching
  *      discussion text like "password must be 8 chars".
  *   2. Bearer authorization header tokens (20+ chars)
- *   3. Structured token prefixes: GitHub (ghp_/ghs_/gho_), OpenAI (sk-), JWT (eyJ)
+ *   3. Structured token prefixes: GitHub (ghp_/ghs_/gho_), PMI (pmi_pat_), OpenAI (sk-), JWT (eyJ)
  */
 function applyRedaction(text: string): string {
   if (!text) return text;
@@ -42,6 +42,9 @@ function applyRedaction(text: string): string {
 
   // GitHub tokens (ghp_, ghs_, gho_, github_pat_)
   out = out.replace(/\b(?:ghp|ghs|gho|github_pat)_[A-Za-z0-9]{36,}\b/g, '[REDACTED]');
+
+  // PMI personal access tokens
+  out = out.replace(/\bpmi_pat_[A-Za-z0-9_-]{20,}/g, '[REDACTED]');
 
   // OpenAI / similar keys (sk-...)
   out = out.replace(/\bsk-[A-Za-z0-9T-]{20,}\b/g, '[REDACTED]');

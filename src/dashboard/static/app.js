@@ -189,7 +189,7 @@ const i18n = {
     knowledgeTitle: 'Memory Overview',
     knowledgeSubtitle: 'Read-only overview generated from durable project memory, not a maintained wiki',
     knowledgeObservationsUsed: 'Observations Used',
-    knowledgeMiniSkillsUsed: 'Mini-skills Used',
+    knowledgeConventionsUsed: 'Coding Conventions',
     knowledgeRefs: 'Refs',
     knowledgeGenerated: 'Generated',
     knowledgeQuickJump: 'Sections',
@@ -198,7 +198,7 @@ const i18n = {
     knowledgeUnavailable: 'Memory Overview Unavailable',
     knowledgeUnavailableDesc: 'Could not load /api/knowledge for the selected project.',
     knowledgeEmpty: 'No Memory Overview Entries',
-    knowledgeEmptyDesc: 'Store durable observations or promote mini-skills to populate this read-only memory overview.',
+    knowledgeEmptyDesc: 'Store durable observations to populate this read-only memory overview.',
     knowledgeProvenance: 'Provenance',
     knowledgeEntry: 'entry',
     knowledgeEntries: 'entries',
@@ -207,7 +207,7 @@ const i18n = {
     knowledgeSectionOperationalKnowledge: 'Operational Knowledge',
     knowledgeSectionKnownGotchas: 'Known Gotchas',
     knowledgeSectionGitBackedFacts: 'Git-backed Facts',
-    knowledgeSectionPromotedSkills: 'Promoted Skills',
+    knowledgeSectionCodingConventions: 'Coding Conventions',
 
     // Config
     configTitle: 'Config Provenance',
@@ -363,12 +363,12 @@ const i18n = {
 
     // Deterministic memory-map projection
     kgTitle: 'Memory Map',
-    kgSubtitle: 'Deterministic links from shared entities, skill sources, and explicit relations',
+    kgSubtitle: 'Deterministic links from shared entities and explicit relations',
     kgNodes: 'nodes',
     kgEdges: 'edges',
     kgClusters: 'clusters',
     kgNoData: 'No Memory Map Data',
-    kgNoDataDesc: 'Store durable observations or promote mini-skills to build a deterministic memory map.',
+    kgNoDataDesc: 'Store durable observations to build a deterministic memory map.',
     kgUnavailable: 'Memory Map Unavailable',
     kgUnavailableDesc: 'The memory-map service did not return a valid response. Check the Dashboard service and try again.',
     kgClusterFilter: 'Section Cluster',
@@ -647,7 +647,7 @@ const i18n = {
     knowledgeTitle: '记忆概览',
     knowledgeSubtitle: '从持久项目记忆生成的只读概览，尚非可维护 Wiki',
     knowledgeObservationsUsed: '使用的观察',
-    knowledgeMiniSkillsUsed: '使用的 Mini-skills',
+    knowledgeConventionsUsed: '编码约定',
     knowledgeRefs: '引用',
     knowledgeGenerated: '生成于',
     knowledgeQuickJump: '章节',
@@ -656,7 +656,7 @@ const i18n = {
     knowledgeUnavailable: '记忆概览不可用',
     knowledgeUnavailableDesc: '无法为所选项目加载 /api/knowledge。',
     knowledgeEmpty: '暂无记忆概览条目',
-    knowledgeEmptyDesc: '存储持久观察或提升 mini-skill 后，此只读记忆概览会自动填充。',
+    knowledgeEmptyDesc: '存储持久观察后，此只读记忆概览会自动填充。',
     knowledgeProvenance: '来源',
     knowledgeEntry: '条',
     knowledgeEntries: '条',
@@ -665,7 +665,7 @@ const i18n = {
     knowledgeSectionOperationalKnowledge: '操作知识',
     knowledgeSectionKnownGotchas: '已知陷阱',
     knowledgeSectionGitBackedFacts: 'Git 事实',
-    knowledgeSectionPromotedSkills: '提升技能',
+    knowledgeSectionCodingConventions: '编码约定',
 
     // Config
     configTitle: '配置溯源',
@@ -826,12 +826,12 @@ const i18n = {
 
     // Deterministic memory-map projection
     kgTitle: '记忆关系图',
-    kgSubtitle: '由共享实体、技能来源和显式关系确定性推断',
+    kgSubtitle: '由共享实体和显式关系确定性推断',
     kgNodes: '个节点',
     kgEdges: '条边',
     kgClusters: '个聚类',
     kgNoData: '暂无记忆关系图数据',
-    kgNoDataDesc: '存储持久观察或提升迷你技能以构建确定性记忆关系图。',
+    kgNoDataDesc: '存储持久观察以构建确定性记忆关系图。',
     kgUnavailable: '记忆关系图暂时不可用',
     kgUnavailableDesc: '记忆关系图服务没有返回有效数据，请检查 Dashboard 服务后重试。',
     kgClusterFilter: '分区聚类',
@@ -1871,7 +1871,7 @@ async function loadKnowledge() {
 
   const sections = normalizeKnowledgeSections(kb.sections || []);
   const totalItems = sections.reduce((sum, section) => sum + (section.items || []).length, 0);
-  const stats = kb.stats || { observationsUsed: 0, miniSkillsUsed: 0, refs: 0 };
+  const stats = kb.stats || { observationsUsed: 0, conventionsUsed: 0, refs: 0 };
   const overviewSection = sections.find(s => s.id === 'project-overview');
   const mainSections = sections.filter(s => s.id !== 'project-overview');
 
@@ -1896,8 +1896,8 @@ async function loadKnowledge() {
             <div class="stat-value">${stats.observationsUsed || 0}</div>
           </div>
           <div class="stat-card" data-accent="cyan">
-            <div class="stat-label">${t('knowledgeMiniSkillsUsed')}</div>
-            <div class="stat-value">${stats.miniSkillsUsed || 0}</div>
+            <div class="stat-label">${t('knowledgeConventionsUsed')}</div>
+            <div class="stat-value">${stats.conventionsUsed || 0}</div>
           </div>
           <div class="stat-card" data-accent="green">
             <div class="stat-label">${t('knowledgeRefs')}</div>
@@ -1938,7 +1938,7 @@ function normalizeKnowledgeSections(sections) {
     ['operational-knowledge', 'knowledgeSectionOperationalKnowledge'],
     ['known-gotchas', 'knowledgeSectionKnownGotchas'],
     ['git-backed-facts', 'knowledgeSectionGitBackedFacts'],
-    ['promoted-skills', 'knowledgeSectionPromotedSkills'],
+    ['coding-conventions', 'knowledgeSectionCodingConventions'],
   ];
   return order.map(([id, titleKey]) => {
     const section = byId.get(id);
@@ -2108,7 +2108,7 @@ function renderSemanticGraph(kg, codegraph) {
     'operational-knowledge': '#7CC598',
     'known-gotchas': '#E08585',
     'git-backed-facts': '#56D6A6',
-    'promoted-skills': '#C9A8FF',
+    'coding-conventions': '#C9A8FF',
   };
   const defaultSectionColor = '#A893C2';
 
@@ -2130,7 +2130,7 @@ function renderSemanticGraph(kg, codegraph) {
     'operational-knowledge': 'knowledgeSectionOperationalKnowledge',
     'known-gotchas': 'knowledgeSectionKnownGotchas',
     'git-backed-facts': 'knowledgeSectionGitBackedFacts',
-    'promoted-skills': 'knowledgeSectionPromotedSkills',
+    'coding-conventions': 'knowledgeSectionCodingConventions',
   };
   function sectionLabel(sectionId) {
     const key = sectionI18nKeys[sectionId];
@@ -2158,7 +2158,7 @@ function renderSemanticGraph(kg, codegraph) {
   }
 
   // Section ordering for stable category index
-  const SECTION_ORDER = ['core-decisions', 'operational-knowledge', 'known-gotchas', 'git-backed-facts', 'promoted-skills'];
+  const SECTION_ORDER = ['core-decisions', 'operational-knowledge', 'known-gotchas', 'git-backed-facts', 'coding-conventions'];
 
   // Build ECharts graph data: { categories, nodes, links }
   function buildEChartsData() {
@@ -2196,7 +2196,7 @@ function renderSemanticGraph(kg, codegraph) {
       'operational-knowledge': { x: 0, y: 0 },
       'known-gotchas': { x: -340, y: 190 },
       'git-backed-facts': { x: 360, y: -150 },
-      'promoted-skills': { x: 350, y: 190 },
+      'coding-conventions': { x: 350, y: 190 },
     };
 
     function stableNodePosition(node, index) {

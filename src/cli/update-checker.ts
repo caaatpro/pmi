@@ -5,8 +5,9 @@
  * Non-blocking — runs entirely in the background after server/TUI starts.
  * Rate-limited to once per 24 hours via a cache file.
  *
- * Default mode: 'notify' (check and print a restart-safe notice).
- * Set MEMORIX_AUTO_UPDATE=install to opt into silent background install.
+ * Default mode: 'off'. PMI is not published to npm, and the registry
+ * package is upstream Memorix, so checks run only when explicitly enabled:
+ * MEMORIX_AUTO_UPDATE=notify prints a notice, =install installs upstream.
  * Lifecycle scripts are disabled for background installs.
  * Disable via MEMORIX_AUTO_UPDATE=off.
  */
@@ -91,14 +92,13 @@ async function writeCache(cache: UpdateCache): Promise<void> {
 
 /**
  * Parse MEMORIX_AUTO_UPDATE into an explicit mode.
- * Default: notify-only.
+ * Default: off (see module comment).
  */
 function parseAutoUpdateMode(raw: string | undefined): AutoUpdateMode {
   const env = raw?.toLowerCase()?.trim();
-  if (!env || env === 'notify') return 'notify';
-  if (env === 'off' || env === 'false' || env === '0') return 'off';
+  if (env === 'notify') return 'notify';
   if (env === 'install' || env === 'true' || env === '1') return 'install';
-  return 'notify';
+  return 'off';
 }
 
 function parseAutoUpdateTimeoutMs(raw: string | undefined): number {
@@ -203,9 +203,8 @@ function installUpdateInBackground(targetVersion: string, currentVersion: string
  *
  * Call this fire-and-forget from entry points (serve-http, TUI).
  * - Rate-limited to 1 check per 24h
- * - Default mode: notify only
+ * - Default mode: off; MEMORIX_AUTO_UPDATE=notify enables the notice
  * - MEMORIX_AUTO_UPDATE=install enables silent background install
- * - Disable via MEMORIX_AUTO_UPDATE=off
  * - All output goes to stderr only (never stdout / MCP / TUI content)
  * - Failures never crash the caller
  */

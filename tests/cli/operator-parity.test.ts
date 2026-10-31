@@ -6,22 +6,18 @@ import { execSync } from 'node:child_process';
 
 import memoryCommand from '../../src/cli/commands/memory.js';
 import syncCommand from '../../src/cli/commands/sync.js';
-import ingestCommand from '../../src/cli/commands/ingest.js';
 import reasoningCommand from '../../src/cli/commands/reasoning.js';
 import retentionCommand from '../../src/cli/commands/retention.js';
 import formationCommand from '../../src/cli/commands/formation.js';
 import auditCommand from '../../src/cli/commands/audit.js';
 import transferCommand from '../../src/cli/commands/transfer.js';
 import skillsCommand from '../../src/cli/commands/skills.js';
-import mediaCommand from '../../src/cli/commands/media.js';
 import { CLI_NATIVE_PARITY } from '../../src/cli/capability-map.js';
 import { TOOL_PROFILES } from '../../src/server/tool-profile.js';
 import { closeAllDatabases } from '../../src/store/sqlite-db.js';
 import { resetObservationStore } from '../../src/store/obs-store.js';
 import { resetSessionStore } from '../../src/store/session-store.js';
 import { resetTeamStore } from '../../src/team/team-store.js';
-import { resetMiniSkillStore } from '../../src/store/mini-skill-store.js';
-import { resetMiniSkillFreshness } from '../../src/memory/freshness.js';
 import { resetDb } from '../../src/store/orama-store.js';
 
 async function runCommand(command: any, args: Record<string, unknown>) {
@@ -87,22 +83,13 @@ describe('CLI native parity', () => {
     resetObservationStore();
     resetSessionStore();
     resetTeamStore();
-    resetMiniSkillStore();
-    resetMiniSkillFreshness();
     await resetDb();
     closeAllDatabases();
     rmSync(sandboxRoot, { recursive: true, force: true });
   });
 
   it('provides an explicit CLI route for every Memorix-native MCP tool', () => {
-    const nativeTools = Object.keys(TOOL_PROFILES).filter((toolName) => !toolName.startsWith('create_')
-      && !toolName.startsWith('delete_')
-      && !toolName.startsWith('read_')
-      && !toolName.startsWith('search_nodes')
-      && !toolName.startsWith('open_nodes')
-      && !toolName.startsWith('add_observations'));
-
-    expect(new Set(Object.keys(CLI_NATIVE_PARITY))).toEqual(new Set(nativeTools));
+    expect(new Set(Object.keys(CLI_NATIVE_PARITY))).toEqual(new Set(Object.keys(TOOL_PROFILES)));
   });
 
   it('exposes reasoning, retention, formation, and transfer via JSON-first CLI commands', async () => {
@@ -201,14 +188,6 @@ describe('CLI native parity', () => {
     expect(consolidate.exitCode).toBe(0);
     expect(JSON.parse(consolidate.stdout).clusters).toBeDefined();
 
-    const promote = await runCommand(memoryCommand, {
-      _: ['promote'],
-      ids: `${JSON.parse(first.stdout).observation.id}`,
-      json: true,
-    });
-    expect(promote.exitCode).toBe(0);
-    expect(JSON.parse(promote.stdout).skill.id).toBeTypeOf('number');
-
     const audit = await runCommand(auditCommand, {
       _: ['list'],
       json: true,
@@ -239,45 +218,6 @@ describe('CLI native parity', () => {
     });
     expect(skillList.exitCode).toBe(0);
     expect(JSON.parse(skillList.stdout).skills).toBeDefined();
-
-    const samplePngBase64 =
-      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+XWZ0AAAAASUVORK5CYII=';
-    const imagePath = path.join(repoDir, 'sample.png');
-    writeFileSync(imagePath, Buffer.from(samplePngBase64, 'base64'));
-    const ingestImage = await runCommand(ingestCommand, {
-      _: ['image'],
-      path: imagePath,
-      json: true,
-    });
-    expect(ingestImage.exitCode).toBe(0);
-    const ingestedImage = JSON.parse(ingestImage.stdout);
-    expect(ingestedImage.asset.kind).toBe('image');
-    expect(ingestedImage.observation.id).toBeTypeOf('number');
-    // Visual analysis is optional. A controlled asset and text fallback remain
-    // useful when a project's LLM lane has not been configured.
-    expect(ingestedImage.analysisWarning).toContain('LLM');
-
-    const mediaList = await runCommand(mediaCommand, {
-      _: ['list'],
-      kind: 'image',
-      json: true,
-    });
-    expect(mediaList.exitCode).toBe(0);
-    const listedAssets = JSON.parse(mediaList.stdout).assets;
-    expect(listedAssets).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: ingestedImage.asset.id, kind: 'image' }),
-    ]));
-
-    const mediaShow = await runCommand(mediaCommand, {
-      _: ['show'],
-      asset: ingestedImage.asset.id,
-      json: true,
-    });
-    expect(mediaShow.exitCode).toBe(0);
-    expect(JSON.parse(mediaShow.stdout)).toMatchObject({
-      asset: { id: ingestedImage.asset.id },
-      links: [expect.any(Object)],
-    });
   }, 30000);
 
   it('generates and shows project skills through the dedicated skills namespace', async () => {

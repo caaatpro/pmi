@@ -1,19 +1,19 @@
 /**
  * Tool Profile System — Progressive Disclosure for MCP tools
  *
- * The full Memorix tool set contains 40+ tools, but most users only ever
+ * The full tool set contains 49 tools, but most users only ever
  * use a small subset (store / search / detail). Exposing all of them at
  * tools/list time causes cognitive overload.
  *
  * We provide four profiles:
- *   - "micro" (stdio default): Agent-ready project context + bounded recovery/media controls — 9 tools.
+ *   - "micro" (stdio default): Agent-ready project context + bounded recovery controls — 8 tools.
  *     Suitable for normal MCP clients where every tool schema costs context tokens.
- *   - "lite": Core memory CRUD, sessions, reasoning, continuity, retention, backup — 21 tools.
+ *   - "lite": Core memory CRUD, sessions, reasoning, continuity, retention, backup, PMI context, git, sessions and workspace recovery — 34 tools.
  *     Suitable for solo users who want the full memory surface without team tools.
- *   - "team" (HTTP default): lite + orchestration coordination tools, dashboard, and Knowledge Workspace — 29 tools.
+ *   - "team" (HTTP default): lite + coordination tools, dashboard, and Knowledge Workspace — 42 tools.
  *     Suitable when an operator explicitly wants task/message/lock surfaces.
  *   - "full": Everything, including niche / advanced tools (consolidate, dedup,
- *     formation metrics, skills, rules/workspace sync, KG-official, image ingest).
+ *     formation metrics, rules/workspace sync).
  *     Opt in via `MEMORIX_MODE=full` or `--mode full`.
  *
  * Users can override at any time via the `MEMORIX_MODE` env var, the `--mode`
@@ -36,12 +36,10 @@ export const TOOL_PROFILES: Record<string, ReadonlyArray<ToolProfile>> = Object.
   memorix_codegraph_status:   ['micro', 'lite', 'team', 'full'],
   memorix_resolve:            ['micro', 'lite', 'team', 'full'],
   // A fail-closed stdio server needs an explicit recovery path when a client
-  // did not launch it from the workspace. The unified media tool keeps
-  // multimodal support to one additional schema rather than enabling lite.
+  // did not launch it from the workspace.
   memorix_session_start:      ['micro', 'lite', 'team', 'full'],
-  memorix_media:              ['micro', 'lite', 'team', 'full'],
   // Evidence and feedback are deliberate operator/context-control surfaces;
-  // keep the default micro profile at its nine-tool token budget.
+  // keep the default micro profile at its eight-tool token budget.
   memorix_evidence:           ['lite', 'team', 'full'],
   memorix_feedback:           ['lite', 'team', 'full'],
   memorix_continuity:         ['lite', 'team', 'full'],
@@ -56,6 +54,23 @@ export const TOOL_PROFILES: Record<string, ReadonlyArray<ToolProfile>> = Object.
   memorix_search_reasoning:   ['lite', 'team', 'full'],
   memorix_transfer:           ['lite', 'team', 'full'],
   memorix_retention:          ['lite', 'team', 'full'],
+  // PMI context and memory (src/mcp/tools/context.ts)
+  context_build:              ['lite', 'team', 'full'],
+  project_overview:           ['lite', 'team', 'full'],
+  memory_search:              ['lite', 'team', 'full'],
+  memory_get:                 ['lite', 'team', 'full'],
+  memory_save:                ['lite', 'team', 'full'],
+  decision_log:               ['lite', 'team', 'full'],
+  git_analyze:                ['lite', 'team', 'full'],
+  // PMI session continuity (src/mcp/tools/session.ts)
+  session_checkpoint:         ['lite', 'team', 'full'],
+  session_handoff:            ['lite', 'team', 'full'],
+  session_list:               ['lite', 'team', 'full'],
+  session_resume:             ['lite', 'team', 'full'],
+  session_finish:             ['lite', 'team', 'full'],
+  // PMI workspace recovery (src/mcp/tools/workspace.ts)
+  workspace_snapshot:         ['lite', 'team', 'full'],
+  workspace_restore:          ['lite', 'team', 'full'],
 
   // ── team: orchestration coordination surfaces — HTTP default ──────
   memorix_dashboard:          ['team', 'full'],
@@ -72,25 +87,9 @@ export const TOOL_PROFILES: Record<string, ReadonlyArray<ToolProfile>> = Object.
   memorix_deduplicate:        ['full'],
   memorix_consolidate:        ['full'],
   memorix_formation_metrics:  ['full'],
-  memorix_skills:             ['full'],
-  memorix_promote:            ['full'],
   memorix_rules_sync:         ['full'],
   memorix_workspace_sync:     ['full'],
-  memorix_ingest_image:       ['full'],
   memorix_compaction_checkpoint: ['full'],
-
-  // ── MCP Official Memory Server compatibility (KG tools) ──────────
-  // These are only useful to users specifically migrating from the
-  // reference mcp-memory server. Hide them unless explicitly enabled.
-  create_entities:            ['full'],
-  create_relations:           ['full'],
-  add_observations:           ['full'],
-  delete_entities:            ['full'],
-  delete_observations:        ['full'],
-  delete_relations:           ['full'],
-  read_graph:                 ['full'],
-  search_nodes:               ['full'],
-  open_nodes:                 ['full'],
 });
 
 /**
@@ -145,10 +144,10 @@ export function resolveToolProfile(opts: ResolveToolProfileOpts): ToolProfile {
 export function describeProfile(profile: ToolProfile): string {
   const count = countToolsInProfile(profile);
   switch (profile) {
-    case 'micro': return `micro (agent-ready context + bounded recovery/media, ${count} tools)`;
+    case 'micro': return `micro (agent-ready context + bounded recovery, ${count} tools)`;
     case 'lite': return `lite (core memory + sessions, ${count} tools)`;
     case 'team': return `team (lite + coordination tools + dashboard + knowledge workspace, ${count} tools)`;
-    case 'full': return `full (all tools including advanced / KG-compat, ${count} tools)`;
+    case 'full': return `full (all tools including advanced, ${count} tools)`;
   }
 }
 

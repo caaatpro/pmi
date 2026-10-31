@@ -48,16 +48,14 @@ describe('official MCP v2 modern bridge', () => {
   let project: { root: string; dataDir: string } | undefined;
 
   afterEach(async () => {
-    const [{ resetObservationStore }, { resetSessionStore }, { resetMiniSkillStore }, { resetGraphStore }, { closeAllDatabases }] = await Promise.all([
+    const [{ resetObservationStore }, { resetSessionStore }, { resetGraphStore }, { closeAllDatabases }] = await Promise.all([
       import('../../src/store/obs-store.js'),
       import('../../src/store/session-store.js'),
-      import('../../src/store/mini-skill-store.js'),
       import('../../src/store/graph-store.js'),
       import('../../src/store/sqlite-db.js'),
     ]);
     resetObservationStore();
     resetSessionStore();
-    resetMiniSkillStore();
     resetGraphStore();
     closeAllDatabases();
     if (project) await rm(project.root, { recursive: true, force: true });

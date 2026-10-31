@@ -16,8 +16,9 @@ describe('Git Project Detection', () => {
   it('should detect this repository from git remote', () => {
     const project = detectProject();
     expect(project).not.toBeNull();
-    expect(project!.id).toMatch(/^[\w.-]+\/memorix$/);
-    expect(project!.gitRemote).toMatch(/memorix/i);
+    // Forks and clones carry their own remote name, so only the owner/repo shape is stable.
+    expect(project!.id).toMatch(/^[\w.-]+\/[\w.-]+$/);
+    expect(project!.gitRemote).toBeTruthy();
     expect(project!.rootPath).toBeTruthy();
   }, 30_000);
 

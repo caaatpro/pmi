@@ -427,7 +427,7 @@ remains unchanged. The receipt contains no query text or raw memory content.
 
 ### `memorix_detail`
 
-Fetch full observation, mini-skill, or curated long-term memory detail.
+Fetch full observation or curated long-term memory detail (a legacy `skill:<id>` ref opens the converted coding convention).
 
 After `memorix_project_context`, use `purpose` only for a named missing fact. Set `force: true` only when the user explicitly asks for the full underlying record already represented in the brief.
 
@@ -696,41 +696,24 @@ Archive confirmed mis-attributed observations with `memorix_resolve`.
 
 ## 7. Skills and Promotion Tools
 
-### `memorix_skills`
+`memorix_skills` and `memorix_promote` were removed in PMI. Mini-skills are
+now ordinary memories of category `coding_convention`:
 
-Work with memory-driven project skills.
+- SQLite migration `pmi-5-mini-skills-to-conventions` copies every existing
+  mini-skill once into `observations` (type `how-it-works`, category
+  `coding_convention`, confidence `observed`, value category `core`,
+  `topicKey` `mini-skill/<id>/<fingerprint>`, so skills with the same local
+  id on two machines stay separate memories after sync). The legacy `mini_skills` table is kept
+  unchanged, and the store is backed up before the migration runs.
+- `memorix_session_start` injects the active coding conventions of the
+  project (up to 20) where it used to inject mini-skills.
+- A legacy ref `skill:<id>` passed to `memorix_detail` opens the converted
+  memory.
+- Record a new convention with `memory_save` (`category: coding_convention`);
+  find them with `memory_search` filtered by that category.
 
-Important inputs:
-
-- `action`
-- optional `name`
-- optional `target`
-- optional `write`
-
-Typical actions:
-
-- `list`
-- `generate`
-- `inject`
-
-### `memorix_promote`
-
-Promote observations into durable mini-skills.
-
-Important inputs:
-
-- `action`
-- optional `observationIds`
-- optional `skillId`
-- optional `instruction`
-- optional `trigger`
-- optional `tags`
-
-Typical actions:
-
-- `list`
-- `promote`
-- `delete`
+Generating `SKILL.md` files from memory patterns remains available through the
+`memorix skills` CLI.
 
 ---
 

@@ -85,6 +85,33 @@ export default defineCommand({
       p.log.info('Other hook content was preserved.');
     }
 
+    // The installer also added the same block to post-merge and post-checkout.
+    const { join, dirname } = await import('node:path');
+    for (const name of ['post-merge', 'post-checkout']) {
+      const extra = join(dirname(hookPath), name);
+      if (!existsSync(extra)) continue;
+      const kept = removeMarkedBlock(readFileSync(extra, 'utf-8'));
+      if (!kept || kept === '#!/bin/sh') unlinkSync(extra);
+      else writeFileSync(extra, kept + '\n', 'utf-8');
+    }
+
     p.outro('Done.');
   },
 });
+
+function removeMarkedBlock(content: string): string {
+  const filtered: string[] = [];
+  let inBlock = false;
+  for (const line of content.split('\n')) {
+    if (line.includes(HOOK_MARKER)) { inBlock = true; continue; }
+    if (inBlock) {
+      if (line.trim() === '' || line.startsWith('#!') || line.startsWith('# [')) {
+        if (line.trim() !== '') filtered.push(line);
+        inBlock = false;
+      }
+      continue;
+    }
+    filtered.push(line);
+  }
+  return filtered.join('\n').trim();
+}

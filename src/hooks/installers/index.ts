@@ -1869,7 +1869,6 @@ function getAgentRulesContent(agent?: AgentName, scope: 'project' | 'global' = '
     '| \x60memorix_session_start\x60 | Load session context (handoff, orchestration coordination) |',
     '| \x60memorix_evidence\x60 | Check a memory source, freshness, and verification state |',
     '| \x60memorix_feedback\x60 | Record whether a memory helped, conflicted, or was corrected |',
-    '| \x60memorix_media\x60 | Inspect or import controlled local media |',
   ].join('\n');
 }
 

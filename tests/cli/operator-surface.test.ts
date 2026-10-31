@@ -16,8 +16,6 @@ import { closeAllDatabases } from '../../src/store/sqlite-db.js';
 import { resetObservationStore } from '../../src/store/obs-store.js';
 import { resetSessionStore } from '../../src/store/session-store.js';
 import { resetTeamStore } from '../../src/team/team-store.js';
-import { resetMiniSkillStore } from '../../src/store/mini-skill-store.js';
-import { resetMiniSkillFreshness } from '../../src/memory/freshness.js';
 import { resetDb } from '../../src/store/orama-store.js';
 
 async function runCommand(command: any, args: Record<string, unknown>) {
@@ -81,8 +79,6 @@ describe('CLI operator surface', () => {
     resetObservationStore();
     resetSessionStore();
     resetTeamStore();
-    resetMiniSkillStore();
-    resetMiniSkillFreshness();
     await resetDb();
     closeAllDatabases();
     rmSync(sandboxRoot, { recursive: true, force: true });

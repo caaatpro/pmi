@@ -71,7 +71,7 @@ const FTS_INIT_MAX_ATTEMPTS = 3;
  * is a normal fallback rather than a reason to make the durable store
  * unusable. Cross-process lock contention (SQLITE_BUSY) is not that case —
  * it is retried a few times, mirroring the retry already applied to the
- * write paths in sqlite-store.ts / session-store.ts / mini-skill-store.ts,
+ * write paths in sqlite-store.ts / session-store.ts,
  * since the caller here is synchronous and cannot await retrySqliteBusy.
  */
 export function initializeObservationLexicalIndex(db: any): boolean {

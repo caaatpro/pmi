@@ -100,9 +100,9 @@ describe('Auto-Update', () => {
       expect(elapsed).toBeLessThan(200);
     });
 
-    it('parseAutoUpdateMode defaults to notify', () => {
+    it('parseAutoUpdateMode defaults to off for the PMI fork', () => {
       delete process.env.MEMORIX_AUTO_UPDATE;
-      expect(_testing.parseAutoUpdateMode(process.env.MEMORIX_AUTO_UPDATE)).toBe('notify');
+      expect(_testing.parseAutoUpdateMode(process.env.MEMORIX_AUTO_UPDATE)).toBe('off');
     });
 
     it('parseAutoUpdateMode returns off for off/false/0', () => {
@@ -119,10 +119,12 @@ describe('Auto-Update', () => {
       }
     });
 
-    it('parseAutoUpdateMode treats notify and unknown values as notify', () => {
-      for (const val of ['notify', 'maybe', 'random']) {
+    it('parseAutoUpdateMode enables notify only when asked and treats unknown values as off', () => {
+      process.env.MEMORIX_AUTO_UPDATE = 'notify';
+      expect(_testing.parseAutoUpdateMode(process.env.MEMORIX_AUTO_UPDATE)).toBe('notify');
+      for (const val of ['maybe', 'random']) {
         process.env.MEMORIX_AUTO_UPDATE = val;
-        expect(_testing.parseAutoUpdateMode(process.env.MEMORIX_AUTO_UPDATE)).toBe('notify');
+        expect(_testing.parseAutoUpdateMode(process.env.MEMORIX_AUTO_UPDATE)).toBe('off');
       }
     });
   });
@@ -211,7 +213,7 @@ describe('Auto-Update', () => {
       expect(src).toContain('update-checker');
     });
 
-    it('index.ts (TUI/workbench) contains checkForUpdates() call', () => {
+    it('index.ts (usage fallback) contains checkForUpdates() call', () => {
       const src = readFileSync(
         join(__dirname, '../../src/cli/index.ts'),
         'utf-8',

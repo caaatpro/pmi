@@ -8,6 +8,7 @@
  * and in the Orama search index (for full-text + vector search).
  */
 
+import { AGENT_WRITABLE_CONFIDENCE, canTransitionConfidence, classifyObservation, type MemoryCategory, type MemoryConfidence } from '../domain/memory.js';
 import type {
   Observation,
   ObservationAttachment,
@@ -480,8 +481,8 @@ export async function ensureCorpusLoaded(): Promise<void> {
 /**
  * @internal Observation-only freshness gate.
  *
- * Public callers should use `withFreshIndex()` from freshness.ts instead,
- * which also covers mini-skills. This function remains for internal use
+ * Public callers should use `withFreshIndex()` from freshness.ts instead.
+ * This function remains for internal use
  * by the freshness module and legacy test code only.
  */
 export async function withFreshObservations<T>(fn: () => T | Promise<T>): Promise<T> {
@@ -506,6 +507,11 @@ function formatAttachmentProvenance(attachments?: ObservationAttachment[]): stri
     attachment.mimeType,
     attachment.url,
   ].filter(Boolean).join(' ')).join('\n');
+}
+
+/** Writes through storeObservation are agent or hook writes: they start at most `proposed`. */
+function agentConfidence(confidence: MemoryConfidence): MemoryConfidence {
+  return AGENT_WRITABLE_CONFIDENCE.includes(confidence) ? confidence : 'proposed';
 }
 
 export async function storeObservation(input: {
@@ -533,6 +539,10 @@ export async function storeObservation(input: {
   visibility?: ObservationVisibility;
   sharedWithAgentIds?: string[];
   createdByAgentId?: string;
+  /** PMI category override (src/domain/memory.ts); default comes from `type`. */
+  category?: MemoryCategory;
+  /** PMI confidence for agent writes: observed, inferred or proposed. Never confirmed. */
+  confidence?: MemoryConfidence;
   /** Optional caller-bound write scope for topic-key upserts. */
   visibilityReader?: ObservationReader;
   /**
@@ -670,6 +680,8 @@ export async function storeObservation(input: {
           visibility: input.visibility ?? 'project',
           sharedWithAgentIds: input.sharedWithAgentIds,
           createdByAgentId: input.createdByAgentId,
+          ...(input.category ? { category: input.category } : {}),
+          ...(input.confidence ? { confidence: agentConfidence(input.confidence) } : {}),
           // Predict the generation that atomic() will commit after this callback.
           // bumpGeneration() runs after fn(tx) returns, incrementing by 1.
           writeGeneration: transactionGeneration + 1,
@@ -750,6 +762,8 @@ export async function storeObservation(input: {
         visibility: input.visibility ?? 'project',
         sharedWithAgentIds: input.sharedWithAgentIds,
         createdByAgentId: input.createdByAgentId,
+        ...(input.category ? { category: input.category } : {}),
+        ...(input.confidence ? { confidence: agentConfidence(input.confidence) } : {}),
         writeGeneration: 0,
       };
       observations.push(observation);
@@ -848,6 +862,8 @@ async function upsertObservation(
     admissionReason?: string;
     visibility?: ObservationVisibility;
     sharedWithAgentIds?: string[];
+    category?: MemoryCategory;
+    confidence?: MemoryConfidence;
   },
   now: string,
 ): Promise<Observation> {
@@ -883,6 +899,8 @@ async function upsertObservation(
   existing.hasCausalLanguage = extracted.hasCausalLanguage;
   existing.revisionCount = (existing.revisionCount ?? 1) + 1;
   existing.status = 'active';
+  // Rewriting a memory is the review a commit asked for.
+  delete existing.review;
   if (input.sessionId) existing.sessionId = input.sessionId;
   if (input.progress) existing.progress = input.progress;
   if (input.sourceDetail !== undefined) existing.sourceDetail = input.sourceDetail;
@@ -891,6 +909,12 @@ async function upsertObservation(
   if (input.admissionReason !== undefined) existing.admissionReason = sanitizeCredentials(input.admissionReason);
   if (input.visibility !== undefined) existing.visibility = input.visibility;
   if (input.sharedWithAgentIds !== undefined) existing.sharedWithAgentIds = input.sharedWithAgentIds;
+  if (input.category !== undefined) existing.category = input.category;
+  if (input.confidence !== undefined) {
+    // An agent edit never confirms knowledge nor demotes confirmed knowledge.
+    const current = classifyObservation(existing).confidence;
+    if (canTransitionConfidence(current, input.confidence, 'agent').ok) existing.confidence = input.confidence;
+  }
 
   // Re-index in Orama WITHOUT embedding first (non-blocking)
   const doc: MemorixDocument = {
@@ -1637,4 +1661,27 @@ export async function backfillVectorEmbeddings(options: {
     failed,
     ...(lastFailure ? { lastError: lastFailure } : {}),
   };
+}
+
+/**
+ * Mark observations as possibly outdated (PMI `needs_review`) without
+ * touching their content, e.g. after a commit changed their related files.
+ * The search index is unaffected; the mark clears when the memory is rewritten.
+ */
+export async function markObservationsForReview(
+  updates: Array<{ id: number; review: NonNullable<Observation['review']> }>,
+): Promise<number[]> {
+  const changed: Observation[] = [];
+  for (const update of updates) {
+    const obs = observations.find((o) => o.id === update.id);
+    if (!obs) continue;
+    obs.review = { ...update.review, reason: sanitizeCredentials(update.review.reason) };
+    changed.push(obs);
+  }
+  if (projectDir && changed.length > 0) {
+    await getObservationStore().atomic(async (tx) => {
+      await Promise.all(changed.map((observation) => tx.update(observation)));
+    });
+  }
+  return changed.map((obs) => obs.id);
 }

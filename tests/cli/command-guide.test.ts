@@ -28,10 +28,9 @@ describe('CLI command guide', () => {
     expect(guide).toContain('memorix checkpoint archive');
   });
 
-  it('surfaces the implemented evidence, feedback, media, and knowledge actions', () => {
+  it('surfaces the implemented evidence, feedback, and knowledge actions', () => {
     expect(renderCliGuide('evidence')).toContain('memorix evidence events --id 42');
     expect(renderCliGuide('feedback')).toContain('memorix feedback record');
-    expect(renderCliGuide('media')).toContain('memorix media embed|similar --asset <asset-id>');
     expect(renderCliGuide('knowledge')).toContain('memorix knowledge claims');
     expect(renderCliGuide('codegraph')).toContain('memorix codegraph impact');
   });

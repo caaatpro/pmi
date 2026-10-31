@@ -5,8 +5,6 @@ import { sanitizeCredentials } from '../memory/secret-filter.js';
 
 export const MAINTENANCE_JOB_KINDS = [
   'vector-backfill',
-  'media-video-generation',
-  'media-audio-transcription',
   'retention-archive',
   'consolidation',
   'codegraph-refresh',

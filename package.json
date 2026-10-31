@@ -5,15 +5,10 @@
   "description": "Local-first shared memory layer for AI coding agents across MCP clients, Git history, reasoning context, and project sessions.",
   "type": "module",
   "sideEffects": false,
-  "workspaces": [
-    "packages/ai",
-    "packages/agent-core",
-    "packages/tui",
-    "packages/memcode"
-  ],
   "bin": {
+    "pmi": "dist/cli/index.js",
     "memorix": "dist/cli/index.js",
-    "memcode": "dist/cli/memcode.js"
+    "pmi-server": "dist/server/central/main.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -41,28 +36,19 @@
     "!src/**/*.d.ts",
     "!src/**/*.d.ts.map",
     "README.md",
-    "README.zh-CN.md",
-    "assets",
     "docs",
     "!docs/dev-log",
-    "!docs/memcode",
-    "!docs/superpowers",
     "plugins",
     "TEAM.md",
     "LICENSE",
     "CHANGELOG.md",
-    "CLAUDE.md",
-    "llms.txt",
-    "llms-full.txt"
+    "AGENTS.md"
   ],
   "scripts": {
-    "build:workspaces": "npm --workspaces --if-present run build",
     "build:runtime": "tsup --config tsup.runtime.config.ts",
     "build:cli": "tsup --config tsup.cli.config.ts",
-    "build:memcode": "tsup --config tsup.memcode.config.ts",
-    "build": "npm run build:workspaces && node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && npm run build:runtime && npm run build:cli && npm run build:memcode",
+    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && npm run build:runtime && npm run build:cli",
     "dev": "tsup --watch",
-    "update-models": "npm --workspace @memorix/ai run update-models",
     "start": "node dist/index.js",
     "test": "vitest run --no-file-parallelism --maxWorkers=1",
     "test:hook-stdin-file-smoke": "node scripts/hook-stdin-file-smoke.mjs",
@@ -85,7 +71,6 @@
     "check:mcp-registry": "node scripts/check-mcp-registry-manifest.mjs",
     "sync:plugin-release": "node scripts/sync-plugin-release-manifests.mjs",
     "check:plugin-release": "node scripts/sync-plugin-release-manifests.mjs --check",
-    "audit:pi-upstream": "node scripts/pi-upstream-audit.mjs",
     "lint": "tsc --noEmit",
     "prepublishOnly": "npm run check:mcp-registry && npm run check:plugin-release && npm audit signatures && npm run build && npm test"
   },
@@ -109,9 +94,6 @@
     "context-persistence",
     "agent-memory",
     "grok-build",
-    "memcode",
-    "coding-agent",
-    "terminal-agent",
     "knowledge-graph",
     "workspace-sync",
     "progressive-disclosure",
@@ -140,22 +122,17 @@
   "dependencies": {
     "@clack/prompts": "^0.9.1",
     "@modelcontextprotocol/node": "^2.0.0",
-    "@modelcontextprotocol/server": "^2.0.0",
     "@modelcontextprotocol/sdk": "^1.32.1",
-    "brace-expansion": "^5.0.12",
+    "@modelcontextprotocol/server": "^2.0.0",
     "@orama/orama": "^3.1.0",
+    "brace-expansion": "^5.0.12",
     "citty": "^0.1.6",
     "dotenv": "^17.3.1",
     "gpt-tokenizer": "^2.8.0",
-    "ink": "^6.8.0",
-    "ink-big-text": "^2.0.0",
-    "ink-gradient": "^4.0.0",
-    "ink-scroll-view": "^0.3.6",
-    "ink-spinner": "^5.0.0",
-    "react": "19.2.7",
+    "pg": "^8.23.1",
+    "typescript": "^5.7.0",
     "unpdf": "^1.8.0",
     "yaml": "2.9.0",
-    "typescript": "^5.7.0",
     "zod": "^3.24.0"
   },
   "optionalDependencies": {
@@ -164,8 +141,6 @@
   },
   "overrides": {
     "tar": "^7.5.22",
-    "react": "19.2.7",
-    "@types/react": "19.2.7",
     "protobufjs": "^7.6.5",
     "lodash": "^4.18.1",
     "hono": "^4.13.13",
@@ -189,8 +164,7 @@
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.0",
     "@types/node": "^22.0.0",
-    "@types/react": "19.2.7",
-    "ink-testing-library": "^4.0.0",
+    "@types/pg": "^8.23.1",
     "tsup": "^8.4.0",
     "vitest": "5.0.3"
   }

@@ -282,8 +282,8 @@ export function buildInitTomlConfig(options: {
   ];
 
   lines.push('[agent]');
-  lines.push('# Optional memcode coding-agent lane.');
-  lines.push('# Leave unset to use memcode login/model settings or the memory.llm fallback.');
+  lines.push('# Optional LLM lane for memory formation and summaries.');
+  lines.push('# Leave unset to use the memory.llm settings.');
   lines.push('# provider = "deepseek"');
   lines.push('# model = "deepseek-chat"');
   lines.push('# base_url = "https://api.deepseek.com/v1"');

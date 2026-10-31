@@ -737,7 +737,7 @@ memorix uninstall --yes --background --hooks --purge-data
 npm uninstall -g memorix
 ```
 
-`--purge-data` deletes local Memorix data under `~/.memorix`, including memories, sessions, mini-skills, logs, and config. Use `--dry-run` first.
+`--purge-data` deletes local Memorix data under `~/.memorix`, including memories (former mini-skills are coding_convention memories), sessions, logs, and config. Use `--dry-run` first.
 
 Memorix does not silently edit all MCP config files during uninstall. It reports remaining entries and shows where to remove them manually.
 

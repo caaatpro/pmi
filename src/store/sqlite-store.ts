@@ -12,7 +12,7 @@
  * are stored as JSON strings in SQLite columns.
  *
  * Uses the shared database handle from sqlite-db.ts so that observations,
- * mini-skills, and sessions all share one connection and one DB file.
+ * sessions and the other stores all share one connection and one DB file.
  */
 
 import type { Observation } from '../types.js';
@@ -65,6 +65,9 @@ function obsToRow(obs: Observation): Record<string, unknown> {
     sharedWithAgentIds: obs.sharedWithAgentIds ? JSON.stringify(obs.sharedWithAgentIds) : null,
     createdByAgentId: obs.createdByAgentId ?? null,
     writeGeneration: obs.writeGeneration ?? 0,
+    category: obs.category ?? null,
+    confidence: obs.confidence ?? null,
+    review: obs.review ? JSON.stringify(obs.review) : null,
   };
 }
 
@@ -101,6 +104,9 @@ function rowToObs(row: any): Observation {
     ...(row.sharedWithAgentIds ? { sharedWithAgentIds: safeJsonParse(row.sharedWithAgentIds, []) } : {}),
     ...(row.createdByAgentId ? { createdByAgentId: row.createdByAgentId } : {}),
     ...(row.writeGeneration ? { writeGeneration: row.writeGeneration } : {}),
+    ...(row.category ? { category: row.category } : {}),
+    ...(row.confidence ? { confidence: row.confidence } : {}),
+    ...(row.review ? { review: safeJsonParse(row.review, undefined) } : {}),
   } as Observation;
 }
 
@@ -157,13 +163,13 @@ export class SqliteBackend implements ObservationStore {
          createdAt, updatedAt, projectId, hasCausalLanguage, topicKey, revisionCount,
          sessionId, status, progress, source, commitHash, relatedCommits, relatedEntities,
          attachments, sourceDetail, valueCategory, admissionState, admissionReason, visibility, sharedWithAgentIds,
-         createdByAgentId, writeGeneration)
+         createdByAgentId, writeGeneration, category, confidence, review)
       VALUES
         (@id, @entityName, @type, @title, @narrative, @facts, @filesModified, @concepts, @tokens,
          @createdAt, @updatedAt, @projectId, @hasCausalLanguage, @topicKey, @revisionCount,
          @sessionId, @status, @progress, @source, @commitHash, @relatedCommits, @relatedEntities,
          @attachments, @sourceDetail, @valueCategory, @admissionState, @admissionReason, @visibility, @sharedWithAgentIds,
-         @createdByAgentId, @writeGeneration)
+         @createdByAgentId, @writeGeneration, @category, @confidence, @review)
       ON CONFLICT(id) DO UPDATE SET
         entityName = excluded.entityName,
         type = excluded.type,
@@ -194,7 +200,10 @@ export class SqliteBackend implements ObservationStore {
         visibility = excluded.visibility,
         sharedWithAgentIds = excluded.sharedWithAgentIds,
         createdByAgentId = excluded.createdByAgentId,
-        writeGeneration = excluded.writeGeneration
+        writeGeneration = excluded.writeGeneration,
+        category = excluded.category,
+        confidence = excluded.confidence,
+        review = excluded.review
     `);
     this.stmtUpdate = this.stmtInsert;
     this.stmtSetStatus = this.db.prepare(`UPDATE observations SET status = ? WHERE id = ?`);
@@ -301,7 +310,9 @@ export class SqliteBackend implements ObservationStore {
     await withFileLock(this.dataDir, async () => {
       // Re-check under the cross-process lock. Another initializer may have
       // completed the migration while this process was waiting.
-      const count = this.db.prepare(`SELECT COUNT(*) AS cnt FROM observations`).get();
+      // Mini-skills converted by migration pmi-5 do not count: they were
+      // allocated ids past this JSON source, which is still to be imported.
+      const count = this.db.prepare(`SELECT COUNT(*) AS cnt FROM observations WHERE topicKey IS NULL OR topicKey NOT LIKE 'mini-skill/%/%'`).get();
       if (count.cnt > 0) return;
 
       const raw = fs.readFileSync(jsonPath, 'utf-8');
@@ -335,7 +346,7 @@ export class SqliteBackend implements ObservationStore {
           counterNextId = candidate === undefined ? undefined : Number(candidate);
         }
         const maxId = Math.max(...obsList.map((obs) => obs.id));
-        this.rawSaveIdCounter(Math.max(counterNextId ?? 1, maxId + 1));
+        this.rawSaveIdCounter(Math.max(counterNextId ?? 1, maxId + 1, this.rawLoadIdCounter()));
         this.bumpGeneration();
       });
       insertMany(observations);
@@ -545,7 +556,7 @@ export class SqliteBackend implements ObservationStore {
 
   close(): void {
     // Detach from the shared handle without closing it — other stores
-    // (MiniSkillSqliteStore, SessionSqliteStore) may still be using it.
+    // (SessionSqliteStore, team stores) may still be using it.
     // Use closeDatabase(dataDir) or closeAllDatabases() for full shutdown.
     this.db = null;
   }

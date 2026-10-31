@@ -34,7 +34,6 @@ const OFFICIAL_SKILL_NAMES = [
   'memorix-reasoning',
   'memorix-sessions',
   'memorix-git-memory',
-  'memorix-mini-skills',
   'memorix-orchestrate',
   'memorix-troubleshooting',
 ];
@@ -659,7 +658,6 @@ describe('extension package installer', () => {
       expect(rules).toContain('memorix_search');
       expect(rules).toContain('memorix_evidence');
       expect(rules).toContain('memorix_feedback');
-      expect(rules).toContain('memorix_media');
       await expectOfficialSkills(path.join(pluginPath, 'skills'));
     } finally {
       await cleanup(tmpDir);
@@ -703,7 +701,6 @@ describe('extension package installer', () => {
       expect(await fs.readFile(contextFile, 'utf-8')).toContain('Memorix');
       expect(await fs.readFile(contextFile, 'utf-8')).toContain('memorix_evidence');
       expect(await fs.readFile(contextFile, 'utf-8')).toContain('memorix_feedback');
-      expect(await fs.readFile(contextFile, 'utf-8')).toContain('memorix_media');
     } finally {
       await cleanup(tmpDir);
     }

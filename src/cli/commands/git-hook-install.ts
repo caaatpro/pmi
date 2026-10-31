@@ -87,25 +87,38 @@ export default defineCommand({
       p.log.success('Git post-commit hook installed.');
     }
 
-    p.log.info(`Hook path: ${hookPath}`);
-    p.log.info('Every commit will now be automatically captured as a memory.');
+    // Pulls, merges and checkouts bring commits the post-commit hook never
+    // saw; the same incremental analysis catches them up from the cursor.
+    const { join, dirname } = await import('node:path');
+    for (const name of ['post-merge', 'post-checkout']) {
+      const extra = join(dirname(hookPath), name);
+      if (existsSync(extra)) {
+        const content = readFileSync(extra, 'utf-8');
+        if (!content.includes(HOOK_MARKER)) writeFileSync(extra, content.trimEnd() + '\n\n' + generateHookScript(), 'utf-8');
+      } else {
+        writeFileSync(extra, '#!/bin/sh\n' + generateHookScript(), 'utf-8');
+      }
+      try { chmodSync(extra, 0o755); } catch { /* Windows doesn't need chmod */ }
+    }
+
+    p.log.info(`Hook path: ${hookPath} (+ post-merge, post-checkout)`);
+    p.log.info('New commits are analyzed incrementally from the last analyzed commit (pmi git analyze).');
     p.log.info('Memories are tagged with source="git" and include the commit hash.');
     p.outro('Done! Try making a commit to see it in action.');
   },
 });
 
 /**
- * Generate the hook script content.
- * Uses `memorix ingest commit --auto` for non-interactive ingest.
- * Runs in background to not block the commit.
+ * Generate the hook script content: incremental analysis of cursor..HEAD,
+ * in the background so commits, merges and checkouts are not slowed down.
  */
-function generateHookScript(): string {
+export function generateHookScript(): string {
   return `${HOOK_MARKER}
-# Memorix: Auto-ingest git commits as memories
-# Runs in background — does not block your commit workflow.
+# PMI: analyze new commits incrementally (pmi git analyze)
+# Runs in background — does not block your git workflow.
 # To remove: memorix git-hook uninstall
 if command -v memorix >/dev/null 2>&1; then
-  memorix ingest commit --auto >/dev/null 2>&1 &
+  memorix git analyze --auto >/dev/null 2>&1 &
 fi
 `;
 }

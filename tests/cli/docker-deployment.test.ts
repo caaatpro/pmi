@@ -18,22 +18,15 @@ describe('official Docker deployment artifacts', () => {
     expect(dockerfile).toMatch(/^USER\s+node\s*$/m);
   });
 
-  it('installs every workspace dependency set before each npm install', () => {
+  it('installs dependencies from the root manifest only', () => {
     const dockerfile = readFileSync(dockerfilePath, 'utf8');
-    const workspaces = ['ai', 'agent-core', 'tui', 'memcode'];
     const dependencyStages = dockerfile.split(/^FROM node:22-bookworm-slim AS /m).slice(1, 3);
 
     expect(dependencyStages).toHaveLength(2);
-
     for (const stage of dependencyStages) {
-      const installIndex = stage.indexOf('RUN npm ci');
-
-      expect(installIndex).toBeGreaterThan(-1);
-      for (const workspace of workspaces) {
-        const manifest = `COPY packages/${workspace}/package.json ./packages/${workspace}/package.json`;
-        expect(stage.indexOf(manifest)).toBeGreaterThan(-1);
-        expect(stage.indexOf(manifest)).toBeLessThan(installIndex);
-      }
+      expect(stage).toContain('COPY package*.json ./');
+      expect(stage).toContain('RUN npm ci');
+      expect(stage).not.toContain('packages/');
     }
   });
 

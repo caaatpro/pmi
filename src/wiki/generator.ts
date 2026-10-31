@@ -1,4 +1,4 @@
-import type { Observation, MiniSkill } from '../types.js';
+import type { Observation } from '../types.js';
 import { isEligibleForKnowledgePromotion } from '../memory/admission.js';
 import type { KnowledgeSourceRef, KnowledgeItem, KnowledgeSection, ProjectKnowledgeOverview } from './types.js';
 
@@ -85,24 +85,6 @@ function obsToItem(o: Observation): KnowledgeItem {
   };
 }
 
-function skillToItem(s: MiniSkill): KnowledgeItem {
-  const ref: KnowledgeSourceRef = {
-    kind: 'mini-skill',
-    id: `skill:${s.id}`,
-    title: s.title,
-  };
-  const obsRefs: KnowledgeSourceRef[] = s.sourceObservationIds.map(
-    (oid) => ({ kind: 'observation' as const, id: `obs:${oid}` }),
-  );
-  return {
-    title: s.title,
-    summary: s.instruction?.slice(0, 200) || '',
-    type: 'mini-skill',
-    entityName: s.sourceEntity || undefined,
-    refs: [ref, ...obsRefs],
-  };
-}
-
 function buildGitSection(observations: Observation[]): KnowledgeSection {
   const gitObs = observations.filter(
     (o) => o.source === 'git' && o.sourceDetail === 'git-ingest',
@@ -116,11 +98,16 @@ function buildGitSection(observations: Observation[]): KnowledgeSection {
   };
 }
 
-function buildSkillsSection(skills: MiniSkill[]): KnowledgeSection {
-  const items = skills.map(skillToItem);
+/** Coding conventions (including former mini-skills, converted by PMI migration pmi-5). */
+function isConvention(o: Observation): boolean {
+  return o.category === 'coding_convention';
+}
+
+function buildConventionsSection(conventions: Observation[]): KnowledgeSection {
+  const items = conventions.map(obsToItem);
   return {
-    id: 'promoted-skills',
-    title: 'Promoted Skills',
+    id: 'coding-conventions',
+    title: 'Coding Conventions',
     items,
     empty: items.length === 0,
   };
@@ -129,20 +116,13 @@ function buildSkillsSection(skills: MiniSkill[]): KnowledgeSection {
 function buildProjectOverview(
   projectId: string,
   eligibleObs: Observation[],
-  skills: MiniSkill[],
+  conventions: Observation[],
 ): KnowledgeSection {
-  const refs: KnowledgeSourceRef[] = [
-    ...eligibleObs.slice(0, 5).map((o) => ({
-      kind: o.source === 'git' ? 'git' as const : 'observation' as const,
-      id: `obs:${o.id}`,
-      title: o.title,
-    })),
-    ...skills.slice(0, 5).map((s) => ({
-      kind: 'mini-skill' as const,
-      id: `skill:${s.id}`,
-      title: s.title,
-    })),
-  ];
+  const refs: KnowledgeSourceRef[] = eligibleObs.slice(0, 5).map((o) => ({
+    kind: o.source === 'git' ? 'git' as const : 'observation' as const,
+    id: `obs:${o.id}`,
+    title: o.title,
+  }));
 
   if (refs.length === 0) {
     return {
@@ -156,7 +136,7 @@ function buildProjectOverview(
   const lines: string[] = [];
   lines.push(`Project: ${projectId}`);
   lines.push(`Observations in KB: ${eligibleObs.length}`);
-  lines.push(`Promoted skills: ${skills.length}`);
+  lines.push(`Coding conventions: ${conventions.length}`);
 
   const entityCounts = new Map<string, number>();
   for (const o of eligibleObs) {
@@ -186,18 +166,17 @@ function buildProjectOverview(
 export interface GenerateOptions {
   projectId: string;
   observations: Observation[];
-  miniSkills: MiniSkill[];
   generatedAt?: string;
 }
 
 export function generateKnowledgeBase(options: GenerateOptions): ProjectKnowledgeOverview {
-  const { projectId, observations, miniSkills } = options;
+  const { projectId, observations } = options;
 
   const eligible = observations.filter((o) => isEligible(o, projectId));
-  const scopedMiniSkills = miniSkills.filter(s => s.projectId === projectId);
+  const conventions = eligible.filter(isConvention);
 
   const typedSections: KnowledgeSection[] = SECTION_DEFS.map((def) => {
-    const matched = eligible.filter(def.typeMatch);
+    const matched = eligible.filter((o) => !isConvention(o) && def.typeMatch(o));
     const items = matched.map(obsToItem);
     return {
       id: def.id,
@@ -207,20 +186,19 @@ export function generateKnowledgeBase(options: GenerateOptions): ProjectKnowledg
     };
   });
 
-  const projectOverview = buildProjectOverview(projectId, eligible, scopedMiniSkills);
+  const projectOverview = buildProjectOverview(projectId, eligible, conventions);
   const gitSection = buildGitSection(eligible);
-  const skillsSection = buildSkillsSection(scopedMiniSkills);
+  const conventionsSection = buildConventionsSection(conventions);
 
   const sections: KnowledgeSection[] = [
     projectOverview,
     ...typedSections,
     gitSection,
-    skillsSection,
+    conventionsSection,
   ];
 
   const allRefs = sections.flatMap((s) => s.items.flatMap((i) => i.refs));
   const obsRefCount = allRefs.filter((r) => r.kind === 'observation' || r.kind === 'git').length;
-  const skillRefCount = allRefs.filter((r) => r.kind === 'mini-skill').length;
 
   return {
     title: 'Memory Overview',
@@ -232,8 +210,8 @@ export function generateKnowledgeBase(options: GenerateOptions): ProjectKnowledg
     sections,
     stats: {
       observationsUsed: eligible.length,
-      miniSkillsUsed: scopedMiniSkills.length,
-      refs: obsRefCount + skillRefCount,
+      conventionsUsed: conventions.length,
+      refs: obsRefCount,
     },
   };
 }

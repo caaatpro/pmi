@@ -1,4 +1,4 @@
-import type { Observation, MiniSkill } from '../types.js';
+import type { Observation } from '../types.js';
 import type {
   KnowledgeSourceRef,
   SemanticNode,
@@ -47,13 +47,13 @@ const GIT_SECTION: SectionDef = {
   typeMatch: (o) => o.source === 'git' && o.sourceDetail === 'git-ingest',
 };
 
-const SKILLS_SECTION: SectionDef = {
-  id: 'promoted-skills',
-  label: 'Promoted Skills',
-  typeMatch: () => false, // skills handled separately
+const CONVENTIONS_SECTION: SectionDef = {
+  id: 'coding-conventions',
+  label: 'Coding Conventions',
+  typeMatch: (o) => o.category === 'coding_convention',
 };
 
-const ALL_SECTIONS: SectionDef[] = [...SECTION_DEFS, GIT_SECTION, SKILLS_SECTION];
+const ALL_SECTIONS: SectionDef[] = [...SECTION_DEFS, GIT_SECTION, CONVENTIONS_SECTION];
 
 // -- Edge inference rules --
 // Infer deterministic memory links between observations based on shared
@@ -61,7 +61,6 @@ const ALL_SECTIONS: SectionDef[] = [...SECTION_DEFS, GIT_SECTION, SKILLS_SECTION
 // Rules (no LLM, deterministic):
 // 1. supports: same entityName, different section -> source supports target
 // 2. relates_to: same entityName, same section -> bidirectional
-// 3. derived_from: mini-skill source obs -> skill node
 // Explicit graph-store references are merged later as mentions edges.
 
 function inferEdges(
@@ -144,8 +143,9 @@ function sectionPriority(sectionId: string): number {
 }
 
 function sectionIdForObs(o: Observation): string {
-  // Git-backed facts take priority over type-based sections
+  // Git-backed facts and conventions take priority over type-based sections
   if (GIT_SECTION.typeMatch(o)) return GIT_SECTION.id;
+  if (CONVENTIONS_SECTION.typeMatch(o)) return CONVENTIONS_SECTION.id;
   for (const def of SECTION_DEFS) {
     if (def.typeMatch(o)) return def.id;
   }
@@ -181,17 +181,15 @@ function mapRelationType(relationType: string): SemanticEdgeType {
 export interface GenerateGraphOptions {
   projectId: string;
   observations: Observation[];
-  miniSkills: MiniSkill[];
   generatedAt?: string;
   graphEntities?: GraphStoreEntity[];
   graphRelations?: GraphStoreRelation[];
 }
 
 export function generateKnowledgeGraph(options: GenerateGraphOptions): ProjectKnowledgeGraph {
-  const { projectId, observations, miniSkills, graphEntities, graphRelations } = options;
+  const { projectId, observations, graphEntities, graphRelations } = options;
 
   const eligible = observations.filter((o) => isEligible(o, projectId));
-  const scopedMiniSkills = miniSkills.filter((s) => s.projectId === projectId);
 
   // Build nodes from eligible observations
   const nodes: SemanticNode[] = [];
@@ -223,53 +221,8 @@ export function generateKnowledgeGraph(options: GenerateGraphOptions): ProjectKn
     }
   }
 
-  // Build nodes from mini-skills
-  for (const s of scopedMiniSkills) {
-    const ref: KnowledgeSourceRef = {
-      kind: 'mini-skill',
-      id: `skill:${s.id}`,
-      title: s.title,
-    };
-    const obsRefs: KnowledgeSourceRef[] = s.sourceObservationIds.map(
-      (oid) => ({ kind: 'observation' as const, id: `obs:${oid}` }),
-    );
-    const node: SemanticNode = {
-      id: `skill:${s.id}`,
-      label: s.title,
-      nodeType: 'mini-skill',
-      sectionId: 'promoted-skills',
-      entityName: s.sourceEntity || undefined,
-      evidenceCount: obsRefs.length,
-      summary: s.instruction?.slice(0, 200) || '',
-      refs: [ref, ...obsRefs],
-    };
-    nodes.push(node);
-
-    if (s.sourceEntity) {
-      const group = entityNameIndex.get(s.sourceEntity) || [];
-      group.push(node);
-      entityNameIndex.set(s.sourceEntity, group);
-    }
-  }
-
-  // Infer deterministic links from observation and skill metadata.
+  // Infer deterministic links from observation metadata.
   const edges = inferEdges(nodes, entityNameIndex);
-
-  // Add derived_from edges: skill -> source obs
-  for (const s of scopedMiniSkills) {
-    const skillNodeId = `skill:${s.id}`;
-    for (const oid of s.sourceObservationIds) {
-      const obsNodeId = `obs:${oid}`;
-      if (nodes.some((n) => n.id === obsNodeId)) {
-        edges.push({
-          id: `e_${edges.length}_${skillNodeId}_${obsNodeId}`,
-          source: skillNodeId,
-          target: obsNodeId,
-          edgeType: 'derived_from',
-        });
-      }
-    }
-  }
 
   // Merge explicit graph-store relations into the deterministic map.
   // Only include relations where both endpoints map to existing nodes

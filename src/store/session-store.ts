@@ -28,9 +28,10 @@ export interface SessionStoreInterface {
   update(session: Session): Promise<void>;
   bulkUpdate(sessions: Session[]): Promise<void>;
   /**
-   * Atomic rollover: complete all active sessions for the given project IDs
-   * and insert a new active session in a single transaction.
-   * Guarantees at most one active session per project.
+   * Atomic rollover: complete the active sessions of the same agent for the
+   * given project IDs and insert a new active session in a single transaction.
+   * Guarantees at most one active session per (project, agent); sessions of
+   * other agents keep running in parallel.
    */
   atomicRolloverInsert(newSession: Session, projectIds: string[], now: string): Promise<number>;
   getBackendName(): 'sqlite' | 'degraded';
@@ -164,14 +165,15 @@ export class SessionSqliteStore implements SessionStoreInterface {
   }
 
   /**
-   * Atomic rollover: complete all active sessions for the given project IDs
-   * and insert a new active session in a single SQLite transaction.
-   * SQLite serializes write transactions, so concurrent calls are safely sequenced.
+   * Atomic rollover: complete the active sessions of the new session's agent
+   * for the given project IDs and insert the new session in a single SQLite
+   * transaction. SQLite serializes write transactions, so concurrent calls are
+   * safely sequenced. A missing agent only matches sessions without an agent.
    */
   async atomicRolloverInsert(newSession: Session, projectIds: string[], now: string): Promise<number> {
     if (!this._stmtCompleteActive) {
       this._stmtCompleteActive = this.db.prepare(
-        `UPDATE sessions SET status = 'completed', endedAt = @now, summary = COALESCE(NULLIF(summary, ''), '(session ended implicitly by new session start)') WHERE projectId = @pid AND status = 'active'`
+        `UPDATE sessions SET status = 'completed', endedAt = @now, summary = COALESCE(NULLIF(summary, ''), '(session ended implicitly by new session start)') WHERE projectId = @pid AND status = 'active' AND COALESCE(agent, '') = @agent`
       );
     }
     const stmtComplete = this._stmtCompleteActive;
@@ -180,7 +182,7 @@ export class SessionSqliteStore implements SessionStoreInterface {
     return retrySqliteBusy(async () => this.db.transaction(() => {
       let completedCount = 0;
       for (const pid of projectIds) {
-        const info = stmtComplete.run({ pid, now });
+        const info = stmtComplete.run({ pid, now, agent: newSession.agent ?? '' });
         completedCount += info.changes;
       }
       stmtIns.run(sessionToRow(newSession));
