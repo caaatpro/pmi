@@ -130,11 +130,11 @@ describe.skipIf(!pgAvailable || !cliBuilt)('session continuity end to end', () =
     });
     expect((await pmi(bob, 'project', 'link')).code).toBe(0);
 
-    // The real adapters: Claude Code (project .claude/settings.json) on Alice's
+    // The real adapters: Claude Code (project .mcp.json) on Alice's
     // machine, Codex (~/.codex/config.toml) on Bob's.
     const claudeSetup = await pmi(alice, 'setup', '--agent', 'claude', '--noPlugin');
     expect(claudeSetup.code, claudeSetup.stderr).toBe(0);
-    const claudeConfig = JSON.parse(readFileSync(path.join(repoA, '.claude', 'settings.json'), 'utf8'));
+    const claudeConfig = JSON.parse(readFileSync(path.join(repoA, '.mcp.json'), 'utf8'));
     mcpCommand.claude = claudeConfig.mcpServers.memorix;
     const codexSetup = await pmi(bob, 'setup', '--agent', 'codex', '--global', '--noPlugin', '--noHooks');
     expect(codexSetup.code, codexSetup.stderr).toBe(0);

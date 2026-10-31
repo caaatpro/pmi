@@ -82,9 +82,9 @@ describe('ClaudeCodeMCPAdapter', () => {
 
     describe('getConfigPath', () => {
         it('should return project-level path with projectRoot', () => {
+            // Claude Code reads project MCP servers from .mcp.json in the project root.
             const p = adapter.getConfigPath('/my/project');
-            expect(p).toContain('.claude');
-            expect(p).toContain('settings.json');
+            expect(p.replaceAll('\\', '/')).toBe('/my/project/.mcp.json');
         });
 
         it('should return user-level path without projectRoot', () => {
