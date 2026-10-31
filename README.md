@@ -12,7 +12,7 @@ PMI is a fork of [Memorix](https://github.com/AVIDS2/memorix) (Apache-2.0) that 
 | Central PMI server (PostgreSQL + pgvector): shared project memory, version history, conflicts, offline buffering | Working (Phase 4), `pmi login` / `pmi project link` / `pmi sync` |
 | Users, organizations, teams, personal access tokens | Working (Phase 4–5) |
 | Per-project grants, RBAC (viewer / developer / maintainer / org admin), Postgres row-level security, audit log | Working (Phase 5) |
-| Confirm / deprecate knowledge (people only; agents cannot confirm) | Working (Phase 5), REST |
+| Confirm / deprecate knowledge (people only; agents cannot confirm) | Working (Phase 5): web UI and REST |
 | MCP over HTTP on the central server with per-user tokens | Working (Phase 5): `project_list`, `memory_search`, `memory_get` |
 | Peer-to-peer sync of memory records (fs / S3 / GitHub / Postgres relay) | Working (inherited), `pmi sync store push/pull` |
 | Session state, automatic checkpoints (daemon), handoff, `session list` / `session resume <id>` across users, agents and machines | Working (Phase 6) |
@@ -20,8 +20,12 @@ PMI is a fork of [Memorix](https://github.com/AVIDS2/memorix) (Apache-2.0) that 
 | Context engine: L1 overview, task-ranked L2 within a token budget, L3 history on request; hybrid search (keyword + pgvector, RRF); Prometheus metrics and token-savings estimate | Working (Phase 8) |
 | PMI MCP tools: `context_build`, `project_overview`, `memory_search/get/save`, `decision_log`, `session_*`, `workspace_*` | Working; `memorix_*` tools remain |
 | Incremental git intelligence: only new commits are read; dependency, API, structure, deletion, fix and constraint changes become memories; knowledge about changed files is marked for review; one shared cursor per team | Working (Phase 9): `pmi git analyze`, `pmi git-hook` |
+| Hardening: security review, encrypted snapshot blobs, TLS, load test, backup/restore, operator docs | Done (Phase 10) |
+| Web UI of the central server: projects, knowledge and freshness, sessions, conflicts, audit log, confirming knowledge | Working (Phase 11): `https://<server>/ui/` |
 
-Operators: [OPERATIONS](docs/PMI/OPERATIONS.md) · [SECURITY](docs/PMI/SECURITY.md) · [LOAD_TEST](docs/PMI/LOAD_TEST.md). Users: [USER_GUIDE](docs/PMI/USER_GUIDE.md).
+**Installing from scratch** (server, users, developer machines, agents, checks): [INSTALL](docs/PMI/INSTALL.md).
+
+Operators: [OPERATIONS](docs/PMI/OPERATIONS.md) · [SECURITY](docs/PMI/SECURITY.md) · [LOAD_TEST](docs/PMI/LOAD_TEST.md). Users: [USER_GUIDE](docs/PMI/USER_GUIDE.md) · [WEB_UI](docs/PMI/WEB_UI.md).
 
 The design lives in [docs/PMI](docs/PMI):
 [AUDIT](docs/PMI/AUDIT.md) ·
@@ -52,7 +56,7 @@ npm link        # installs the `pmi` and `memorix` commands
 Connect an agent over MCP (stdio). This writes the agent's MCP config, rules and hooks:
 
 ```bash
-pmi setup --agent claude-code     # or codex, cursor, gemini-cli, copilot, windsurf, ...
+pmi setup --agent claude          # or cursor; codex: --agent codex --global --noPlugin; full list: pmi setup --list
 ```
 
 Useful commands inside a git repository:
@@ -102,6 +106,8 @@ pmi project link --create --org acme     # first developer; others run `pmi proj
 pmi sync                                 # upload local memory, pull the team's
 ```
 
+The server's web UI is at `https://<server>/ui/` (sign in with the same token).
+
 For a local trial with `PMI_DOMAIN=localhost`, Caddy serves a certificate from its own CA; point Node at it before `pmi login` (`docker compose -f deploy/compose.yaml cp caddy:/data/caddy/pki/authorities/local/root.crt ./caddy-root.crt`, then `export NODE_EXTRA_CA_CERTS=$PWD/caddy-root.crt`).
 
 Hand work over between people, agents and machines:
@@ -130,7 +136,7 @@ docker compose up -d
 curl http://127.0.0.1:3211/health
 ```
 
-This is the local MCP/dashboard process, not the central server. Outside loopback it refuses to start without `MEMORIX_HTTP_AUTH_TOKEN` (Bearer); per-user authentication for MCP over HTTP arrives in Phase 5.
+This is the local MCP/dashboard process, not the central server. Outside loopback it refuses to start without `MEMORIX_HTTP_AUTH_TOKEN` (Bearer). For MCP over HTTP with per-user tokens use the central server (`https://<server>/mcp`).
 
 ## Development
 
