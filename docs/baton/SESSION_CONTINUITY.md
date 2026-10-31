@@ -1,12 +1,12 @@
-# PMI — Session Continuity
+# Baton — Session Continuity
 
 Статус: **реализовано в Phase 6** (кроме переноса файлов рабочей копии — Phase 7). Отличия реализации от этого проекта перечислены в ROADMAP.md, «Итог Phase 6». Критический приоритет ТЗ (§7).
 
 Цель: разработчик может остановиться в **любой** момент — штатно, по лимиту модели или при падении процесса, — а другой разработчик с другой моделью на другой машине продолжает с последнего сохранённого состояния, не повторяя сделанное.
 
-## 1. Что меняется относительно Memorix
+## 1. Что меняется относительно upstream
 
-| Memorix (AUDIT §7–8) | PMI |
+| upstream (AUDIT §7–8) | Baton |
 |---|---|
 | `sessions`: id, project, agent, status active/completed, summary | Полный Session State + 8 статусов + lease |
 | Новая сессия закрывает все активные в проекте | Параллельные сессии; каждая — своя задача и lease |
@@ -60,10 +60,10 @@ interface SessionState {
 |---|---|
 | task, objective, steps, decisions, problems, nextAction | Агент через MCP (`session_start`, `session_checkpoint`, `decision_log`, `memory_save`) |
 | git.*, modifiedFiles, workspaceSnapshotId | **Daemon** — сам читает рабочую копию, агент не нужен |
-| observations | Хуки агента (существующий pipeline Memorix) + MCP |
+| observations | Хуки агента (существующий pipeline upstream) + MCP |
 | progress.summary при отсутствии данных от агента | Daemon строит детерминированно: последние шаги + изменённые файлы + последние коммиты |
 
-Не сохраняется: скрытые рассуждения модели и полные транскрипты (ТЗ §10, правило 14). `chat_transcript` Memorix не синхронизируется и не входит в state.
+Не сохраняется: скрытые рассуждения модели и полные транскрипты (ТЗ §10, правило 14). `chat_transcript` upstream не синхронизируется и не входит в state.
 
 ## 3. Статусы и переходы
 
@@ -90,9 +90,9 @@ interface SessionState {
 |---|---|---|
 | CREATED → IN_PROGRESS | первая активность (MCP‑вызов, изменение файлов) | клиент |
 | IN_PROGRESS ↔ CHECKPOINTED | checkpoint создан / новая активность | клиент |
-| * → INTERRUPTED | lease не продлён `PMI_LEASE_TTL` (по умолчанию 10 мин) | **сервер** (джоб) или локальный daemon при старте, найдя «осиротевшую» сессию |
+| * → INTERRUPTED | lease не продлён `BATON_LEASE_TTL` (по умолчанию 10 мин) | **сервер** (джоб) или локальный daemon при старте, найдя «осиротевшую» сессию |
 | INTERRUPTED → RESUMABLE | есть хотя бы один checkpoint | сервер, сразу |
-| IN_PROGRESS/CHECKPOINTED → WAITING_HANDOFF | `pmi session handoff` | клиент |
+| IN_PROGRESS/CHECKPOINTED → WAITING_HANDOFF | `baton session handoff` | клиент |
 | WAITING_HANDOFF → RESUMABLE | автоматически после записи handoff (статус отражает «явно передана») | сервер |
 | RESUMABLE → IN_PROGRESS | `resume`: новый lease, при другом пользователе — новая дочерняя сессия (`parent_session_id`) | клиент |
 | * → COMPLETED / FAILED | `finish` | клиент |
@@ -105,12 +105,12 @@ Checkpoint = неизменяемая запись `{seq, trigger, state, snapsh
 
 | Триггер | Источник | Snapshot рабочей копии |
 |---|---|---|
-| `timer` | daemon, каждые `PMI_CHECKPOINT_INTERVAL` (5 мин), **только если** изменился fingerprint (HEAD + `git status` + mtime/size изменённых файлов) | да, инкрементальный |
+| `timer` | daemon, каждые `BATON_CHECKPOINT_INTERVAL` (5 мин), **только если** изменился fingerprint (HEAD + `git status` + mtime/size изменённых файлов) | да, инкрементальный |
 | `fs_change` | daemon, watcher рабочей копии, debounce 60 с после последнего изменения, порог: ≥ 3 файлов или ≥ 200 изменённых строк с прошлого checkpoint | да |
-| `commit` | git `post-commit` / `post-merge` / `post-checkout` хуки → `pmi git-event` → IPC daemon; fallback — daemon опрашивает HEAD каждые 30 с | да (если остались незакоммиченные) |
+| `commit` | git `post-commit` / `post-merge` / `post-checkout` хуки → `baton git-event` → IPC daemon; fallback — daemon опрашивает HEAD каждые 30 с | да (если остались незакоммиченные) |
 | `decision` | MCP `decision_log` / `memory_save` категории `architecture_decision` | нет (только state) |
-| `manual` | MCP `session_checkpoint`, `pmi session checkpoint` | да |
-| `compact` | хуки pre/post compact (существующая логика Memorix `compaction_checkpoints`) | нет |
+| `manual` | MCP `session_checkpoint`, `baton session checkpoint` | да |
+| `compact` | хуки pre/post compact (существующая логика upstream `compaction_checkpoints`) | нет |
 | `exit` | daemon получил SIGTERM/SIGINT; хук агента `session_end`/`Stop` | да, с таймаутом 5 с |
 | `handoff` | `session handoff` | да, **pinned** |
 
@@ -118,12 +118,12 @@ Checkpoint = неизменяемая запись `{seq, trigger, state, snapsh
 
 Восстановление после аварии:
 - **Daemon упал / машина выключилась**: при следующем старте daemon находит в SQLite сессии в статусе `in_progress/checkpointed` своего устройства без живого lease, делает финальный checkpoint `exit` из текущего состояния рабочей копии (если она есть) и отправляет. Сервер независимо переводит сессию в `INTERRUPTED → RESUMABLE` по истечении lease.
-- **Процесс агента умер, daemon жив**: heartbeat от агента (MCP‑вызовы) прекратился → через `PMI_AGENT_IDLE` (15 мин) daemon делает checkpoint и отпускает lease → `RESUMABLE`.
+- **Процесс агента умер, daemon жив**: heartbeat от агента (MCP‑вызовы) прекратился → через `BATON_AGENT_IDLE` (15 мин) daemon делает checkpoint и отпускает lease → `RESUMABLE`.
 - **Нет сети**: всё пишется в outbox; на сервере сессия станет `INTERRUPTED` по lease, а после восстановления сети придут накопленные checkpoints (сервер принимает checkpoint от владельца lease с `seq` больше последнего, даже если lease уже истёк, при условии что никто другой не захватил сессию; иначе checkpoint сохраняется как ветка `orphan` и порождает конфликт для ручного решения).
 
 Ограничения объёма: state ≤ 64 KiB (длинные списки шагов сворачиваются в summary), хранятся все checkpoints последних 7 дней + каждый 10‑й старше + все pinned (`workspace gc`).
 
-## 5. `pmi session handoff`
+## 5. `baton session handoff`
 
 Шаги (ТЗ §7, пункты 1–7), атомарность обеспечивается порядком «сначала данные, потом статус»:
 
@@ -148,9 +148,9 @@ Checkpoint = неизменяемая запись `{seq, trigger, state, snapsh
 6. **Статус** → `WAITING_HANDOFF` → `RESUMABLE`.
 7. **Освобождение** — lease снимается; рабочая копия остаётся как есть (handoff не трогает файлы). Сервер отмечает `released_at` (миграция `0008`): опоздавший heartbeat или upsert прежнего владельца получает `409 session_handed_off`, а его checkpoint сохраняется как `orphan`, поэтому переданная сессия не возвращается в `IN_PROGRESS`. Отметку снимает только `resume`. Release (агент упал или простаивает) и истечение lease так не отмечаются: владелец может продолжить сессию.
 
-Если сервер недоступен, шаги 1–5 выполняются локально, статус и данные уходят через outbox; команда сообщает, что передача завершится после синхронизации, и `pmi status` показывает это.
+Если сервер недоступен, шаги 1–5 выполняются локально, статус и данные уходят через outbox; команда сообщает, что передача завершится после синхронизации, и `baton status` показывает это.
 
-## 6. Recovery: `pmi session list` / `pmi session resume <id>`
+## 6. Recovery: `baton session list` / `baton session resume <id>`
 
 `list` по умолчанию показывает `resumable`, `interrupted` и `waiting_handoff` сессии проекта (все пользователи, если есть права), с задачей, автором, агентом, возрастом последнего checkpoint и наличием snapshot.
 
@@ -173,9 +173,9 @@ Checkpoint = неизменяемая запись `{seq, trigger, state, snapsh
 
 ## 7. Параллельные сессии (TEST 7)
 
-- Rollover из Memorix удаляется: `session_start` создаёт новую сессию, не трогая чужие.
+- Rollover из upstream удаляется: `session_start` создаёт новую сессию, не трогая чужие.
 - У каждой сессии свой lease `session:<id>`.
-- Рекомендуемая изоляция — отдельный worktree на сессию (`pmi session start --worktree`); daemon отслеживает каждый worktree как отдельную рабочую копию.
+- Рекомендуемая изоляция — отдельный worktree на сессию (`baton session start --worktree`); daemon отслеживает каждый worktree как отдельную рабочую копию.
 - Две сессии в одной рабочей копии допустимы, но daemon предупреждает и снимает snapshot общий; при resume такой сессии восстановление идёт только в новый worktree.
 - Опциональные path‑leases (`path:<glob>`) — замена `team_file_lock`, теперь общие через сервер.
 
@@ -183,7 +183,7 @@ Checkpoint = неизменяемая запись `{seq, trigger, state, snapsh
 
 - Читать список сессий — viewer+; state, brief и snapshot — developer+.
 - Resume чужой сессии — только из статусов `resumable/waiting_handoff/interrupted` или maintainer с `--force`; всё — в `audit_log`.
-- Handoff адресный (`--to <user>`) — сессию может забрать только адресат в течение `PMI_HANDOFF_RESERVE` (24 ч), затем любой developer.
+- Handoff адресный (`--to <user>`) — сессию может забрать только адресат в течение `BATON_HANDOFF_RESERVE` (24 ч), затем любой developer.
 
 ## 9. Тесты (связь с acceptance)
 

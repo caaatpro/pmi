@@ -1,10 +1,10 @@
-# PMI — Context Engine, качество знаний и Git Intelligence
+# Baton — Context Engine, качество знаний и Git Intelligence
 
 Статус: §1–§5, §8 **реализованы в Phase 8**, §7 и устаревание из §6 — **в Phase 9** (ROADMAP.md, итоги фаз); остальное из §6 частично. ТЗ §6, §9, §10, §15.
 
 Принцип: агент получает минимальный достаточный контекст и сам догружает детали по id. Полные истории переписки не загружаются никогда.
 
-## 1. Что переиспользуется из Memorix
+## 1. Что переиспользуется из upstream
 
 | Компонент | Файл | Роль |
 |---|---|---|
@@ -51,7 +51,7 @@ score = rrf_relevance
       × category_weight(task_lens)      // bugfix → issue/solution/known_limitation выше; feature → architecture/decision/convention
       × confidence_weight               // confirmed 1.0, observed 0.9, inferred 0.7, proposed 0.5, deprecated 0 (только L3)
       × freshness                       // exp-затухание по updated_at; needs_review × 0.6
-      × feedback_weight                 // из memory_feedback (Memorix)
+      × feedback_weight                 // из memory_feedback (upstream)
       + file_affinity                   // пересечение related_files с изменёнными файлами сессии / файлами задачи / «Start here»
       + component_affinity              // совпадение component
       + decision_link_bonus             // запись связана (memory_links) с решением, уже попавшим в контекст
@@ -78,10 +78,10 @@ score = rrf_relevance
 
 | Механизм | Реализация |
 |---|---|
-| **Версионирование** | Каждое изменение → `memory_versions` (DATABASE.md §2.2). Topic‑key upsert Memorix больше не теряет старое содержимое |
-| **Дедупликация** | При записи: точное совпадение `content_hash` в проекте → `duplicate` (возврат существующего id); похожие (trigram ≥ 0.85 или cosine ≥ 0.92 в той же категории/компоненте) → запись создаётся, создаётся `conflicts(kind=duplicate)` на review. Существующая LLM‑дедупликация Memorix — опциональный фоновый проход |
+| **Версионирование** | Каждое изменение → `memory_versions` (DATABASE.md §2.2). Topic‑key upsert upstream больше не теряет старое содержимое |
+| **Дедупликация** | При записи: точное совпадение `content_hash` в проекте → `duplicate` (возврат существующего id); похожие (trigram ≥ 0.85 или cosine ≥ 0.92 в той же категории/компоненте) → запись создаётся, создаётся `conflicts(kind=duplicate)` на review. Существующая LLM‑дедупликация upstream — опциональный фоновый проход |
 | **Противоречия** | Правила: (1) две `active` записи с одним `topic_key` после конкурентных правок (sync) → `concurrent_edit`; (2) `architecture_decision`/`coding_convention` по одному компоненту с высоким сходством и отрицанием/антонимом в ключевых фактах → `contradiction` (эвристика, `detected_by=rule`); (3) опционально LLM‑проверка новых `confirmed`‑кандидатов. Противоречие **никогда не разрешается автоматически** — обе записи получают пометку, в контексте выдаются с флагом ⚠ |
-| **Устаревание** | (1) Git: изменение/удаление файла из `related_files` → `status=needs_review` для `inferred/observed` записей (не `confirmed` — для них создаётся задача review); удаление всех `related_files` → предложение `deprecated`; (2) время: `current_state`, `active_task` без обновлений 14 дней → `needs_review`; (3) существующий retention Memorix (архивация эфемерного) сохраняется |
+| **Устаревание** | (1) Git: изменение/удаление файла из `related_files` → `status=needs_review` для `inferred/observed` записей (не `confirmed` — для них создаётся задача review); удаление всех `related_files` → предложение `deprecated`; (2) время: `current_state`, `active_task` без обновлений 14 дней → `needs_review`; (3) существующий retention upstream (архивация эфемерного) сохраняется |
 | **Связи** | `memory_links`: relates, supersedes, contradicts, depends_on, explains, derived_from. Автосвязи — существующий `auto-relations.ts` + общие `related_files`/`related_commits` |
 | **Запрет автоподтверждения** | Ни один автоматический процесс не выставляет `confirmed`; сервер отклоняет `confirmed` от агента без пользовательского подтверждения (ARCHITECTURE.md §9) |
 
@@ -90,7 +90,7 @@ score = rrf_relevance
 ### Инкрементальный конвейер
 
 ```
-триггер (post-commit / post-merge / post-checkout хук, daemon видит новый HEAD, pmi git analyze)
+триггер (post-commit / post-merge / post-checkout хук, daemon видит новый HEAD, baton git analyze)
   → cursor = GET /repositories/:rid/cursor?branch
   → commits = git rev-list --reverse --first-parent? cursor..HEAD   (если cursor не предок HEAD — rebase/force: merge-base + пометка rewritten)
   → для каждого коммита (батчами по 50):
@@ -110,7 +110,7 @@ score = rrf_relevance
 | API | изменены файлы роутинга/контрактов (`openapi*`, `*.proto`, `*.graphql`, `routes/`, `controllers/`) или публичные экспорты (через codegraph symbols: изменилась сигнатура экспортируемого символа) |
 | Архитектура / новые компоненты | новый каталог верхнего уровня или модуль в codegraph; новый Dockerfile/compose‑сервис; изменения конфигов сборки |
 | Удалённый функционал | `D` файлов с экспортируемыми символами; удаление экспортов |
-| Бизнес‑логика | изменения в каталогах, помеченных в настройках проекта как domain (`pmi.yml: domainPaths`), исключая тесты |
+| Бизнес‑логика | изменения в каталогах, помеченных в настройках проекта как domain (`baton.yml: domainPaths`), исключая тесты |
 | Исправленные проблемы | conventional commit `fix:` / ссылки `fixes #N` / сопоставление с открытыми `issue` по related_files |
 | Изменения ограничений | изменения `engines`, версий рантайма, лимитов в конфиге |
 
@@ -118,11 +118,11 @@ score = rrf_relevance
 - **Всегда** — запись `git_history` с `confidence=observed` (факты: файлы A/M/D, автор, parent, классы изменений).
 - При срабатывании классификатора — запись соответствующей категории (`dependency`, `architecture`, `component`, …) с `confidence=inferred`, связь `derived_from` → коммит.
 - Устаревание связанных знаний — §6.
-- LLM‑обобщение коммита — опционально (`PMI_GIT_LLM=1`), ограничено бюджетом, учитывается в метрике `ai_analysis_cost`.
+- LLM‑обобщение коммита — опционально (`BATON_GIT_LLM=1`), ограничено бюджетом, учитывается в метрике `ai_analysis_cost`.
 
 ### Полная сверка
 
-`pmi git analyze --full` / серверное расписание (по умолчанию раз в неделю, только по запросу клиента с рабочей копией): проверяет существование всех `related_files` всех активных записей, пересобирает codegraph, сравнивает список компонентов с памятью категории `component`. Отчёт → `needs_review` и предложения. `last_full_reconcile_at` в курсоре.
+`baton git analyze --full` / серверное расписание (по умолчанию раз в неделю, только по запросу клиента с рабочей копией): проверяет существование всех `related_files` всех активных записей, пересобирает codegraph, сравнивает список компонентов с памятью категории `component`. Отчёт → `needs_review` и предложения. `last_full_reconcile_at` в курсоре.
 
 ## 8. Метрики и экономия токенов
 
@@ -149,7 +149,7 @@ delivered_tokens = Σ receipt.tokens_total за сессию
 savings = 1 − delivered / baseline
 ```
 
-Модель baseline консервативна (агент обычно читает больше). Для честной проверки — бенчмарк на фикстурах: прогон сценария TEST 6 с замером фактических токенов агента с PMI и без (существующий `scripts/benchmark-retrieval.mjs` расширяется). В отчёт идут обе цифры: оценочная (на каждой сессии) и измеренная (бенчмарк).
+Модель baseline консервативна (агент обычно читает больше). Для честной проверки — бенчмарк на фикстурах: прогон сценария TEST 6 с замером фактических токенов агента с Baton и без (существующий `scripts/benchmark-retrieval.mjs` расширяется). В отчёт идут обе цифры: оценочная (на каждой сессии) и измеренная (бенчмарк).
 
 ## 9. Тесты
 

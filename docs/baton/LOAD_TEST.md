@@ -1,6 +1,6 @@
-# PMI — нагрузочный тест
+# Baton — нагрузочный тест
 
-`PMI_LOAD_TEST=1 npx vitest run tests/load/central-load.test.ts` (Docker обязателен; параметры `PMI_LOAD_MEMORIES`, `PMI_LOAD_CLIENTS`, `PMI_LOAD_SECONDS`).
+`BATON_LOAD_TEST=1 npx vitest run tests/load/central-load.test.ts` (Docker обязателен; параметры `BATON_LOAD_MEMORIES`, `BATON_LOAD_CLIENTS`, `BATON_LOAD_SECONDS`).
 
 Сценарий: Postgres 17 + pgvector, 100 000 записей памяти одного проекта, 20 одновременных клиентов 30 секунд, смесь запросов: 40 % `POST /context` (задача + файл), 30 % hybrid `POST /search`, 20 % `POST /sync/push` (пакет из 10 записей), 10 % `GET /changes`. Проверяется отсутствие ошибок и p95 по бюджетам: context ≤ 1500 мс, search ≤ 500 мс, push ≤ 1000 мс, feed ≤ 500 мс.
 

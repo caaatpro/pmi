@@ -1,4 +1,4 @@
-# PMI — модель данных
+# Baton — модель данных
 
 Статус: Phase 2 — проект; **Phase 4 реализовала** схемы `core` (без команд и грантов), `memory` и `work.changes/project_seq` — миграция `0001-core-memory` в `src/server/central/migrations.ts`. Отличия реализации от черновика ниже перечислены в §6.
 
@@ -6,7 +6,7 @@
 
 ТЗ требует не переносить всё в Postgres механически. Критерий: **нужно ли это другому человеку, агенту или машине**.
 
-| Сущность (Memorix) | Центр (Postgres) | Локально (SQLite) | Обоснование |
+| Сущность (upstream) | Центр (Postgres) | Локально (SQLite) | Обоснование |
 |---|---|---|---|
 | `observations` → **memories** | ✔ истина | ✔ кэш + outbox | Общая память проекта |
 | История версий памяти | ✔ | последние N | Аудит, откат |
@@ -14,7 +14,7 @@
 | `sessions`, `task_continuity_events` → **sessions, session_events** | ✔ | ✔ | Handoff между машинами |
 | `compaction_checkpoints` → **checkpoints** | ✔ | ✔ | Recovery |
 | Workspace snapshots: манифест | ✔ | ✔ | Recovery на другой машине |
-| Workspace snapshots: blobs | ✔ blob store | ✔ `~/.pmi/blobs` | Реальные изменения |
+| Workspace snapshots: blobs | ✔ blob store | ✔ `~/.baton/blobs` | Реальные изменения |
 | Пользователи, организации, команды, роли, токены | ✔ только центр | токен устройства в keychain | Безопасность |
 | Git‑курсоры анализа | ✔ | ✔ | Инкрементальность для всех клиентов |
 | Аудит‑журнал | ✔ только центр | — | Неизменяемость |
@@ -26,8 +26,8 @@
 | `memory_feedback_*`, `outcome_signals` | ✔ агрегат веса | ✔ события | Ранжирование |
 | `chat_transcript` | ✘ | ✔ (опционально) | ТЗ: не грузить истории переписки; не синхронизируется |
 | `mcp_bindings`, `maintenance_*`, `agent_effects`, `meta` | ✘ | ✔ | Служебное, локальное |
-| `media_*`, `knowledge_pages/workflows` | ✘ | ✘ (удаляются по Phase 3) | Вне PMI |
-| `mini_skills` | ✘ (строки скопированы в `observations` как `coding_convention`, миграция `pmi-5`) | только чтение миграцией; таблица не меняется | Источник миграции |
+| `media_*`, `knowledge_pages/workflows` | ✘ | ✘ (удаляются по Phase 3) | Вне Baton |
+| `mini_skills` | ✘ (строки скопированы в `observations` как `coding_convention`, миграция `baton-5`) | только чтение миграцией; таблица не меняется | Источник миграции |
 
 ## 2. PostgreSQL: схемы
 
@@ -75,7 +75,7 @@ CREATE TABLE core.projects (
   org_id uuid NOT NULL REFERENCES core.organizations ON DELETE CASCADE,
   slug text NOT NULL,
   name text NOT NULL,
-  legacy_project_ids text[] NOT NULL DEFAULT '{}',   -- 'owner/repo' из Memorix
+  legacy_project_ids text[] NOT NULL DEFAULT '{}',   -- 'owner/repo' из upstream
   archived_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (org_id, slug)
@@ -127,7 +127,7 @@ CREATE TABLE core.audit_log (
   target_type text, target_id text,
   detail jsonb NOT NULL DEFAULT '{}'::jsonb   -- без содержимого памяти и секретов
 );
-REVOKE UPDATE, DELETE ON core.audit_log FROM pmi_app;
+REVOKE UPDATE, DELETE ON core.audit_log FROM baton_app;
 ```
 
 ### 2.2 memory
@@ -143,14 +143,14 @@ CREATE TYPE memory.confidence AS ENUM ('observed','inferred','proposed','confirm
 CREATE TYPE memory.status AS ENUM ('active','needs_review','resolved','archived');
 
 CREATE TABLE memory.memories (
-  id text PRIMARY KEY,                  -- ULID (= sync_key Memorix)
+  id text PRIMARY KEY,                  -- ULID (= sync_key upstream)
   project_id uuid NOT NULL REFERENCES core.projects ON DELETE CASCADE,
   category memory.category NOT NULL,
   title text NOT NULL,
   content text NOT NULL,                -- narrative
   facts jsonb NOT NULL DEFAULT '[]',
   component text,                       -- для component filtering
-  topic_key text,                       -- upsert‑ключ Memorix
+  topic_key text,                       -- upsert‑ключ upstream
   source text NOT NULL CHECK (source IN ('agent','git','manual','hook','import','system')),
   source_ref text,                      -- commit sha, session id, url
   author_user_id uuid REFERENCES core.users,
@@ -347,7 +347,7 @@ CREATE TABLE work.metrics_events (
 
 ## 3. SQLite (локальный клиент)
 
-Существующая схема `memorix.db` сохраняется. Добавляются (миграциями `schema_migrations`):
+Существующая схема `baton.db` сохраняется. Добавляются (миграциями `schema_migrations`):
 
 | Таблица | Назначение |
 |---|---|
@@ -355,7 +355,7 @@ CREATE TABLE work.metrics_events (
 | `memory_versions` | Последние версии (локальная история) |
 | `sessions` + колонки `user_id`, `model_provider`, `model`, `state_json`, `parent_session_id`, `lease_expires_at`, `last_checkpoint_id`, `git_branch`, `git_head`, `remote_seq`; расширение CHECK статусов | Session State |
 | `checkpoints`, `session_events` | Как на сервере |
-| `snapshots`, `snapshot_blobs`, `blobs_index(sha256, path, size, uploaded)` | Манифесты и локальный индекс blobs (сами blobs — файлы `~/.pmi/blobs/ab/cd…`) |
+| `snapshots`, `snapshot_blobs`, `blobs_index(sha256, path, size, uploaded)` | Манифесты и локальный индекс blobs (сами blobs — файлы `~/.baton/blobs/ab/cd…`) |
 | `outbox(id, entity, entity_id, op, payload, created_at, attempts, last_error, sent_at)` | Буфер офлайн‑записей |
 | `sync_cursors(project_id, server, last_seq)` | Курсор changes feed |
 | `git_cursors` | Копия серверных курсоров + локальные незапушенные |
@@ -381,18 +381,18 @@ CREATE TABLE work.metrics_events (
 
 ¹ «Свои» — записи, автором которых является пользователь; подтверждение агентом собственного вывода без явной команды человека запрещено (ARCHITECTURE.md §9).
 
-Реализация (Phase 5): `authorize(user, projectId, action)` в `src/server/central/identity.ts` — единственная точка в сервисном слое; Postgres RLS‑политики на `memory.*` и `work.*` (роль `pmi_app`, `app.user_id`, функция `core.can()`) как вторая линия защиты. Роль вычисляет одна SQL‑функция `core.project_role_of()`, её используют и сервис, и политики. Owner/admin организации получают роль `admin` (≥ maintainer) во всех проектах организации. Personal‑записи на сервер не синхронизируются (политика синхронизации), поэтому отдельной политики для них нет.
+Реализация (Phase 5): `authorize(user, projectId, action)` в `src/server/central/identity.ts` — единственная точка в сервисном слое; Postgres RLS‑политики на `memory.*` и `work.*` (роль `baton_app`, `app.user_id`, функция `core.can()`) как вторая линия защиты. Роль вычисляет одна SQL‑функция `core.project_role_of()`, её используют и сервис, и политики. Owner/admin организации получают роль `admin` (≥ maintainer) во всех проектах организации. Personal‑записи на сервер не синхронизируются (политика синхронизации), поэтому отдельной политики для них нет.
 
-Эксплуатация: миграция `0002` создаёт роль `pmi_app`, поэтому её применяет пользователь с правом `CREATEROLE` (в Docker Compose это владелец базы). Если сервер работает под ролью без этого права, роль `pmi_app` создаётся администратором заранее (`CREATE ROLE pmi_app NOLOGIN; GRANT pmi_app TO <роль сервера>;`) — миграция пропускает создание существующей роли. Роль сервера не должна быть суперпользователем в продакшене: RLS к суперпользователю не применяется, а `SET ROLE pmi_app` всё равно ограничивает запросы к данным проектов.
+Эксплуатация: миграция `0002` создаёт роль `baton_app`, поэтому её применяет пользователь с правом `CREATEROLE` (в Docker Compose это владелец базы). Если сервер работает под ролью без этого права, роль `baton_app` создаётся администратором заранее (`CREATE ROLE baton_app NOLOGIN; GRANT baton_app TO <роль сервера>;`) — миграция пропускает создание существующей роли. Роль сервера не должна быть суперпользователем в продакшене: RLS к суперпользователю не применяется, а `SET ROLE baton_app` всё равно ограничивает запросы к данным проектов.
 
-## 5. Миграция данных Memorix → PMI
+## 5. Миграция данных upstream → Baton
 
 Безопасность — ТЗ правило 7: никакая миграция не удаляет и не переписывает исходные данные на месте.
 
-1. **Резервная копия**: перед первой миграцией `memorix.db` → `memorix.db.pre-pmi-<ts>` через `VACUUM INTO`, проверка `PRAGMA integrity_check`.
+1. **Резервная копия**: перед первой миграцией `baton.db` → `baton.db.pre-baton-<ts>` через `VACUUM INTO`, проверка `PRAGMA integrity_check`.
 2. **Локальная схема**: только `ADD COLUMN` и новые таблицы; колонки заполняются отображением:
 
-| Memorix `type` | PMI `category` | `confidence` |
+| upstream `type` | Baton `category` | `confidence` |
 |---|---|---|
 | `decision`, `trade-off`, `why-it-exists`, `reasoning` | `architecture_decision` | `proposed` |
 | `problem-solution` | `solution` | `observed` |
@@ -404,10 +404,10 @@ CREATE TABLE work.metrics_events (
 | `session-request` | `session_history` | `observed` |
 | `probe` | не переносится на сервер | — |
 
-`status: resolved → resolved`, `archived → archived`. Ничего не помечается `confirmed` автоматически. `long_term_memories` в состоянии `approved` → `confirmed` (это уже было явное одобрение человеком в Memorix).
+`status: resolved → resolved`, `archived → archived`. Ничего не помечается `confirmed` автоматически. `long_term_memories` в состоянии `approved` → `confirmed` (это уже было явное одобрение человеком в upstream).
 
-3. **Выгрузка на сервер**: `pmi project link` ставит все подходящие записи (`syncEligibility` из Memorix) в outbox. Сервер дедуплицирует по `(project_id, content_hash)` и `topic_key`.
-4. **Откат**: локальная БД остаётся читаемой версией Memorix (новые колонки игнорируются); сервер можно очистить по `project_id`.
+3. **Выгрузка на сервер**: `baton project link` ставит все подходящие записи (`syncEligibility` из upstream) в outbox. Сервер дедуплицирует по `(project_id, content_hash)` и `topic_key`.
+4. **Откат**: локальная БД остаётся читаемой версией upstream (новые колонки игнорируются); сервер можно очистить по `project_id`.
 
 ## 6. Отличия реализации Phase 4 от черновика
 
@@ -419,14 +419,14 @@ CREATE TABLE work.metrics_events (
 | Уникальный индекс `(project_id, topic_key)` для active | Обычный индекс | Строки с одним topic key уже совпадают по `id`; уникальность на уровне topic key заблокировала бы push |
 | `core.api_tokens.device_id`, `scopes`; `core.devices` | `name`, без устройств и scopes | Устройства и scopes появятся вместе с RBAC (Phase 5); устройство пока идентифицируется `deviceId` sync‑пакета (пишется в аудит и историю версий) |
 | `memory.conflicts(memory_a, memory_b)` | `memory_id`, `winner`, `loser` (jsonb с версией и телом) | Конфликт одновременной правки касается одной записи; проигравшая версия сохраняется целиком для ручного разбора |
-| SQLite `outbox`, `sync_cursors` | Не созданы: используются существующие `sync_outbox`, `sync_meta` (курсор `applied['pmi-server'] = seq`) и `sync_row_state` | Без дублирования механизмов (правило 4) |
+| SQLite `outbox`, `sync_cursors` | Не созданы: используются существующие `sync_outbox`, `sync_meta` (курсор `applied['baton-server'] = seq`) и `sync_row_state` | Без дублирования механизмов (правило 4) |
 | SQLite `observations` + `category`, `confidence` | Добавлены; `NULL` = значение по умолчанию для типа (`src/domain/memory.ts`) | Существующие строки не переписываются; смена типа не оставляет устаревшую категорию |
 
 ### Phase 6
 
 | Черновик | Реализация | Причина |
 |---|---|---|
-| SQLite `sessions` + колонки state | Отдельная `pmi_sessions` (id = id сессии Memorix), `session_checkpoints`, `session_outbox` | Memorix пишет `sessions` через `INSERT OR REPLACE`, лишние колонки стирались бы |
+| SQLite `sessions` + колонки state | Отдельная `baton_sessions` (id = id сессии upstream), `session_checkpoints`, `session_outbox` | upstream пишет `sessions` через `INSERT OR REPLACE`, лишние колонки стирались бы |
 | `work.sessions.lease_owner_device` | `lease_device`, `lease_user`, `lease_expires_at`, плюс `continued_by`, `handoff_to`, `handoff_reserved_until`, `handoff_brief`, `summary` | Продолжение другим пользователем и адресный handoff |
 | `work.checkpoints.snapshot_id` | Нет (Phase 7); добавлены `orphan`, `device_id`, `created_by_user`, `received_at` | Checkpoint от устройства, потерявшего сессию, сохраняется, но не меняет state |
 | `work.session_events` | Не создана | Шаги/решения/проблемы — в state каждого checkpoint (см. ROADMAP, итог Phase 6) |
