@@ -151,10 +151,12 @@ describe('restore protections', () => {
       ['a.txt', `a.txt${suffix}`],
       ['notes/untracked.md', `notes/untracked.md${suffix}`],
     ]);
-    expect(fs.readFileSync(path.join(b, 'notes/untracked.md'), 'utf8')).toBe('bob private notes\n');
-    expect(fs.readFileSync(path.join(b, 'a.txt'), 'utf8')).toBe('a.txt v1\n');
-    expect(fs.readFileSync(path.join(b, `a.txt${suffix}`), 'utf8')).toBe('a.txt changed\n');
-    expect(fs.readFileSync(path.join(b, 'b.txt'), 'utf8')).toBe('b.txt changed\n');
+    // Line endings of Bob's checkout follow his core.autocrlf; compare text, not bytes.
+    const text = (rel: string) => fs.readFileSync(path.join(b, rel), 'utf8').replace(/\r\n/g, '\n');
+    expect(text('notes/untracked.md')).toBe('bob private notes\n');
+    expect(text('a.txt')).toBe('a.txt v1\n');
+    expect(text(`a.txt${suffix}`)).toBe('a.txt changed\n');
+    expect(text('b.txt')).toBe('b.txt changed\n');
     expect(report.verified).toBe(false);
   });
 

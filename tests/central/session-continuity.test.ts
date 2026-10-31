@@ -173,6 +173,7 @@ describe.skipIf(!pgAvailable || !cliBuilt)('session continuity end to end', () =
 
     const list = await pmi(bob, 'session', 'list', '--json');
     expect(list.code, list.stderr).toBe(0);
+    expect(list.json.offline, JSON.stringify(list.json)).toBe(false);
     expect(list.json.sessions.map((s: { id: string }) => s.id)).toContain(sessionId);
 
     const resume = await pmi(bob, 'session', 'resume', sessionId, '--agent', 'codex', '--model', 'gpt-5', '--json');

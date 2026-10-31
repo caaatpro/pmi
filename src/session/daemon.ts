@@ -72,7 +72,15 @@ export async function daemonTick(
   now = Date.now(),
 ): Promise<TickReport> {
   const report: TickReport = { checkpoints: [], released: [], heartbeats: 0, flush: { sent: 0, rejected: [], pending: 0, offline: false } };
-  for (const session of store.list({ statuses: LIVE_STATUSES, deviceOnly: true })) {
+  // The agent shares the store and may hand off or finish a session while a
+  // tick runs; act only on sessions that are still live when we get to them.
+  const stillLive = (id: string): boolean => {
+    const current = store.get(id);
+    return Boolean(current && LIVE_STATUSES.includes(current.status));
+  };
+  for (const listed of store.list({ statuses: LIVE_STATUSES, deviceOnly: true })) {
+    if (!stillLive(listed.id)) continue;
+    const session = store.get(listed.id)!;
     const agentGone = session.agentPid !== null && !isProcessAlive(session.agentPid);
     const idle = now - Date.parse(session.lastActivityAt) > settings.agentIdleMs;
     const reading = session.workspaceRoot ? readWorkspace(session.workspaceRoot) : undefined;
@@ -86,7 +94,7 @@ export async function daemonTick(
       const settled = now - since >= settings.debounceMs;
       const lastCheckpointAt = Date.parse(session.lastCheckpointAt ?? session.createdAt);
       const overdue = now - lastCheckpointAt >= settings.intervalMs;
-      if (!agentGone && !idle && (settled || overdue)) {
+      if (!agentGone && !idle && (settled || overdue) && stillLive(session.id)) {
         const headMoved = Boolean(reading.git.head) && reading.git.head !== session.state.git?.head;
         const trigger = headMoved ? 'commit' : settled ? 'fs_change' : 'timer';
         checkpointSession(store, session.id, trigger);
@@ -95,6 +103,7 @@ export async function daemonTick(
     }
 
     if (agentGone || idle) {
+      if (!stillLive(session.id)) continue;
       const before = store.get(session.id)!.checkpointSeq;
       releaseSession(store, session.id);
       if (store.get(session.id)!.checkpointSeq > before) report.checkpoints.push({ sessionId: session.id, trigger: 'exit' });
@@ -103,7 +112,7 @@ export async function daemonTick(
     }
 
     const lastBeat = session.lastHeartbeatAt ? Date.parse(session.lastHeartbeatAt) : 0;
-    if (now - lastBeat >= settings.heartbeatMs && await heartbeatSession(store, session.id, env)) report.heartbeats++;
+    if (now - lastBeat >= settings.heartbeatMs && stillLive(session.id) && await heartbeatSession(store, session.id, env)) report.heartbeats++;
   }
   report.flush = await flushOutbox(store, env);
   return report;

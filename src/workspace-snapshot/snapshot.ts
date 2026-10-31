@@ -242,7 +242,9 @@ export function buildSnapshot(store: BlobStore, input: BuildSnapshotInput): Buil
     if (entry.origPath) file.oldPath = entry.origPath;
     if (baseBlob) file.baseBlob = baseBlob;
     if (current) {
-      file.mode = current.mode;
+      // Git's own view of the mode where it has one: on Windows (core.filemode
+      // false) the file system cannot tell an executable or a symlink apart.
+      file.mode = entry.modeWorktree && /^1(00644|00755|20000)$/.test(entry.modeWorktree) ? entry.modeWorktree : current.mode;
       file.sha256 = putContent(current.content);
       file.size = current.content.length;
     }

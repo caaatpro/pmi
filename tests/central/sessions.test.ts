@@ -129,6 +129,30 @@ describe.skipIf(!pgAvailable)('central sessions (real Postgres)', () => {
     expect((await call('/v1/sessions/ses_reserved/resume', { as: 'bob', body: { device_id: 'dev_b' } })).status).toBe(200);
   });
 
+  it('a late heartbeat or checkpoint from the previous owner does not revive a handed-off session', async () => {
+    await start('alice', 'dev_a', 'ses_late');
+    await checkpoint('alice', 'dev_a', 'ses_late', 1, { status: 'waiting_handoff', nextAction: 'Ship it' }, 'handoff');
+    await call('/v1/sessions/ses_late/handoff', { as: 'alice', body: { device_id: 'dev_a', brief: 'b' } });
+
+    // Alice's daemon raced the handoff.
+    const beat = await call('/v1/sessions/ses_late/heartbeat', { as: 'alice', body: { device_id: 'dev_a' } });
+    expect(beat).toMatchObject({ status: 409, body: { error: { code: 'session_handed_off' } } });
+    expect((await checkpoint('alice', 'dev_a', 'ses_late', 2, { nextAction: 'stale' }, 'fs_change')).body.outcome).toBe('orphan');
+    expect((await start('alice', 'dev_a', 'ses_late')).status).toBe(409);
+    const after = await call('/v1/sessions/ses_late', { as: 'alice' });
+    expect(after.body.session).toMatchObject({ status: 'resumable', leaseDevice: null, lastCheckpointSeq: 1 });
+    expect(after.body.session.state.nextAction).toBe('Ship it');
+
+    const listed = await call(`/v1/projects/${projectId}/sessions?resumable=true`, { as: 'bob' });
+    expect(listed.body.sessions.map((s: any) => s.id)).toContain('ses_late');
+
+    // Resuming it herself clears the handoff, and her writes count again.
+    const same = await call('/v1/sessions/ses_late/resume', { as: 'alice', body: { device_id: 'dev_a' } });
+    expect(same.body).toMatchObject({ continuation: 'same_session', session: { status: 'in_progress', releasedAt: null } });
+    expect((await call('/v1/sessions/ses_late/heartbeat', { as: 'alice', body: { device_id: 'dev_a' } })).status).toBe(200);
+    expect((await checkpoint('alice', 'dev_a', 'ses_late', 3, {}, 'fs_change')).body.outcome).toBe('applied');
+  });
+
   it('expires leases: a silent session becomes resumable and the same user continues it', async () => {
     await start('bob', 'dev_b', 'ses_crash');
     await checkpoint('bob', 'dev_b', 'ses_crash', 1, { completedSteps: [{ id: '1', text: 'half done', at: 'x' }] }, 'fs_change');

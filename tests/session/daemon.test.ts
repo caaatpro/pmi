@@ -136,6 +136,21 @@ describe('daemon tick (no agent help)', () => {
     writeFileSync(path.join(repo, 'later.ts'), '1');
     expect(await daemonTick(store, settings, env)).toMatchObject({ checkpoints: [], released: [] });
   });
+
+  it('leaves a session alone when the agent hands it off while the tick runs', async () => {
+    const session = startSession(store, { projectId: 'acme/app', projectRoot: repo, agentPid: process.pid });
+    checkpointSession(store, session.id, 'manual', { next: 'continue' });
+    writeFileSync(path.join(repo, 'racing.ts'), '1');
+    const list = store.list.bind(store);
+    store.list = (...args) => {
+      const listed = list(...args);
+      handoffSession(store, session.id);
+      return listed;
+    };
+    expect(await daemonTick(store, { ...settings, heartbeatMs: 0 }, env)).toMatchObject({ checkpoints: [], released: [], heartbeats: 0 });
+    expect(store.get(session.id)!.status).toBe('resumable');
+    expect(store.pendingOps().map((op) => op.kind).at(-1)).toBe('handoff');
+  });
 });
 
 describe('outbox', () => {

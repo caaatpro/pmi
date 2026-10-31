@@ -130,7 +130,7 @@ function currentBlobId(root: string, relPath: string): string | null {
     return null;
   }
   const content = stat.isSymbolicLink() ? Buffer.from(fs.readlinkSync(full), 'utf8') : fs.readFileSync(full);
-  return git(root, ['hash-object', '--stdin'], content).toString('utf8').trim();
+  return gitBlobId(root, relPath, content);
 }
 
 function writeEntry(root: string, relPath: string, mode: string, content: Buffer): void {
@@ -209,17 +209,22 @@ function conflictReason(root: string, file: SnapshotFile, snapshotContent: Buffe
   const current = currentBlobId(root, file.path);
   if (file.status === 'M' || file.status === 'D') {
     if (current === (file.baseBlob ?? null)) return null;
-    if (current && snapshotContent && current === gitBlobId(root, snapshotContent)) return null;
+    if (current && snapshotContent && current === gitBlobId(root, file.path, snapshotContent)) return null;
     return current ? 'the file changed here since the snapshot base' : 'the file was deleted here';
   }
   // A, U, R (new path): must not exist yet, unless it already holds the snapshot content.
   if (current === null) return null;
-  if (snapshotContent && current === gitBlobId(root, snapshotContent)) return null;
+  if (snapshotContent && current === gitBlobId(root, file.path, snapshotContent)) return null;
   return 'a different file already exists at this path';
 }
 
-function gitBlobId(root: string, content: Buffer): string {
-  return git(root, ['hash-object', '--stdin'], content).toString('utf8').trim();
+/**
+ * Blob id as git would store `content` at `relPath`: with the path, git
+ * applies the same clean filters (core.autocrlf, .gitattributes) it uses for
+ * `git add`, so a CRLF checkout of an unchanged file still matches its base.
+ */
+function gitBlobId(root: string, relPath: string, content: Buffer): string {
+  return git(root, ['hash-object', '--path', relPath, '--stdin'], content).toString('utf8').trim();
 }
 
 export function restoreSnapshot(manifest: SnapshotManifest, options: RestoreOptions): RestoreReport {

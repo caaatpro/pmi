@@ -278,11 +278,17 @@ CREATE FUNCTION core.can(p_project uuid, p_min_role text) RETURNS boolean
      AND core.role_rank(core.project_role_of(p_project, core.current_app_user())) >= core.role_rank(p_min_role)
 $f$;
 
+-- Roles are cluster-wide while the migration lock is per database: two
+-- databases of one cluster migrating at once may both try to create the
+-- role, so losing that race is not an error. (Same resulting schema; the
+-- only change to this migration since it shipped.)
 DO $do$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'pmi_app') THEN
     CREATE ROLE pmi_app NOLOGIN;
   END IF;
+EXCEPTION WHEN duplicate_object OR unique_violation THEN
+  NULL;
 END
 $do$;
 GRANT pmi_app TO CURRENT_USER;
@@ -650,6 +656,17 @@ ALTER POLICY git_commits_insert ON work.git_commits
 CREATE INDEX IF NOT EXISTS conflicts_memory ON memory.conflicts (memory_id) WHERE state = 'open';
 CREATE INDEX IF NOT EXISTS memories_project_recent ON memory.memories (project_id, updated_at DESC) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS memories_project_component ON memory.memories (project_id, lower(component)) WHERE deleted_at IS NULL;
+`,
+  },
+  {
+    // A handed-off session stays handed off until someone resumes it: a
+    // heartbeat or checkpoint that arrives late from the previous owner (its
+    // daemon raced the handoff) must not bring it back to in_progress. A
+    // release or an expired lease is not a handoff; the owner can still
+    // pick the session up again.
+    id: '0008-session-release',
+    sql: `
+ALTER TABLE work.sessions ADD COLUMN released_at timestamptz;
 `,
   },
 ];

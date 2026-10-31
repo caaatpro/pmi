@@ -39,6 +39,7 @@ export interface SessionRow {
   leaseDevice: string | null;
   leaseExpiresAt: string | null;
   leaseLive: boolean;
+  releasedAt: string | null;
   handoffTo: string | null;
   handoffReservedUntil: string | null;
   handoffBrief: string | null;
@@ -56,6 +57,7 @@ const SESSION_COLUMNS = `s.id, s.project_id AS "projectId", s.user_id AS "userId
   s.model_provider AS "modelProvider", s.model, s.status, s.task, s.objective, s.state,
   s.parent_session_id AS "parentSessionId", s.continued_by AS "continuedBy", s.lease_device AS "leaseDevice",
   s.lease_expires_at AS "leaseExpiresAt", COALESCE(s.lease_expires_at > now(), false) AS "leaseLive",
+  s.released_at AS "releasedAt",
   s.handoff_to AS "handoffTo", s.handoff_reserved_until AS "handoffReservedUntil", s.handoff_brief AS "handoffBrief",
   s.last_checkpoint_id AS "lastCheckpointId", s.last_checkpoint_seq AS "lastCheckpointSeq",
   s.git_branch AS "gitBranch", s.git_head AS "gitHead", s.summary,
@@ -77,7 +79,7 @@ function leaseInterval(ttlSeconds: number): string {
 /** Whether `device` of `user` may write to the session now. */
 function ownsSession(session: SessionRow, user: AuthUser, deviceId: string): boolean {
   if (session.userId !== user.id) return false;
-  if (FINAL_STATUSES.includes(session.status) || session.continuedBy) return false;
+  if (FINAL_STATUSES.includes(session.status) || session.continuedBy || session.releasedAt) return false;
   return session.leaseDevice === deviceId || !session.leaseLive;
 }
 
@@ -85,6 +87,7 @@ function assertOwner(session: SessionRow, user: AuthUser, deviceId: string): voi
   if (session.userId !== user.id) throw new HttpError(403, 'not_session_owner', 'only the user who runs this session can write to it; use resume');
   if (session.continuedBy) throw new HttpError(409, 'already_continued', `the session was continued in ${session.continuedBy}`, { continuedBy: session.continuedBy });
   if (FINAL_STATUSES.includes(session.status)) throw new HttpError(409, 'session_closed', `the session is ${session.status}`);
+  if (session.releasedAt) throw new HttpError(409, 'session_handed_off', 'the session was handed off; resume it to continue', { releasedAt: session.releasedAt });
   if (session.leaseDevice !== deviceId && session.leaseLive) {
     throw new HttpError(409, 'lease_held', 'another device holds the lease for this session', { leaseExpiresAt: session.leaseExpiresAt });
   }
@@ -203,7 +206,7 @@ export async function handoffSession(
   await tx.query(
     `UPDATE work.sessions SET status = 'resumable', handoff_brief = $2, handoff_to = $3,
             handoff_reserved_until = CASE WHEN $3::uuid IS NULL THEN NULL ELSE now() + $4::interval END,
-            lease_device = NULL, lease_user = NULL, lease_expires_at = NULL, updated_at = now()
+            lease_device = NULL, lease_user = NULL, lease_expires_at = NULL, released_at = now(), updated_at = now()
       WHERE id = $1`,
     [session.id, input.brief, input.toUserId ?? null, `${input.reserveHours} hours`],
   );
@@ -352,7 +355,7 @@ export async function resumeSession(
     await tx.query(
       `UPDATE work.sessions SET status = 'in_progress', state = $2::jsonb, device_id = $3, agent = $4,
               lease_device = $3, lease_user = $5, lease_expires_at = now() + $6::interval,
-              handoff_to = NULL, handoff_reserved_until = NULL, updated_at = now()
+              handoff_to = NULL, handoff_reserved_until = NULL, released_at = NULL, updated_at = now()
         WHERE id = $1`,
       [session.id, JSON.stringify(state), deviceId, state.agent, user.id, leaseInterval(ttlSeconds)],
     );

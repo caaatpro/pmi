@@ -19,7 +19,12 @@ export function write(repo: string, rel: string, content: string | Buffer, mode?
   if (mode) fs.chmodSync(full, mode);
 }
 
-/** Every path git can see (tracked + untracked, not ignored) with type, mode and content. */
+/**
+ * Every path git can see (tracked + untracked, not ignored) with type, mode
+ * and content as git sees it (blob id after its filters), so two working
+ * copies compare equal whatever core.autocrlf did on checkout. Bytes of the
+ * files a restore writes are verified separately by the restore itself.
+ */
 export function workingCopy(repo: string): Record<string, string> {
   const listed = git(repo, 'ls-files', '-z', '--cached', '--others', '--exclude-standard').split('\0').filter(Boolean);
   const out: Record<string, string> = {};
@@ -28,7 +33,7 @@ export function workingCopy(repo: string): Record<string, string> {
     let stat: fs.Stats;
     try { stat = fs.lstatSync(full); } catch { out[rel] = '<absent>'; continue; }
     if (stat.isSymbolicLink()) out[rel] = `link:${fs.readlinkSync(full)}`;
-    else out[rel] = `${stat.mode & 0o111 ? 'x' : '-'}:${fs.readFileSync(full).toString('base64')}`;
+    else out[rel] = `${stat.mode & 0o111 ? 'x' : '-'}:${execFileSync('git', ['hash-object', '--path', rel, '--stdin'], { cwd: repo, input: fs.readFileSync(full), encoding: 'utf8' }).trim()}`;
   }
   return out;
 }

@@ -518,7 +518,7 @@ export async function createMemorixServer(
         } finally {
           // Any tool call is agent activity: the PMI daemon releases a session
           // only after its agent has been silent for PMI_AGENT_IDLE_MS.
-          if (connectionSessionId) touchPmiSession(projectDir, connectionSessionId);
+          if (connectionSessionId) await touchPmiSession(projectDir, connectionSessionId);
         }
       };
       return (originalRegisterTool as (...innerArgs: unknown[]) => unknown)(name, maybeConfig, wrappedHandler, ...args.slice(2)) as never;
@@ -892,12 +892,17 @@ export async function createMemorixServer(
 
 // ── PMI session continuity glue ───────────────────────────────────
 
-/** Record agent activity on the session; never fails a tool call. */
-function touchPmiSession(dataDir: string, sessionId: string): void {
-  import('./session/local-store.js')
-    .then(({ LocalSessionStore }) => {
-      const store = new LocalSessionStore(dataDir);
-      if (store.get(sessionId)) store.touch(sessionId);
-    })
-    .catch(() => undefined);
+/**
+ * Record agent activity on the session; never fails a tool call. Awaited by
+ * the tool wrapper: a write that outlives the call could reopen the database
+ * after its owner closed it (Windows then cannot delete the file).
+ */
+async function touchPmiSession(dataDir: string, sessionId: string): Promise<void> {
+  try {
+    const { LocalSessionStore } = await import('./session/local-store.js');
+    const store = new LocalSessionStore(dataDir);
+    if (store.get(sessionId)) store.touch(sessionId);
+  } catch {
+    // Activity tracking is best-effort.
+  }
 }
