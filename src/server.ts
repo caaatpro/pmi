@@ -50,7 +50,6 @@ import { registerProjectBriefTools } from './mcp/tools/project-brief.js';
 import { registerMaintenanceTools } from './mcp/tools/maintenance.js';
 import { registerIntegrationTools } from './mcp/tools/integrations.js';
 import { registerMemorixSessionTools } from './mcp/tools/memorix-session.js';
-import { registerDashboardTools } from './mcp/tools/dashboard.js';
 import { registerTeamTools } from './mcp/tools/team.js';
 
 /**
@@ -676,7 +675,6 @@ export async function createMemorixServer(
     project: () => ({ id: project.id, rootPath: project.rootPath }),
     connectionSessionId: () => connectionSessionId,
   });
-  registerDashboardTools(server, ctx);
   registerTeamTools(server, ctx);
   // Deferred initialization — runs AFTER transport connect so MCP handshake isn't blocked.
   // Sync advisory scan and file watcher are non-essential for tool functionality.

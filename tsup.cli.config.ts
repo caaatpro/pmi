@@ -19,5 +19,4 @@ export default defineConfig({
   esbuildOptions(options) {
     options.jsx = 'automatic';
   },
-  onSuccess: 'node scripts/copy-static.cjs',
 });

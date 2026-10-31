@@ -209,7 +209,7 @@ export const OFFICIAL_MEMORIX_SKILLS: OfficialMemorixSkill[] = [
       '| Hooks not firing | hook status | `memorix hooks status` |',
       '| Need to inspect generated files | preview | `memorix hooks preview --agent <agent>` |',
       '| Setup looks incomplete | reinstall host integration | `memorix setup --agent <agent>` |',
-      '| Need dashboard/control plane | background service | `memorix background start` or `memorix serve-http --port 3211` |',
+      '| Need the HTTP control plane | background service | `memorix background start` or `memorix serve-http --port 3211` |',
       '',
       '## Mode Rules',
       '',

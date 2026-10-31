@@ -10,7 +10,6 @@ src/**/*.js
 src/**/*.js.map
 src/**/*.d.ts
 src/**/*.d.ts.map
-!src/dashboard/static/**/*.js
 !src/embedding/fastembed.d.ts
 !src/embedding/transformers.d.ts
 !src/globals.d.ts

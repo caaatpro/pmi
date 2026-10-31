@@ -149,7 +149,6 @@ describe('Tool profile registration', () => {
     const teamTools = getToolNames(teamServer as any);
     expect(teamTools).toContain('team_manage');
     expect(teamTools).toContain('memorix_poll');
-    expect(teamTools).toContain('memorix_dashboard');
     expect(teamTools).toContain('memorix_knowledge');
     expect(teamTools).toContain('memorix_graph_context');
     expect(teamTools).not.toContain('memorix_rules_sync');

@@ -423,27 +423,6 @@ Example: 10 similar gotchas about Windows paths → 1 consolidated gotcha with a
   {
     "_meta": undefined,
     "annotations": undefined,
-    "description": "Launch the Memorix Web Dashboard in the browser. In HTTP control-plane mode, this reuses the current control-plane dashboard. In stdio/standalone mode, it starts the standalone dashboard server.",
-    "execution": {
-      "taskSupport": "forbidden",
-    },
-    "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "additionalProperties": false,
-      "properties": {
-        "port": {
-          "description": "Optional port override for standalone mode. In HTTP control-plane mode, the active dashboard port is reused.",
-          "type": "number",
-        },
-      },
-      "type": "object",
-    },
-    "name": "memorix_dashboard",
-    "title": "Launch Dashboard",
-  },
-  {
-    "_meta": undefined,
-    "annotations": undefined,
     "description": "Scan active memories for duplicates, contradictions, and outdated information using LLM analysis. Automatically resolves redundant memories. Requires LLM to be configured (set MEMORIX_LLM_API_KEY or OPENAI_API_KEY environment variable). Without LLM, falls back to basic similarity-based consolidation.",
     "execution": {
       "taskSupport": "forbidden",
@@ -2716,9 +2695,6 @@ exports[`MCP tool surface > keeps the full-profile tool names and input fields s
     "taskId?",
     "verificationId?",
     "verificationStatus?",
-  ],
-  "memorix_dashboard": [
-    "port?",
   ],
   "memorix_deduplicate": [
     "dryRun?",

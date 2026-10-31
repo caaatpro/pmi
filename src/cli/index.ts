@@ -170,7 +170,6 @@ const main = defineCommand({
     })),
     doctor: () => import('./commands/doctor.js').then(m => m.default),
     repair: () => import('./commands/repair.js').then(m => m.default),
-    dashboard: () => import('./commands/dashboard.js').then(m => m.default),
     cleanup: () => import('./commands/cleanup.js').then(m => m.default),
     purge: () => import('./commands/purge.js').then(m => m.default),
     uninstall: () => import('./commands/uninstall.js').then(m => m.default),
@@ -185,7 +184,7 @@ const main = defineCommand({
       'receipt',
       'serve', 'serve-http', 'status', 'sync', 'login', 'logout', 'project', 'daemon', 'workspace', 'git', 'backup', 'restore',
       'hook', 'hooks', 'ingest', 'git-hook', 'git-hook-uninstall',
-      'background', 'bg', 'bs', 'doctor', 'repair', 'dashboard', 'cleanup', 'purge', 'uninstall'];
+      'background', 'bg', 'bs', 'doctor', 'repair', 'cleanup', 'purge', 'uninstall'];
     if (firstArg && knownSubs.includes(firstArg)) return;
 
     // No subcommand provided — piped launches (MCP hosts, registry probes)
@@ -234,7 +233,7 @@ const main = defineCommand({
     console.error('  handoff    Create durable handoff artifacts');
     console.error('  poll       Snapshot project coordination state');
     console.error('  receipt    Privacy-safe memory handoff diagnostic');
-    console.error('  serve-http Start HTTP MCP + dashboard control plane');
+    console.error('  serve-http Start the HTTP MCP control plane');
     console.error('  serve      Start MCP server on stdio');
     console.error('  init       Create global defaults or project config');
     console.error('  setup      Install Memorix plugin/MCP/rules/hooks for an agent');
@@ -242,7 +241,6 @@ const main = defineCommand({
     console.error('  config     Show TOML config paths and resolved values');
     console.error('  integrate  Install one IDE integration into the current repo');
     console.error('  status     Show project info + stats');
-    console.error('  dashboard  Open standalone dashboard (read-mostly)');
     console.error('  hooks      Install, inspect, or remove agent hooks');
     console.error('  cleanup    Remove old memories');
     console.error('  purge      Retire all memories (project by default, --all for everything)');

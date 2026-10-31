@@ -73,7 +73,6 @@ export const TOOL_PROFILES: Record<string, ReadonlyArray<ToolProfile>> = Object.
   workspace_restore:          ['lite', 'team', 'full'],
 
   // ── team: orchestration coordination surfaces — HTTP default ──────
-  memorix_dashboard:          ['team', 'full'],
   memorix_knowledge:          ['team', 'full'],
   memorix_handoff:            ['team', 'full'],
   memorix_poll:               ['team', 'full'],
