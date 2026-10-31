@@ -1,5 +1,2773 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`MCP tool surface > keeps each tool title, description, annotations and JSON schemas stable 1`] = `
+[
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Get the minimal sufficient project context for a task, within a token budget: L1 project overview, the current session (next action, open problems) and the most relevant memories (L2). Ask for L3 to include history. Call it before reading files broadly; fetch details of any listed memory with memory_get(id).",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "budget_tokens": {
+          "description": "Default 2300",
+          "maximum": 32000,
+          "minimum": 200,
+          "type": "integer",
+        },
+        "components": {
+          "items": {
+            "maxLength": 200,
+            "type": "string",
+          },
+          "maxItems": 20,
+          "type": "array",
+        },
+        "files": {
+          "description": "Files the task touches",
+          "items": {
+            "maxLength": 1024,
+            "type": "string",
+          },
+          "maxItems": 100,
+          "type": "array",
+        },
+        "levels": {
+          "items": {
+            "enum": [
+              "L1",
+              "L2",
+              "L3",
+            ],
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "task": {
+          "maxLength": 2000,
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "context_build",
+    "title": "Build Context",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Record an architecture decision in ADR form (context, decision, alternatives, consequences) — it becomes a proposed architecture_decision until a person confirms it — or list the project's decisions (action "list").",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "default": "add",
+          "enum": [
+            "add",
+            "list",
+          ],
+          "type": "string",
+        },
+        "alternatives": {
+          "items": {
+            "maxLength": 1000,
+            "type": "string",
+          },
+          "maxItems": 10,
+          "type": "array",
+        },
+        "component": {
+          "maxLength": 200,
+          "type": "string",
+        },
+        "consequences": {
+          "maxLength": 5000,
+          "type": "string",
+        },
+        "context": {
+          "maxLength": 5000,
+          "type": "string",
+        },
+        "decision": {
+          "maxLength": 5000,
+          "type": "string",
+        },
+        "files": {
+          "items": {
+            "maxLength": 1024,
+            "type": "string",
+          },
+          "maxItems": 50,
+          "type": "array",
+        },
+        "query": {
+          "description": "list: filter decisions by topic",
+          "maxLength": 500,
+          "type": "string",
+        },
+        "title": {
+          "maxLength": 300,
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "decision_log",
+    "title": "Decision Log",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Turn new commits into project knowledge: only commits since the last analysis are read; dependency, API, structure, deletion, fix and constraint changes become memories, and knowledge about changed files is marked for review. full=true also verifies that files referenced by active knowledge still exist.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "full": {
+          "type": "boolean",
+        },
+      },
+      "type": "object",
+    },
+    "name": "git_analyze",
+    "title": "Git Analyze",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Scan the current project for observations that may have been written to the wrong project bucket. Identifies observations whose entityName appears exclusively in a different project. Read-only — no data is changed. Use memorix_resolve to archive confirmed mis-attributed observations.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "threshold": {
+          "description": "Minimum occurrences of an entityName in another project to flag it as suspicious (default: 2)",
+          "minimum": 1,
+          "type": "integer",
+        },
+      },
+      "type": "object",
+    },
+    "name": "memorix_audit_project",
+    "title": "Audit Project Attribution",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Show CodeGraph Memory provider and index status for the current project.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {},
+      "type": "object",
+    },
+    "name": "memorix_codegraph_status",
+    "title": "CodeGraph Memory Status",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Inspect, preview, or archive bounded checkpoints recorded around a host-native context compaction. Use only to debug or explicitly review compaction continuity. These are lifecycle records, not durable memories or transcript backups. CLI equivalent: memorix checkpoint list|show|context|archive.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "default": "list",
+          "enum": [
+            "list",
+            "show",
+            "context",
+            "archive",
+          ],
+          "type": "string",
+        },
+        "agent": {
+          "description": "Optional host agent filter",
+          "type": "string",
+        },
+        "id": {
+          "description": "Checkpoint ID for show, context, or archive",
+          "type": "string",
+        },
+        "includeArchived": {
+          "default": false,
+          "description": "Include archived records in action=list",
+          "type": "boolean",
+        },
+        "limit": {
+          "description": "Maximum records for action=list (default: 20)",
+          "type": "number",
+        },
+        "maxTokens": {
+          "description": "Maximum tokens for action=context (default: 420)",
+          "type": "number",
+        },
+        "sessionId": {
+          "description": "Optional host session ID filter",
+          "type": "string",
+        },
+        "task": {
+          "description": "Current task for a bounded context preview",
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "memorix_compaction_checkpoint",
+    "title": "Compact Continuity Checkpoints",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Find and merge similar observations to reduce memory bloat. Uses text similarity to cluster related observations by entity+type, then merges them into single consolidated records. Use action="preview" to see candidates without changing data, action="execute" to merge.
+
+Example: 10 similar gotchas about Windows paths → 1 consolidated gotcha with all facts preserved.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "description": "preview = dry run showing candidates, execute = actually merge",
+          "enum": [
+            "preview",
+            "execute",
+          ],
+          "type": "string",
+        },
+        "threshold": {
+          "description": "Similarity threshold 0.0-1.0 (default: 0.45). Lower = more aggressive merging",
+          "type": "number",
+        },
+      },
+      "required": [
+        "action",
+      ],
+      "type": "object",
+    },
+    "name": "memorix_consolidate",
+    "title": "Consolidate Memories",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Build a prompt-ready working context pack for a coding task. Combines relevant memories, CodeGraph Memory facts, freshness warnings, suggested reads, and verification hints. After a complete memorix_project_context brief, provide purpose only when deliberately expanding beyond it.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "description": "Max active memories to inspect before code-ref filtering (default: 20)",
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "type": "integer",
+        },
+        "purpose": {
+          "description": "Why this must expand beyond the latest Autopilot brief. Name the missing fact or the user's explicit request.",
+          "type": "string",
+        },
+        "task": {
+          "description": "Current coding task or question",
+          "type": "string",
+        },
+      },
+      "required": [
+        "task",
+      ],
+      "type": "object",
+    },
+    "name": "memorix_context_pack",
+    "title": "Context Pack",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Maintain a bounded, append-only continuity ledger for a coding task. Use start for requirements, record for decisions/verification/risks, show or list to inspect, and close for the final outcome. Pass the returned taskId to memorix_project_context so the current brief includes this ledger.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "description": "Continuity operation",
+          "enum": [
+            "start",
+            "record",
+            "show",
+            "list",
+            "close",
+          ],
+          "type": "string",
+        },
+        "actor": {
+          "maxLength": 200,
+          "type": "string",
+        },
+        "content": {
+          "description": "Requirement, decision, verification, risk, or outcome text",
+          "maxLength": 2000,
+          "type": "string",
+        },
+        "evidenceRefs": {
+          "items": {
+            "maxLength": 500,
+            "type": "string",
+          },
+          "maxItems": 8,
+          "type": "array",
+        },
+        "idempotencyKey": {
+          "description": "Stable retry key; repeating the same operation returns the original event",
+          "maxLength": 200,
+          "type": "string",
+        },
+        "kind": {
+          "description": "Entry kind for record",
+          "enum": [
+            "requirement",
+            "decision",
+            "verification",
+            "risk",
+          ],
+          "type": "string",
+        },
+        "limit": {
+          "default": 20,
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "type": "integer",
+        },
+        "requirements": {
+          "description": "Requirements for start",
+          "items": {
+            "maxLength": 2000,
+            "type": "string",
+          },
+          "maxItems": 8,
+          "type": "array",
+        },
+        "sourceRef": {
+          "description": "Evidence or source reference",
+          "maxLength": 500,
+          "type": "string",
+        },
+        "status": {
+          "description": "Outcome status for close",
+          "enum": [
+            "completed",
+            "blocked",
+            "abandoned",
+          ],
+          "type": "string",
+        },
+        "task": {
+          "description": "Task description for start",
+          "maxLength": 1000,
+          "type": "string",
+        },
+        "taskId": {
+          "description": "Continuity task id",
+          "maxLength": 120,
+          "type": "string",
+        },
+        "verificationId": {
+          "description": "Stable verification obligation id; reuse it to move pending to passed/failed",
+          "maxLength": 120,
+          "type": "string",
+        },
+        "verificationStatus": {
+          "enum": [
+            "pending",
+            "passed",
+            "failed",
+            "skipped",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "action",
+      ],
+      "type": "object",
+    },
+    "name": "memorix_continuity",
+    "title": "Task Continuity Ledger",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Launch the Memorix Web Dashboard in the browser. In HTTP control-plane mode, this reuses the current control-plane dashboard. In stdio/standalone mode, it starts the standalone dashboard server.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "port": {
+          "description": "Optional port override for standalone mode. In HTTP control-plane mode, the active dashboard port is reused.",
+          "type": "number",
+        },
+      },
+      "type": "object",
+    },
+    "name": "memorix_dashboard",
+    "title": "Launch Dashboard",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Scan active memories for duplicates, contradictions, and outdated information using LLM analysis. Automatically resolves redundant memories. Requires LLM to be configured (set MEMORIX_LLM_API_KEY or OPENAI_API_KEY environment variable). Without LLM, falls back to basic similarity-based consolidation.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "dryRun": {
+          "default": false,
+          "description": "Preview only — show what would be resolved without making changes",
+          "type": "boolean",
+        },
+        "query": {
+          "description": "Optional query to scope dedup to a topic (default: scan all)",
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "memorix_deduplicate",
+    "title": "Deduplicate Memories",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Fetch full observation, mini-skill, or curated durable-memory details — includes source kind (explicit memory / hook trace / git evidence), value category, and cross-references (~500-1000 tokens each). Do not re-fetch content already covered by a complete memorix_project_context brief unless a specific fact is still missing or the user asks for deeper history; provide purpose when intentionally expanding. Always use memorix_search first to find relevant IDs, then fetch only what you need. Accepts typed refs from search results (e.g. "obs:42", "skill:3") and durable refs from a project brief (e.g. "durable:<uuid>") via the typedRefs field, or legacy numeric ids / object refs for backward compatibility.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "force": {
+          "description": "Use only when the user explicitly asks to read a record already represented in the latest Autopilot brief.",
+          "type": "boolean",
+        },
+        "ids": {
+          "description": "Observation IDs to fetch (legacy, from memorix_search results)",
+          "items": {
+            "type": "number",
+          },
+          "type": "array",
+        },
+        "purpose": {
+          "description": "Why this must expand beyond the latest Autopilot brief. Name the missing fact or the user's explicit request.",
+          "type": "string",
+        },
+        "refs": {
+          "description": "Explicit observation refs. Prefer this for global search results.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "description": "Observation ID",
+                "type": "number",
+              },
+              "projectId": {
+                "description": "Project ID for global-search disambiguation",
+                "type": "string",
+              },
+            },
+            "required": [
+              "id",
+            ],
+            "type": "object",
+          },
+          "type": "array",
+        },
+        "typedRefs": {
+          "description": "Typed memory refs from search results or a project brief, e.g. "obs:42", "skill:3", "durable:<uuid>", "obs:42@org/proj"",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+      },
+      "type": "object",
+    },
+    "name": "memorix_detail",
+    "title": "Memory Details",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Inspect the bounded, project-scoped provenance cards behind Memorix context. Use list for a compact index, get/events for one source, sync to repair the projection, and stale when known source files changed. Cards expose sourceRef, locator, capturedHash, and freshness.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "description": "Evidence operation",
+          "enum": [
+            "list",
+            "get",
+            "sync",
+            "stale",
+            "events",
+          ],
+          "type": "string",
+        },
+        "candidateId": {
+          "description": "Candidate id, usually an observation id",
+          "type": "string",
+        },
+        "candidateKind": {
+          "default": "observation",
+          "enum": [
+            "observation",
+            "code",
+            "git",
+            "test",
+            "document",
+            "workflow",
+            "graph",
+          ],
+          "type": "string",
+        },
+        "limit": {
+          "default": 20,
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "type": "integer",
+        },
+        "paths": {
+          "description": "Changed source paths for stale",
+          "items": {
+            "type": "string",
+          },
+          "maxItems": 200,
+          "type": "array",
+        },
+        "query": {
+          "description": "Optional title/source query for list",
+          "type": "string",
+        },
+        "reason": {
+          "description": "Why evidence became stale",
+          "maxLength": 500,
+          "type": "string",
+        },
+      },
+      "required": [
+        "action",
+      ],
+      "type": "object",
+    },
+    "name": "memorix_evidence",
+    "title": "Evidence Cards",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Record or inspect auditable memory outcomes. Positive verification/use strengthens recall; correction, conflict, source change, or weaken lowers it. Use revoke with targetEventId to undo one prior signal without deleting audit history.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "description": "Feedback operation",
+          "enum": [
+            "record",
+            "show",
+            "audit",
+          ],
+          "type": "string",
+        },
+        "actor": {
+          "maxLength": 200,
+          "type": "string",
+        },
+        "candidateId": {
+          "description": "Memory or knowledge candidate id",
+          "type": "string",
+        },
+        "candidateKind": {
+          "default": "observation",
+          "enum": [
+            "observation",
+            "claim",
+            "durable-memory",
+            "workflow",
+          ],
+          "type": "string",
+        },
+        "limit": {
+          "default": 100,
+          "exclusiveMinimum": 0,
+          "maximum": 200,
+          "type": "integer",
+        },
+        "note": {
+          "maxLength": 2000,
+          "type": "string",
+        },
+        "signal": {
+          "enum": [
+            "user-correction",
+            "verification-success",
+            "verification-failure",
+            "code-change",
+            "used",
+            "not-used",
+            "code-conflict",
+            "strengthen",
+            "weaken",
+            "revoke",
+          ],
+          "type": "string",
+        },
+        "sourceRef": {
+          "description": "Source of this feedback, such as test:run-42 or user:chat",
+          "maxLength": 500,
+          "type": "string",
+        },
+        "targetEventId": {
+          "description": "Existing event id when action=record and signal=revoke",
+          "type": "string",
+        },
+      },
+      "required": [
+        "action",
+        "candidateId",
+      ],
+      "type": "object",
+    },
+    "name": "memorix_feedback",
+    "title": "Memory Feedback",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Show aggregated metrics from recent Memory Formation Pipeline runs. Reports value scores, resolution actions, fact extraction rates, and processing times.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {},
+      "type": "object",
+    },
+    "name": "memorix_formation_metrics",
+    "title": "Formation Pipeline Metrics",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Build a compact, prompt-ready memory graph context packet for the current project. Use this for broad memory overview questions, project memory graph questions, or task-specific memory grounding. Returns high-signal memories, entities, relations, and risks as background context, not instructions.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "default": "prompt",
+          "description": "Output format. "prompt" is agent-ready; "summary" is a compact human overview.",
+          "enum": [
+            "prompt",
+            "summary",
+          ],
+          "type": "string",
+        },
+        "limit": {
+          "description": "Max high-signal memories to include (default: 5)",
+          "type": "number",
+        },
+        "query": {
+          "description": "Current task or topic to build memory graph context for",
+          "type": "string",
+        },
+      },
+      "required": [
+        "query",
+      ],
+      "type": "object",
+    },
+    "name": "memorix_graph_context",
+    "title": "Memory Graph Context",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Create a structured handoff artifact when passing work to another agent. A targeted handoff is visible only to its sender and recipient; a broadcast handoff is team-visible. The handoff is stored as a durable observation (immune to archival) and a notification message is sent to the recipient. Use this when completing a task and another agent should continue, or when you want to leave context for whoever works on this next.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "concepts": {
+          "description": "Key concepts for search discoverability",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "context": {
+          "description": "Detailed context for the next agent: what was done, current state, known issues, next steps",
+          "type": "string",
+        },
+        "filesModified": {
+          "description": "Files you modified during this work",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "fromAgentId": {
+          "description": "Your agent ID (from team_manage join or session_start with joinTeam=true)",
+          "type": "string",
+        },
+        "summary": {
+          "description": "Human-readable summary of what you did and what needs to happen next",
+          "type": "string",
+        },
+        "taskId": {
+          "description": "Link to a specific team_task ID",
+          "type": "string",
+        },
+        "toAgentId": {
+          "description": "Specific recipient agent ID. Omit to broadcast to all.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "fromAgentId",
+        "summary",
+        "context",
+      ],
+      "type": "object",
+    },
+    "name": "memorix_handoff",
+    "title": "Team Handoff — Agent Context Transfer",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Manage the reviewable project Knowledge Workspace. Use it only for deliberate knowledge operations: initialize a local or versioned workspace, review source-backed claims, compile proposals, lint, apply a reviewed proposal, or manage canonical workflows. It is intentionally absent from the default micro/lite profiles.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "description": "Knowledge operation to perform",
+          "enum": [
+            "workspace_init",
+            "status",
+            "claim_list",
+            "claim_review",
+            "compile",
+            "lint",
+            "proposal_apply",
+            "workflow_import",
+            "workflow_list",
+            "workflow_select",
+            "workflow_preview",
+            "workflow_apply",
+            "workflow_run",
+          ],
+          "type": "string",
+        },
+        "agent": {
+          "description": "Target agent for a workflow adapter",
+          "type": "string",
+        },
+        "allowManualOverwrite": {
+          "default": false,
+          "description": "Explicitly allow proposal_apply to replace a manually edited page",
+          "type": "boolean",
+        },
+        "claimId": {
+          "description": "Source-backed claim id for claim_review",
+          "type": "string",
+        },
+        "claimReviewState": {
+          "description": "Deliberate review verdict for claim_review",
+          "enum": [
+            "approved",
+            "rejected",
+          ],
+          "type": "string",
+        },
+        "evidenceIds": {
+          "description": "Selected evidence ids for a workflow run",
+          "items": {
+            "type": "string",
+          },
+          "maxItems": 24,
+          "type": "array",
+        },
+        "failureReason": {
+          "description": "Sanitized workflow failure reason",
+          "type": "string",
+        },
+        "mode": {
+          "default": "local",
+          "description": "Workspace mode; versioned writes require an explicit project path during workspace_init",
+          "enum": [
+            "local",
+            "versioned",
+          ],
+          "type": "string",
+        },
+        "outcome": {
+          "description": "Workflow run outcome",
+          "enum": [
+            "passed",
+            "failed",
+            "cancelled",
+            "in-progress",
+          ],
+          "type": "string",
+        },
+        "path": {
+          "description": "Explicit versioned workspace path, used only by workspace_init",
+          "type": "string",
+        },
+        "proposalId": {
+          "description": "Pending proposal id for proposal_apply",
+          "type": "string",
+        },
+        "reviewDetail": {
+          "description": "Evidence check performed before approving or rejecting a claim",
+          "maxLength": 2000,
+          "type": "string",
+        },
+        "startingSnapshotId": {
+          "description": "Code snapshot id present when a workflow run began",
+          "type": "string",
+        },
+        "task": {
+          "description": "Task text for workflow selection or a workflow run",
+          "type": "string",
+        },
+        "verificationVerdict": {
+          "description": "Workflow run verification verdict",
+          "enum": [
+            "passed",
+            "failed",
+            "not-run",
+          ],
+          "type": "string",
+        },
+        "workflowId": {
+          "description": "Canonical workflow id for workflow preview, apply, or run",
+          "type": "string",
+        },
+      },
+      "required": [
+        "action",
+      ],
+      "type": "object",
+    },
+    "name": "memorix_knowledge",
+    "title": "Knowledge Workspace",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Get a full snapshot of your project coordination state in one call. Returns: your agent info, watermark (new observations since last session), inbox (unread messages), tasks (your in-progress, available to claim, completed, failed), and team roster (active agents). Use this to decide what to work on next.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "agentId": {
+          "description": "Your agent ID (from team_manage join or session_start with joinTeam=true). If omitted, returns project-level overview only.",
+          "type": "string",
+        },
+        "markInboxRead": {
+          "description": "If true, mark all inbox messages as read after returning them.",
+          "type": "boolean",
+        },
+      },
+      "type": "object",
+    },
+    "name": "memorix_poll",
+    "title": "Team Poll — Situational Awareness",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Build a compact Memory Autopilot brief for the current coding task. Schedules Code Memory refresh when needed, includes Start here files, reliable code-bound memories, stale/suspect cautions, and verification hints. Use this at the start of a new coding turn or after switching tasks.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "agent": {
+          "description": "Optional target agent for compatible workflow selection.",
+          "enum": [
+            "windsurf",
+            "cursor",
+            "claude-code",
+            "codex",
+            "copilot",
+            "antigravity",
+            "gemini-cli",
+            "openclaw",
+            "hermes",
+            "omp",
+            "kiro",
+            "opencode",
+            "trae",
+          ],
+          "type": "string",
+        },
+        "format": {
+          "default": "prompt",
+          "description": "Output format. "prompt" is agent-ready; "summary" is human-readable; "receipt" is bounded JSON; "json" is detailed diagnostics.",
+          "enum": [
+            "prompt",
+            "summary",
+            "json",
+            "receipt",
+          ],
+          "type": "string",
+        },
+        "limit": {
+          "description": "Reserved for future source limits; current prompt stays compact by default.",
+          "type": "number",
+        },
+        "refresh": {
+          "default": "auto",
+          "description": "Code Memory refresh policy. auto refreshes only when missing or stale.",
+          "enum": [
+            "auto",
+            "always",
+            "never",
+          ],
+          "type": "string",
+        },
+        "task": {
+          "description": "Current coding task or question",
+          "type": "string",
+        },
+        "taskId": {
+          "description": "Optional task continuity ledger id to include in the brief",
+          "maxLength": 120,
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "memorix_project_context",
+    "title": "Memory Autopilot Project Context",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Promote observations to permanent mini-skills that never decay and are auto-injected at session start. Action "promote": convert observation(s) to a mini-skill. Action "list": show all active mini-skills. Action "delete": remove a mini-skill by ID.
+
+Mini-skills are project-specific specialized knowledge derived from your actual memories — gotchas, decisions, fixes that generic online skills cannot provide.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "description": "Action to perform",
+          "enum": [
+            "promote",
+            "list",
+            "delete",
+          ],
+          "type": "string",
+        },
+        "instruction": {
+          "description": "Override: what the agent should do",
+          "type": "string",
+        },
+        "observationIds": {
+          "description": "Observation IDs to promote (required for "promote")",
+          "items": {
+            "type": "number",
+          },
+          "type": "array",
+        },
+        "skillId": {
+          "description": "Mini-skill ID to delete (required for "delete")",
+          "type": "number",
+        },
+        "tags": {
+          "description": "Extra classification tags",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "trigger": {
+          "description": "Override: when this skill should be applied",
+          "type": "string",
+        },
+      },
+      "required": [
+        "action",
+      ],
+      "type": "object",
+    },
+    "name": "memorix_promote",
+    "title": "Promote to Mini-Skill",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Mark observations as resolved (completed/no longer active). Resolved memories are hidden from default search but can still be found with status="all". Use this to mark completed tasks, fixed bugs, or outdated information so they don't pollute future context.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "ids": {
+          "description": "Observation IDs to mark as resolved",
+          "items": {
+            "type": "number",
+          },
+          "type": "array",
+        },
+        "status": {
+          "default": "resolved",
+          "description": "Target status: "resolved" (default, completed/done) or "archived" (permanently hidden)",
+          "enum": [
+            "resolved",
+            "archived",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "ids",
+      ],
+      "type": "object",
+    },
+    "name": "memorix_resolve",
+    "title": "Resolve Memories",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Show memory retention status or archive expired memories. action="report" (default): show active/stale/archive-candidate counts. action="archive": move expired observations to archive file (reversible). action="stale": list stale observations with full retention explanation. Uses exponential decay scoring based on importance, age, and access patterns.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "description": "Action: "report" (show status, default) or "archive" (move expired to archive) or "stale" (list stale observations with explanation)",
+          "enum": [
+            "report",
+            "archive",
+            "stale",
+          ],
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "memorix_retention",
+    "title": "Memory Retention Status & Archive",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Scan project for agent rule files (Cursor, Claude Code, Codex, Windsurf, Antigravity, Gemini CLI, Copilot, Kiro, OpenCode, Trae), deduplicate, detect conflicts, and optionally generate rules for a target agent format. Without target: returns sync status report. With target: generates converted rule files.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "description": "Action: "status" for report, "generate" to produce target files",
+          "enum": [
+            "status",
+            "generate",
+          ],
+          "type": "string",
+        },
+        "target": {
+          "description": "Target agent format for generation (required when action=generate)",
+          "enum": [
+            "cursor",
+            "claude-code",
+            "codex",
+            "windsurf",
+            "antigravity",
+            "gemini-cli",
+            "copilot",
+            "kiro",
+            "opencode",
+            "trae",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "action",
+      ],
+      "type": "object",
+    },
+    "name": "memorix_rules_sync",
+    "title": "Rules Sync",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Search project memory. Returns a compact index (~50-100 tokens/result). Do not use as a follow-up to a complete memorix_project_context brief unless a specific fact is still missing or the user asks for deeper history; provide purpose when intentionally expanding. Use memorix_detail to fetch full content for specific IDs. Use memorix_timeline to see chronological context. Searches across all observations stored from any IDE session — enabling cross-session and cross-agent context retrieval.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "force": {
+          "description": "Use only when the user explicitly asks to read a record already represented in the latest Autopilot brief.",
+          "type": "boolean",
+        },
+        "limit": {
+          "description": "Max results (default: 20)",
+          "type": "number",
+        },
+        "maxTokens": {
+          "description": "Token budget — trim results to fit (0 = unlimited)",
+          "type": "number",
+        },
+        "purpose": {
+          "description": "Why this must expand beyond the latest Autopilot brief. Name the missing fact or the user's explicit request.",
+          "type": "string",
+        },
+        "quality": {
+          "default": "balanced",
+          "description": "Retrieval profile: fast stays local, balanced uses configured embeddings, thorough explicitly permits optional LLM refinement.",
+          "enum": [
+            "fast",
+            "balanced",
+            "thorough",
+          ],
+          "type": "string",
+        },
+        "query": {
+          "description": "Search query (natural language or keywords)",
+          "type": "string",
+        },
+        "scope": {
+          "default": "project",
+          "description": "Search scope: "project" (default) only searches current project, "global" searches all projects",
+          "enum": [
+            "project",
+            "global",
+          ],
+          "type": "string",
+        },
+        "since": {
+          "description": "Only return observations created after this date (ISO 8601 or natural like "2025-01-15")",
+          "type": "string",
+        },
+        "source": {
+          "description": "Filter by memory source. "git" returns only commit-derived ground truth memories. Omit for all sources.",
+          "enum": [
+            "agent",
+            "git",
+            "manual",
+          ],
+          "type": "string",
+        },
+        "status": {
+          "default": "active",
+          "description": "Filter by memory status. "active" (default) shows current memories, "all" includes resolved/archived.",
+          "enum": [
+            "active",
+            "resolved",
+            "archived",
+            "all",
+          ],
+          "type": "string",
+        },
+        "type": {
+          "description": "Filter by observation type",
+          "enum": [
+            "session-request",
+            "gotcha",
+            "problem-solution",
+            "reasoning",
+            "how-it-works",
+            "what-changed",
+            "discovery",
+            "why-it-exists",
+            "decision",
+            "trade-off",
+            "probe",
+          ],
+          "type": "string",
+        },
+        "until": {
+          "description": "Only return observations created before this date (ISO 8601 or natural like "2025-02-01")",
+          "type": "string",
+        },
+      },
+      "required": [
+        "query",
+      ],
+      "type": "object",
+    },
+    "name": "memorix_search",
+    "title": "Search Memory",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Search past reasoning traces to understand WHY decisions were made. Returns reasoning memories that explain the thought process behind technical choices. Use this when revisiting code, questioning a design decision, or looking for precedent on how similar problems were solved before.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "description": "Max results (default: 10)",
+          "type": "number",
+        },
+        "query": {
+          "description": "Search query — describe what reasoning you want to find (e.g., "why did we choose PostgreSQL", "auth approach rationale")",
+          "type": "string",
+        },
+        "scope": {
+          "default": "project",
+          "description": "Search scope",
+          "enum": [
+            "project",
+            "global",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "query",
+      ],
+      "type": "object",
+    },
+    "name": "memorix_search_reasoning",
+    "title": "Search Reasoning Patterns",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Get context from previous coding sessions. Use this after compaction to recover lost context, or to manually review session history. Returns previous session summaries and key observations.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "description": "Number of recent sessions to include (default: 3)",
+          "type": "number",
+        },
+      },
+      "type": "object",
+    },
+    "name": "memorix_session_context",
+    "title": "Session Context",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "End a coding session with a structured summary. This summary will be injected into the next session so the next agent can resume work seamlessly.
+
+Recommended summary format:
+## Goal
+[What we were working on]
+
+## Discoveries
+- [Technical findings, gotchas, learnings]
+
+## Accomplished
+- [OK] [Completed tasks]
+- [PENDING] [Pending for next session]
+
+## Relevant Files
+- path/to/file — [what changed]",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "sessionId": {
+          "description": "Session ID to close (from memorix_session_start)",
+          "type": "string",
+        },
+        "summary": {
+          "description": "Structured session summary (Goal/Discoveries/Accomplished/Files format)",
+          "type": "string",
+        },
+      },
+      "required": [
+        "sessionId",
+      ],
+      "type": "object",
+    },
+    "name": "memorix_session_end",
+    "title": "End Session",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Start a new coding session. Returns a compact continuation card with the latest handoff and a few memory references. Call this at the beginning of a session to track activity; retrieve a referenced memory only when it is relevant. Any previous active session for this project will be auto-closed. By default this is lightweight: it binds the project, opens a session, and avoids dumping full history into the new context. Coordination identity is opt-in via \`joinTeam: true\` or a separate \`team_manage\` join call.
+
+IMPORTANT for HTTP/control-plane mode: pass \`projectRoot\` with the absolute path to your workspace root (e.g., the directory open in your IDE). Memorix uses this to detect the git project and bind this session to the correct project context. Without it, project-scoped tools will be disabled.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "agent": {
+          "description": "Agent/IDE name (e.g., "cursor", "windsurf", "claude-code")",
+          "type": "string",
+        },
+        "agentType": {
+          "description": "Agent type used for optional coordination identity mapping (e.g., "windsurf", "cursor").",
+          "type": "string",
+        },
+        "instanceId": {
+          "description": "Stable instance ID for optional coordination identity across restarts. If omitted with joinTeam=true, Memorix derives a deterministic fallback from the project and agent identity.",
+          "type": "string",
+        },
+        "joinTeam": {
+          "description": "If true, also join orchestration coordination state for this session. Defaults to false.",
+          "type": "boolean",
+        },
+        "model": {
+          "description": "PMI: model you run on, e.g. claude-opus or gpt-5",
+          "maxLength": 100,
+          "type": "string",
+        },
+        "modelProvider": {
+          "description": "PMI: model provider, e.g. anthropic or openai",
+          "maxLength": 100,
+          "type": "string",
+        },
+        "objective": {
+          "description": "PMI: when the task counts as done",
+          "maxLength": 4000,
+          "type": "string",
+        },
+        "projectRoot": {
+          "description": "Absolute path to the workspace/project root directory (e.g., the folder open in your IDE). Memorix will detect the git project from this path and bind this session to it. Required for HTTP transport when multiple projects are open simultaneously or when rebinding an existing control-plane session.",
+          "type": "string",
+        },
+        "role": {
+          "description": "Explicit role override used only when joinTeam=true.",
+          "type": "string",
+        },
+        "sessionId": {
+          "description": "Custom session ID (auto-generated if omitted)",
+          "type": "string",
+        },
+        "task": {
+          "description": "PMI: the task this session works on (enables handoff/resume by others)",
+          "maxLength": 2000,
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "memorix_session_start",
+    "title": "Start Session",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Memory-driven project skills. Action "list": show all available skills from all agents. Action "generate": auto-generate project-specific skills from observation patterns (gotchas, decisions, how-it-works). Action "inject": return a specific skill's full content for direct use. Generated skills follow the SKILL.md standard and can be synced across Cursor, Windsurf, Claude Code, Codex, Copilot, Kiro, Antigravity, OpenCode, and Trae. OpenClaw, Hermes Agent, and Oh-my-Pi receive skills through their official bundle/plugin/package setup lanes rather than generic workspace skill copy.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "description": "Action: "list" to discover skills, "generate" to create from memory, "inject" to get skill content",
+          "enum": [
+            "list",
+            "generate",
+            "inject",
+          ],
+          "type": "string",
+        },
+        "name": {
+          "description": "Skill name (required for "inject")",
+          "type": "string",
+        },
+        "target": {
+          "description": "Target agent to write generated skills to (optional for "generate")",
+          "enum": [
+            "windsurf",
+            "cursor",
+            "claude-code",
+            "codex",
+            "copilot",
+            "antigravity",
+            "gemini-cli",
+            "openclaw",
+            "hermes",
+            "omp",
+            "kiro",
+            "opencode",
+            "trae",
+          ],
+          "type": "string",
+        },
+        "write": {
+          "description": "Whether to write generated skills to disk (default: false, preview only)",
+          "type": "boolean",
+        },
+      },
+      "required": [
+        "action",
+      ],
+      "type": "object",
+    },
+    "name": "memorix_skills",
+    "title": "Project Skills",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Store a new observation/memory. Automatically indexed for search. Use type to classify: gotcha ([GOTCHA] critical pitfall), decision ([DECISION] architecture choice), problem-solution ([FIX] bug fix), how-it-works ([INFO] explanation), what-changed ([CHANGE] change), discovery ([DISCOVERY] insight), why-it-exists ([WHY] rationale), trade-off ([TRADEOFF] compromise), session-request ([SESSION] original goal). Project visibility is the default. Personal or team visibility requires an explicitly joined coordination identity. Set longTerm only when the caller explicitly wants an additional source-backed long-term candidate; it is never injected until an operator records a review through the CLI. For a read-only task, do not store unless the user explicitly asks to save a record.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "attachments": {
+          "description": "Safe public provenance references. They are stored as metadata for lexical retrieval; raw inline media is never stored.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "mimeType": {
+                "type": "string",
+              },
+              "modality": {
+                "enum": [
+                  "image",
+                  "audio",
+                  "video",
+                  "document",
+                ],
+                "type": "string",
+              },
+              "name": {
+                "type": "string",
+              },
+              "url": {
+                "description": "Public HTTPS provenance reference without query parameters or fragments. Memorix does not fetch this URL: attachment metadata is persisted and BM25-searchable, while observation vectors remain text-only.",
+                "type": "string",
+              },
+            },
+            "required": [
+              "modality",
+              "url",
+            ],
+            "type": "object",
+          },
+          "type": "array",
+        },
+        "concepts": {
+          "description": "Related concepts/keywords",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "entityName": {
+          "description": "The entity this observation belongs to (e.g., "auth-module", "port-config")",
+          "type": "string",
+        },
+        "facts": {
+          "description": "Structured facts (e.g., "Default timeout: 60s")",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "filesModified": {
+          "description": "Files involved",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "longTerm": {
+          "additionalProperties": false,
+          "description": "Optional explicit request to create a source-backed long-term candidate alongside this observation. Candidates are not automatically injected.",
+          "properties": {
+            "applicability": {
+              "description": "When this durable fact or procedure applies.",
+              "type": "string",
+            },
+            "kind": {
+              "description": "Cognitive kind for an additional long-term candidate.",
+              "enum": [
+                "episodic",
+                "semantic",
+                "procedural",
+              ],
+              "type": "string",
+            },
+            "scope": {
+              "default": "project",
+              "description": "Long-term scope. User capture is private source evidence and needs a bound agent identity.",
+              "enum": [
+                "project",
+                "user",
+                "team",
+              ],
+              "type": "string",
+            },
+            "tags": {
+              "description": "Small set of retrieval tags for the candidate.",
+              "items": {
+                "type": "string",
+              },
+              "type": "array",
+            },
+          },
+          "required": [
+            "kind",
+          ],
+          "type": "object",
+        },
+        "narrative": {
+          "description": "Full description of the observation",
+          "type": "string",
+        },
+        "overrideReadOnly": {
+          "description": "Use only when the user explicitly asks to save memory during a read-only or no-modification task.",
+          "type": "boolean",
+        },
+        "progress": {
+          "additionalProperties": false,
+          "description": "Progress tracking for task/feature observations",
+          "properties": {
+            "completion": {
+              "description": "Completion percentage 0-100",
+              "type": "number",
+            },
+            "feature": {
+              "description": "Feature or task name",
+              "type": "string",
+            },
+            "status": {
+              "description": "Current status",
+              "enum": [
+                "in-progress",
+                "completed",
+                "blocked",
+              ],
+              "type": "string",
+            },
+          },
+          "required": [
+            "feature",
+            "status",
+          ],
+          "type": "object",
+        },
+        "relatedCommits": {
+          "description": "Git commit hashes this memory relates to (links ground truth ↔ reasoning)",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "relatedEntities": {
+          "description": "Other entity names this memory cross-references",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "title": {
+          "description": "Short descriptive title (~5-10 words)",
+          "type": "string",
+        },
+        "topicKey": {
+          "description": "Optional topic identifier for upserts (e.g., "architecture/auth-model"). If an observation with the same topicKey already exists in this project, it will be UPDATED instead of creating a new one. Use memorix_suggest_topic_key to generate a stable key. Good for evolving decisions, architecture docs, etc.",
+          "type": "string",
+        },
+        "type": {
+          "description": "Observation type for classification",
+          "enum": [
+            "session-request",
+            "gotcha",
+            "problem-solution",
+            "reasoning",
+            "how-it-works",
+            "what-changed",
+            "discovery",
+            "why-it-exists",
+            "decision",
+            "trade-off",
+            "probe",
+          ],
+          "type": "string",
+        },
+        "visibility": {
+          "description": "Retrieval scope. Project is the normal shared default; personal/team require memorix_session_start with joinTeam=true.",
+          "enum": [
+            "personal",
+            "project",
+            "team",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "entityName",
+        "type",
+        "title",
+        "narrative",
+      ],
+      "type": "object",
+    },
+    "name": "memorix_store",
+    "title": "Store Memory",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Store a reasoning trace — WHY you chose this approach, what alternatives you considered, and what outcome you expect. This creates a searchable record of your decision-making process. Use this when making non-trivial technical decisions, choosing between approaches, or solving complex problems. Unlike regular memories that record WHAT happened, reasoning memories record HOW you thought about it.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "alternatives": {
+          "description": "Other options that were considered",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "concepts": {
+          "description": "Related technical concepts",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "constraints": {
+          "description": "Constraints that influenced the decision (time, perf, compat, etc.)",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "decision": {
+          "description": "What was decided or chosen",
+          "type": "string",
+        },
+        "entityName": {
+          "description": "The entity this reasoning applies to (e.g., "auth-module", "database-schema")",
+          "type": "string",
+        },
+        "expectedOutcome": {
+          "description": "What outcome is expected from this decision",
+          "type": "string",
+        },
+        "filesModified": {
+          "description": "Files related to this reasoning",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "rationale": {
+          "description": "Why this approach was chosen over alternatives",
+          "type": "string",
+        },
+        "relatedCommits": {
+          "description": "Git commit hashes this reasoning explains (links ground truth ↔ reasoning)",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "relatedEntities": {
+          "description": "Other entity names this reasoning relates to (cross-references)",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "risks": {
+          "description": "Known risks or potential downsides",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+      },
+      "required": [
+        "entityName",
+        "decision",
+        "rationale",
+      ],
+      "type": "object",
+    },
+    "name": "memorix_store_reasoning",
+    "title": "Store Reasoning Trace",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Suggest a stable topic_key for memory upserts. Use this before memorix_store when you want evolving topics (like architecture decisions, config docs) to update a single observation over time instead of creating duplicates. Returns a key like "architecture/auth-model" or "bug/timeout-in-api-gateway".",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "description": "Observation title — used to generate the stable key",
+          "type": "string",
+        },
+        "type": {
+          "description": "Observation type (e.g., decision, architecture, bugfix, discovery)",
+          "type": "string",
+        },
+      },
+      "required": [
+        "type",
+        "title",
+      ],
+      "type": "object",
+    },
+    "name": "memorix_suggest_topic_key",
+    "title": "Suggest Topic Key",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Deep retrieval: expand chronological context around a specific observation — distinguishes explicit memory evolution, hook activity traces, and git-backed facts. Natural follow-up after session L1 routing hints (hook traces) or L3 evidence pointers (git memory).",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "anchorId": {
+          "description": "Observation ID to center the timeline on",
+          "type": "number",
+        },
+        "depthAfter": {
+          "description": "Number of observations after (default: 3)",
+          "type": "number",
+        },
+        "depthBefore": {
+          "description": "Number of observations before (default: 3)",
+          "type": "number",
+        },
+      },
+      "required": [
+        "anchorId",
+      ],
+      "type": "object",
+    },
+    "name": "memorix_timeline",
+    "title": "Memory Timeline",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Export or import project memories. Action "export": export observations visible to the current agent and project sessions (JSON or Markdown). Action "import": import from a JSON export (re-assigns IDs, skips duplicate topicKeys).",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "description": "Operation: export or import",
+          "enum": [
+            "export",
+            "import",
+          ],
+          "type": "string",
+        },
+        "data": {
+          "description": "JSON string from a previous export (for import)",
+          "type": "string",
+        },
+        "format": {
+          "description": "Export format (for export, default: json)",
+          "enum": [
+            "json",
+            "markdown",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "action",
+      ],
+      "type": "object",
+    },
+    "name": "memorix_transfer",
+    "title": "Transfer Memories",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Migrate your entire workspace environment between AI coding agents (Cursor, Windsurf, Claude Code, Codex, Copilot, Gemini CLI, OpenClaw, Hermes Agent, Oh-my-Pi, Kiro, Antigravity, OpenCode, Trae). Syncs MCP server configs, workflows, rules, and skills across IDEs. Action "scan": detect all workspace configs. Action "migrate": generate configs for target agent (preview only). Action "apply": migrate AND write configs to disk with backup/rollback.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "description": "Action: "scan" to detect configs, "migrate" to preview, "apply" to write to disk",
+          "enum": [
+            "scan",
+            "migrate",
+            "apply",
+          ],
+          "type": "string",
+        },
+        "items": {
+          "description": "Selective sync: list specific MCP server or skill names to sync (e.g. ["figma-remote-mcp-server", "create-subagent"]). Omit to sync all.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "target": {
+          "description": "Target agent for migration (required for migrate)",
+          "enum": [
+            "windsurf",
+            "cursor",
+            "claude-code",
+            "codex",
+            "copilot",
+            "antigravity",
+            "gemini-cli",
+            "openclaw",
+            "hermes",
+            "omp",
+            "kiro",
+            "opencode",
+            "trae",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "action",
+      ],
+      "type": "object",
+    },
+    "name": "memorix_workspace_sync",
+    "title": "Workspace Sync",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Full content of a memory by the id returned from context_build or memory_search.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 1024,
+          "minLength": 1,
+          "type": "string",
+        },
+      },
+      "required": [
+        "id",
+      ],
+      "type": "object",
+    },
+    "name": "memory_get",
+    "title": "Memory Get",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Save durable project knowledge: what you observed (observed), concluded (inferred) or suggest (proposed). Only people confirm knowledge. Pick the category; use topicKey to update the same fact instead of duplicating it. Never save secrets.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "enum": [
+            "project_overview",
+            "architecture",
+            "component",
+            "dependency",
+            "architecture_decision",
+            "business_logic",
+            "coding_convention",
+            "issue",
+            "solution",
+            "known_limitation",
+            "development_history",
+            "current_state",
+            "active_task",
+            "completed_task",
+            "session_history",
+            "git_history",
+          ],
+          "type": "string",
+        },
+        "component": {
+          "maxLength": 200,
+          "type": "string",
+        },
+        "confidence": {
+          "enum": [
+            "observed",
+            "inferred",
+            "proposed",
+          ],
+          "type": "string",
+        },
+        "content": {
+          "maxLength": 20000,
+          "minLength": 1,
+          "type": "string",
+        },
+        "facts": {
+          "items": {
+            "maxLength": 500,
+            "type": "string",
+          },
+          "maxItems": 20,
+          "type": "array",
+        },
+        "files": {
+          "items": {
+            "maxLength": 1024,
+            "type": "string",
+          },
+          "maxItems": 50,
+          "type": "array",
+        },
+        "title": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string",
+        },
+        "topicKey": {
+          "maxLength": 200,
+          "type": "string",
+        },
+      },
+      "required": [
+        "title",
+        "content",
+        "category",
+      ],
+      "type": "object",
+    },
+    "name": "memory_save",
+    "title": "Memory Save",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Search project memory (hybrid keyword + semantic on the PMI server; local when offline). Returns ids for memory_get.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "enum": [
+            "project_overview",
+            "architecture",
+            "component",
+            "dependency",
+            "architecture_decision",
+            "business_logic",
+            "coding_convention",
+            "issue",
+            "solution",
+            "known_limitation",
+            "development_history",
+            "current_state",
+            "active_task",
+            "completed_task",
+            "session_history",
+            "git_history",
+          ],
+          "type": "string",
+        },
+        "limit": {
+          "maximum": 50,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "query": {
+          "maxLength": 500,
+          "minLength": 1,
+          "type": "string",
+        },
+      },
+      "required": [
+        "query",
+      ],
+      "type": "object",
+    },
+    "name": "memory_search",
+    "title": "Memory Search",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "L1 overview of the project: purpose, architecture, conventions, current state and confirmed decisions (≤ 800 tokens).",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {},
+      "type": "object",
+    },
+    "name": "project_overview",
+    "title": "Project Overview",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Save the state of the current task so anyone can continue it if this session stops: what is done, what is pending, the next action and open problems. The working copy (branch, HEAD, changed files) is recorded automatically. Call it after finishing a meaningful step; file changes are also checkpointed by the PMI daemon without you.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "completed": {
+          "description": "Steps finished since the last update (remove them from pending)",
+          "items": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string",
+          },
+          "maxItems": 50,
+          "type": "array",
+        },
+        "decisions": {
+          "description": "Memories (architecture decisions) this session relies on",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+              },
+              "title": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "id",
+              "title",
+            ],
+            "type": "object",
+          },
+          "maxItems": 30,
+          "type": "array",
+        },
+        "next": {
+          "description": "The single concrete next action",
+          "maxLength": 1000,
+          "type": "string",
+        },
+        "objective": {
+          "maxLength": 4000,
+          "type": "string",
+        },
+        "pending": {
+          "$ref": "#/properties/completed",
+          "description": "Steps still to do",
+        },
+        "percent": {
+          "maximum": 100,
+          "minimum": 0,
+          "type": "number",
+        },
+        "problems": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "status": {
+                "enum": [
+                  "open",
+                  "worked_around",
+                  "resolved",
+                ],
+                "type": "string",
+              },
+              "text": {
+                "maxLength": 1000,
+                "type": "string",
+              },
+            },
+            "required": [
+              "text",
+              "status",
+            ],
+            "type": "object",
+          },
+          "maxItems": 30,
+          "type": "array",
+        },
+        "progress": {
+          "description": "One-paragraph progress summary",
+          "maxLength": 2000,
+          "type": "string",
+        },
+        "replacePending": {
+          "description": "Replace the pending list instead of appending",
+          "type": "boolean",
+        },
+        "sessionId": {
+          "description": "Session id; defaults to the session this connection started or resumed",
+          "type": "string",
+        },
+        "task": {
+          "maxLength": 2000,
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "session_checkpoint",
+    "title": "Session Checkpoint",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Mark the current task completed (or failed) and release the session.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "failed": {
+          "type": "boolean",
+        },
+        "sessionId": {
+          "type": "string",
+        },
+        "summary": {
+          "maxLength": 8000,
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "session_finish",
+    "title": "Session Finish",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Hand the current task to another developer, agent or model: saves a final checkpoint, builds a handoff brief (done, next action, pending, decisions, problems, workspace, files to read, what not to redo) and releases the session so it can be resumed with session_resume. Provide \`next\` unless a next action or pending step is already recorded.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "completed": {
+          "description": "Steps finished since the last update (remove them from pending)",
+          "items": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string",
+          },
+          "maxItems": 50,
+          "type": "array",
+        },
+        "decisions": {
+          "description": "Memories (architecture decisions) this session relies on",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+              },
+              "title": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "id",
+              "title",
+            ],
+            "type": "object",
+          },
+          "maxItems": 30,
+          "type": "array",
+        },
+        "next": {
+          "description": "The single concrete next action",
+          "maxLength": 1000,
+          "type": "string",
+        },
+        "objective": {
+          "maxLength": 4000,
+          "type": "string",
+        },
+        "pending": {
+          "$ref": "#/properties/completed",
+          "description": "Steps still to do",
+        },
+        "percent": {
+          "maximum": 100,
+          "minimum": 0,
+          "type": "number",
+        },
+        "problems": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "status": {
+                "enum": [
+                  "open",
+                  "worked_around",
+                  "resolved",
+                ],
+                "type": "string",
+              },
+              "text": {
+                "maxLength": 1000,
+                "type": "string",
+              },
+            },
+            "required": [
+              "text",
+              "status",
+            ],
+            "type": "object",
+          },
+          "maxItems": 30,
+          "type": "array",
+        },
+        "progress": {
+          "description": "One-paragraph progress summary",
+          "maxLength": 2000,
+          "type": "string",
+        },
+        "replacePending": {
+          "description": "Replace the pending list instead of appending",
+          "type": "boolean",
+        },
+        "sessionId": {
+          "description": "Session id; defaults to the session this connection started or resumed",
+          "type": "string",
+        },
+        "task": {
+          "maxLength": 2000,
+          "type": "string",
+        },
+        "to": {
+          "description": "Reserve the session for this user for 24h",
+          "format": "email",
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "session_handoff",
+    "title": "Session Handoff",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "List sessions of this project that can be resumed (handed off, interrupted or stopped without handoff). Pass all=true for every session.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "all": {
+          "type": "boolean",
+        },
+      },
+      "type": "object",
+    },
+    "name": "session_list",
+    "title": "Session List",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Continue a session someone else (or you, elsewhere) started: returns the Resume Package — handoff brief, decisions, files to read first, completed steps not to redo and the next action — and makes it this connection's session. Uncommitted work from the session is restored into a NEW git worktree by default (your current files are never touched); continue the work in the returned \`workspace\` path. restore="none" skips it.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "agent": {
+          "description": "Your agent name, e.g. codex",
+          "maxLength": 100,
+          "type": "string",
+        },
+        "model": {
+          "maxLength": 100,
+          "type": "string",
+        },
+        "modelProvider": {
+          "maxLength": 100,
+          "type": "string",
+        },
+        "restore": {
+          "description": "worktree (default): restore uncommitted work into a new worktree; none: state only",
+          "enum": [
+            "worktree",
+            "none",
+          ],
+          "type": "string",
+        },
+        "sessionId": {
+          "minLength": 1,
+          "type": "string",
+        },
+      },
+      "required": [
+        "sessionId",
+      ],
+      "type": "object",
+    },
+    "name": "session_resume",
+    "title": "Session Resume",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Advisory file locks to prevent conflicting edits. Auto-releases after 10 min TTL. Action "lock": acquire lock. Action "unlock": release lock. Action "status": check lock status.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "description": "Operation to perform",
+          "enum": [
+            "lock",
+            "unlock",
+            "status",
+          ],
+          "type": "string",
+        },
+        "agentId": {
+          "description": "Agent ID (required for lock/unlock)",
+          "type": "string",
+        },
+        "file": {
+          "description": "File path (required for lock/unlock, optional for status — omit to list all)",
+          "type": "string",
+        },
+      },
+      "required": [
+        "action",
+      ],
+      "type": "object",
+    },
+    "name": "team_file_lock",
+    "title": "File Lock Management",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Register, unregister, or list agents in the project coordination state. Action "join": register this agent (returns agent ID and instance ID for reactivation). Action "leave": mark agent inactive, release locks. Action "status": list all agents with roles and capabilities, plus role occupancy. Action "listRoles": show defined roles for this project. Action "addRole": define a new role for this project. Action "removeRole": remove a role definition.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "description": "Operation to perform",
+          "enum": [
+            "join",
+            "leave",
+            "status",
+            "listRoles",
+            "addRole",
+            "removeRole",
+          ],
+          "type": "string",
+        },
+        "agentId": {
+          "description": "Agent ID for leave",
+          "type": "string",
+        },
+        "agentType": {
+          "description": "Agent type for join (e.g., "windsurf", "cursor", "claude-code")",
+          "type": "string",
+        },
+        "capabilities": {
+          "description": "Agent capabilities for join",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "instanceId": {
+          "description": "Stable instance ID for join (preserves identity across restarts)",
+          "type": "string",
+        },
+        "label": {
+          "description": "Role label (for addRole)",
+          "type": "string",
+        },
+        "maxConcurrent": {
+          "description": "Max concurrent agents for this role (for addRole, default 1)",
+          "type": "number",
+        },
+        "name": {
+          "description": "Agent display name for join (e.g., "cursor-frontend")",
+          "type": "string",
+        },
+        "preferredAgentTypes": {
+          "description": "Preferred agent types for this role (for addRole)",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "role": {
+          "description": "Agent role for join (defaults by agentType if omitted)",
+          "type": "string",
+        },
+        "roleDescription": {
+          "description": "Role description (for addRole)",
+          "type": "string",
+        },
+        "roleId": {
+          "description": "Role ID (for addRole/removeRole)",
+          "type": "string",
+        },
+      },
+      "required": [
+        "action",
+      ],
+      "type": "object",
+    },
+    "name": "team_manage",
+    "title": "Coordination Management",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Send, broadcast, or read messages between agents. Durable: messages survive restarts and reach inactive recipients. Action "send": direct message to one agent. Action "broadcast": message all agents. Action "inbox": read this agent's inbox.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "description": "Operation to perform",
+          "enum": [
+            "send",
+            "broadcast",
+            "inbox",
+          ],
+          "type": "string",
+        },
+        "agentId": {
+          "description": "Agent ID (for inbox)",
+          "type": "string",
+        },
+        "content": {
+          "description": "Message content (for send/broadcast)",
+          "type": "string",
+        },
+        "from": {
+          "description": "Your sender agent ID. Omit it to use this session identity.",
+          "type": "string",
+        },
+        "handoffStatus": {
+          "description": "Handoff status (for send with type=handoff)",
+          "enum": [
+            "open",
+            "claimed",
+            "completed",
+            "archived",
+          ],
+          "type": "string",
+        },
+        "markRead": {
+          "default": false,
+          "description": "Mark messages as read (for inbox)",
+          "type": "boolean",
+        },
+        "to": {
+          "description": "Receiver agent ID (for send)",
+          "type": "string",
+        },
+        "toRole": {
+          "description": "Target role for role-based messaging/handoff (for send)",
+          "type": "string",
+        },
+        "type": {
+          "description": "Message type (for send/broadcast)",
+          "enum": [
+            "request",
+            "response",
+            "info",
+            "announcement",
+            "contract",
+            "error",
+            "handoff",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "action",
+      ],
+      "type": "object",
+    },
+    "name": "team_message",
+    "title": "Team Messaging",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Create, claim, complete, or list tasks in the team task board. Supports dependencies. Action "create": create a task. Action "claim": assign to yourself (atomic, race-safe). Action "complete": mark done with result. Action "list": show tasks.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "description": "Operation to perform",
+          "enum": [
+            "create",
+            "claim",
+            "complete",
+            "list",
+          ],
+          "type": "string",
+        },
+        "agentId": {
+          "description": "Agent ID (for claim/complete)",
+          "type": "string",
+        },
+        "available": {
+          "description": "Show only claimable tasks (for list)",
+          "type": "boolean",
+        },
+        "deps": {
+          "description": "Dependency task IDs (for create)",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "description": {
+          "description": "Task description (for create)",
+          "type": "string",
+        },
+        "metadata": {
+          "description": "JSON metadata for the task (for create). Used by planner/review tasks for autonomous mode.",
+          "type": "string",
+        },
+        "preferredRole": {
+          "description": "Preferred role for this task (for create). Agents with this role are prioritized.",
+          "type": "string",
+        },
+        "requiredRole": {
+          "description": "Required role for this task (for create). Agents without this role cannot claim.",
+          "type": "string",
+        },
+        "result": {
+          "description": "Result summary (for complete)",
+          "type": "string",
+        },
+        "status": {
+          "description": "Filter by status (for list)",
+          "enum": [
+            "pending",
+            "in_progress",
+            "completed",
+            "failed",
+          ],
+          "type": "string",
+        },
+        "taskId": {
+          "description": "Task ID (for claim/complete)",
+          "type": "string",
+        },
+      },
+      "required": [
+        "action",
+      ],
+      "type": "object",
+    },
+    "name": "team_task",
+    "title": "Task Status",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Restore a workspace snapshot. Default target: a NEW git worktree next to the repository (nothing existing is touched). in_place=true restores into this working copy only if it is clean and at the snapshot commit; files that differ from the snapshot base are never overwritten (the snapshot version is saved beside them).",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "dryRun": {
+          "type": "boolean",
+        },
+        "in_place": {
+          "type": "boolean",
+        },
+        "snapshotId": {
+          "minLength": 1,
+          "type": "string",
+        },
+        "worktreePath": {
+          "type": "string",
+        },
+      },
+      "required": [
+        "snapshotId",
+      ],
+      "type": "object",
+    },
+    "name": "workspace_restore",
+    "title": "Workspace Restore",
+  },
+  {
+    "_meta": undefined,
+    "annotations": undefined,
+    "description": "Save the uncommitted state of this working copy (changed, deleted, renamed and untracked files, staged state, unpushed commits) so it can be restored on another machine. Secrets and files over 50 MiB are excluded and listed. Does not modify the working copy.",
+    "execution": {
+      "taskSupport": "forbidden",
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "sessionId": {
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "workspace_snapshot",
+    "title": "Workspace Snapshot",
+  },
+]
+`;
+
 exports[`MCP tool surface > keeps the full-profile tool names and input fields stable 1`] = `
 {
   "context_build": [

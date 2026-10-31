@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 
 import { createMemorixServer } from '../../src/server.js';
 import { resetResolvedConfigCache } from '../../src/config/resolved-config.js';
@@ -62,5 +64,21 @@ describe('MCP tool surface', () => {
       Object.keys(tools).sort().map((name) => [name, describeInput(tools[name].inputSchema)]),
     );
     expect(surface).toMatchSnapshot();
+  }, 30_000);
+
+  it('keeps each tool title, description, annotations and JSON schemas stable', async () => {
+    const { server } = await createMemorixServer(projectDir, undefined, undefined, { toolProfile: 'full' } as any);
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: 'surface-test', version: '0.0.0' });
+    await server.connect(serverTransport);
+    await client.connect(clientTransport);
+    try {
+      const { tools } = await client.listTools();
+      // Registration order is not part of the contract; per-tool content is.
+      expect([...tools].sort((a, b) => a.name.localeCompare(b.name))).toMatchSnapshot();
+    } finally {
+      await client.close();
+      await server.close();
+    }
   }, 30_000);
 });
