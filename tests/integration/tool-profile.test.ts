@@ -135,7 +135,6 @@ describe('Tool profile registration', () => {
     expect(liteTools).toContain('memorix_continuity');
     expect(liteTools).not.toContain('memorix_knowledge');
     expect(liteTools).not.toContain('team_manage');
-    expect(liteTools).not.toContain('memorix_poll');
     expect(liteTools).not.toContain('memorix_rules_sync');
     expect(liteTools).not.toContain('memorix_compaction_checkpoint');
     expect(liteTools).not.toContain('create_entities');
@@ -148,7 +147,6 @@ describe('Tool profile registration', () => {
     );
     const teamTools = getToolNames(teamServer as any);
     expect(teamTools).toContain('team_manage');
-    expect(teamTools).toContain('memorix_poll');
     expect(teamTools).toContain('memorix_knowledge');
     expect(teamTools).toContain('memorix_graph_context');
     expect(teamTools).not.toContain('memorix_rules_sync');

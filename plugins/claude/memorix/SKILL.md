@@ -15,7 +15,6 @@ Memorix is a shared memory layer for the active workspace when Memorix tools are
 | Record or recover why a decision was made | `memorix-reasoning` |
 | Resume sessions, bind HTTP projects, or prepare handoff | `memorix-sessions` |
 | Use commit history as evidence | `memorix-git-memory` |
-| Coordinate explicit subagent work | `memorix-orchestrate` |
 | Diagnose MCP/setup/hooks/control-plane issues | `memorix-troubleshooting` |
 
 ## Default Loop

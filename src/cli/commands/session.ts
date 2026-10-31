@@ -1,7 +1,6 @@
 import { defineCommand } from 'citty';
 import { startSession, endSession, getSessionContext, listSessions } from '../../memory/session.js';
-import { AGENT_TYPE_ROLE_MAP } from '../../team/team-store.js';
-import { computeWatermark } from '../../team/poll.js';
+import { AGENT_TYPE_ROLE_MAP, computeWatermark } from '../../team/team-store.js';
 import { withFreshIndex } from '../../memory/freshness.js';
 import { getAllObservations } from '../../memory/observations.js';
 import { getObservationStore } from '../../store/obs-store.js';
@@ -126,7 +125,6 @@ export default defineCommand({
 
           let watermark = computeWatermark(0, 0, 0);
           let rescuedAgentIds: string[] = [];
-          let availableTasks = 0;
 
           if (agentRecord) {
             const lastSeen = agentRecord.last_seen_obs_generation;
@@ -143,7 +141,6 @@ export default defineCommand({
             watermark = computeWatermark(lastSeen, currentGen, projectObs.length);
             teamStore.updateWatermark(agentRecord.agent_id, currentGen);
             rescuedAgentIds = teamStore.detectAndMarkStale(project.id, 5 * 60 * 1000);
-            availableTasks = teamStore.listTasks(project.id, { available: true }).length;
           }
 
           const payload = {
@@ -168,7 +165,6 @@ export default defineCommand({
             watermark,
             rescue: {
               staleAgents: rescuedAgentIds,
-              availableTasks,
             },
             previousContext: result.previousContext,
           };
@@ -188,9 +184,8 @@ export default defineCommand({
               ? `${watermark.newObservationCount} new observation(s) since your last session`
               : '',
             agentRecord && rescuedAgentIds.length > 0
-              ? `Rescued ${rescuedAgentIds.length} stale agent(s)`
+              ? `Marked ${rescuedAgentIds.length} inactive agent(s) as left`
               : '',
-            agentRecord && availableTasks > 0 ? `${availableTasks} task(s) available to claim` : '',
             pmiSession.resumable.length
               ? `Resumable sessions in this project: ${pmiSession.resumable.map((item) => `${item.id} (${item.task || 'no task'})`).join(', ')} — continue one with: pmi session resume <id>`
               : '',

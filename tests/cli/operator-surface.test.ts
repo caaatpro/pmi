@@ -6,10 +6,6 @@ import { execSync } from 'node:child_process';
 
 import sessionCommand from '../../src/cli/commands/session.js';
 import teamCommand from '../../src/cli/commands/team.js';
-import taskCommand from '../../src/cli/commands/task.js';
-import messageCommand from '../../src/cli/commands/message.js';
-import lockCommand from '../../src/cli/commands/lock.js';
-import pollCommand from '../../src/cli/commands/poll.js';
 import memoryCommand from '../../src/cli/commands/memory.js';
 import auditCommand from '../../src/cli/commands/audit.js';
 import { closeAllDatabases } from '../../src/store/sqlite-db.js';
@@ -175,116 +171,6 @@ describe('CLI operator surface', () => {
     expect(statusJson.visibleAgents).toHaveLength(1);
     expect(statusJson.agents).toHaveLength(2);
     expect(statusJson.visibleAgents[0].agent_id).toBe(active.agent.agentId);
-  });
-
-  it('enforces task requiredRole and lets the matching role claim successfully', async () => {
-    const engineerStart = JSON.parse((await runCommand(sessionCommand, {
-      _: ['start'],
-      agent: 'codex-main',
-      agentType: 'codex',
-      instanceId: 'codex-instance',
-      joinTeam: true,
-      json: true,
-    })).stdout);
-
-    const researcherStart = JSON.parse((await runCommand(sessionCommand, {
-      _: ['start'],
-      agent: 'gemini-main',
-      agentType: 'gemini-cli',
-      instanceId: 'gemini-instance',
-      joinTeam: true,
-      json: true,
-    })).stdout);
-
-    const taskCreate = JSON.parse((await runCommand(taskCommand, {
-      _: ['create'],
-      description: 'Research the embedding fallback behavior',
-      agentId: engineerStart.agent.agentId,
-      requiredRole: 'researcher',
-      json: true,
-    })).stdout);
-
-    const wrongClaim = await runCommand(taskCommand, {
-      _: ['claim'],
-      taskId: taskCreate.task.task_id,
-      agentId: engineerStart.agent.agentId,
-      json: true,
-    });
-    expect(wrongClaim.exitCode).toBe(1);
-    expect(JSON.parse(wrongClaim.stderr).error).toContain('Role mismatch');
-
-    const rightClaim = await runCommand(taskCommand, {
-      _: ['claim'],
-      taskId: taskCreate.task.task_id,
-      agentId: researcherStart.agent.agentId,
-      json: true,
-    });
-    expect(rightClaim.exitCode).toBe(0);
-    expect(JSON.parse(rightClaim.stdout).result.success).toBe(true);
-  });
-
-  it('sends messages, surfaces inbox state, and exposes locks plus poll output', async () => {
-    const engineer = JSON.parse((await runCommand(sessionCommand, {
-      _: ['start'],
-      agent: 'codex-main',
-      agentType: 'codex',
-      instanceId: 'codex-instance',
-      joinTeam: true,
-      json: true,
-    })).stdout);
-
-    const reviewer = JSON.parse((await runCommand(sessionCommand, {
-      _: ['start'],
-      agent: 'reviewer-main',
-      agentType: 'claude-code',
-      role: 'reviewer',
-      instanceId: 'reviewer-instance',
-      joinTeam: true,
-      json: true,
-    })).stdout);
-
-    const send = await runCommand(messageCommand, {
-      _: ['send'],
-      from: engineer.agent.agentId,
-      to: reviewer.agent.agentId,
-      type: 'request',
-      content: 'Please review the latest task breakdown',
-      json: true,
-    });
-    expect(send.exitCode).toBe(0);
-
-    const inbox = await runCommand(messageCommand, {
-      _: ['inbox'],
-      agentId: reviewer.agent.agentId,
-      json: true,
-    });
-    const inboxJson = JSON.parse(inbox.stdout);
-    expect(inboxJson.unreadCount).toBe(1);
-    expect(inboxJson.messages[0].content).toContain('Please review');
-
-    const lock = await runCommand(lockCommand, {
-      _: ['lock'],
-      file: 'src/cli/index.ts',
-      agentId: engineer.agent.agentId,
-      json: true,
-    });
-    expect(lock.exitCode).toBe(0);
-
-    const status = await runCommand(lockCommand, {
-      _: ['status'],
-      file: 'src/cli/index.ts',
-      json: true,
-    });
-    const statusJson = JSON.parse(status.stdout);
-    expect(statusJson.lock.locked_by).toBe(engineer.agent.agentId);
-
-    const poll = await runCommand(pollCommand, {
-      agentId: reviewer.agent.agentId,
-      json: true,
-    });
-    const pollJson = JSON.parse(poll.stdout);
-    expect(pollJson.poll.inbox.unreadCount).toBe(1);
-    expect(pollJson.poll.team.activeAgents.length).toBeGreaterThanOrEqual(2);
   });
 
   it('stores, details, and resolves observations through the memory namespace', async () => {

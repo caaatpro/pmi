@@ -300,52 +300,6 @@ export default defineCommand({
     );
     console.error(`[memorix] HTTP session limit: ${maxHttpSessions}`);
 
-    // Per-project TeamStore cache (Option B) — each dataDir gets its own TeamStore instance.
-    // This ensures true isolation between projects in HTTP control-plane mode.
-    const teamStoreCache = new Map<string, Awaited<ReturnType<typeof initTeamStore>>>();
-    const teamStoreLeases = new Map<string, { release: () => void }>();
-    const { initTeamStore } = await import('../../team/team-store.js');
-
-    function cacheSet<K, V>(
-      cache: Map<K, V>,
-      key: K,
-      value: V,
-      limit: number,
-      onEvict?: (evictedKey: K, evictedValue: V) => void,
-    ): void {
-      cache.delete(key);
-      cache.set(key, value);
-      while (cache.size > limit) {
-        const oldest = cache.keys().next().value as K | undefined;
-        if (oldest === undefined) break;
-        const oldValue = cache.get(oldest);
-        cache.delete(oldest);
-        if (oldValue !== undefined) onEvict?.(oldest, oldValue);
-      }
-    }
-
-    async function getTeamStore(dataDir: string) {
-      const existing = teamStoreCache.get(dataDir);
-      if (existing) {
-        cacheSet(teamStoreCache, dataDir, existing, MAX_STORE_CACHE_ENTRIES);
-        return existing;
-      }
-      const lease = acquireDatabase(dataDir);
-      try {
-        const store = await initTeamStore(dataDir);
-        teamStoreLeases.set(dataDir, lease);
-        cacheSet(teamStoreCache, dataDir, store, MAX_STORE_CACHE_ENTRIES, (evictedDataDir) => {
-          teamStoreLeases.get(evictedDataDir)?.release();
-          teamStoreLeases.delete(evictedDataDir);
-          evictIdleDatabases(MAX_STORE_CACHE_ENTRIES);
-        });
-        return store;
-      } catch (error) {
-        lease.release();
-        throw error;
-      }
-    }
-
     // TeamStore is resolved per MCP session/project. Sharing one mutable
     // singleton here made project A's coordination state visible to project B
     // after a roots switch. The cache still reuses the same project's SQLite
@@ -1162,8 +1116,6 @@ export default defineCommand({
       await listenPromise;
     } catch (error) {
       console.error(`[memorix] HTTP server failed to listen on ${host}:${port}: ${error instanceof Error ? error.message : String(error)}`);
-      for (const lease of teamStoreLeases.values()) lease.release();
-      teamStoreLeases.clear();
       controlPlaneBaseLease.release();
       await modernRuntimePool.close();
       eventLoopDelay.disable();
@@ -1214,8 +1166,6 @@ export default defineCommand({
         try { unlinkSync(memorixDir + '/background.ready'); } catch { /* ok */ }
         try { unlinkSync(memorixDir + '/background.heartbeat'); } catch { /* ok */ }
       } catch { /* best-effort */ }
-      for (const lease of teamStoreLeases.values()) lease.release();
-      teamStoreLeases.clear();
       for (const [sid, state] of sessions) {
         try {
           await state.transport.close();

@@ -51,7 +51,7 @@ function agentId(result: any): string {
 }
 
 describe('MCP observation visibility boundary', () => {
-  it('keeps a targeted handoff readable only by its sender and recipient', async () => {
+  it('keeps personal memories readable and writable only by their owner', async () => {
     const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-visibility-data-'));
     const projectDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-visibility-project-'));
     const previousDataDir = process.env.MEMORIX_DATA_DIR;
@@ -71,7 +71,7 @@ describe('MCP observation visibility boundary', () => {
       const startB = getHandler(second.server as any, 'memorix_session_start');
       const startC = getHandler(third.server as any, 'memorix_session_start');
       const idA = agentId(await startA({ agent: 'visibility-a', agentType: 'codex', joinTeam: true }));
-      const idB = agentId(await startB({ agent: 'visibility-b', agentType: 'claude-code', joinTeam: true }));
+      agentId(await startB({ agent: 'visibility-b', agentType: 'claude-code', joinTeam: true }));
       agentId(await startC({ agent: 'visibility-c', agentType: 'windsurf', joinTeam: true }));
 
       const storeA = getHandler(first.server as any, 'memorix_store');
@@ -98,59 +98,31 @@ describe('MCP observation visibility boundary', () => {
       }));
       expect(ownerSession).toContain('Owner-only session context');
 
-      const handoffA = getHandler(first.server as any, 'memorix_handoff');
-      const created = await handoffA({
-        fromAgentId: idA,
-        toAgentId: idB,
-        taskId: 'visibility-task',
-        summary: 'Targeted visibility handoff',
-        context: 'Only the recipient should be able to retrieve this context.',
-      });
-      expect(created.isError).not.toBe(true);
-      const idMatch = text(created).match(/Observation: #(\d+)/);
-      expect(idMatch).toBeTruthy();
-      const handoffId = Number(idMatch![1]);
-
       const searchB = getHandler(second.server as any, 'memorix_search');
       const searchC = getHandler(third.server as any, 'memorix_search');
-      expect(text(await searchB({ query: 'Targeted visibility handoff' }))).toContain('Targeted visibility handoff');
-      expect(text(await searchC({ query: 'Targeted visibility handoff' }))).not.toContain('Targeted visibility handoff');
-
-      const detailB = getHandler(second.server as any, 'memorix_detail');
-      const detailC = getHandler(third.server as any, 'memorix_detail');
-      expect(text(await detailB({ ids: [handoffId] }))).toContain('Only the recipient should be able to retrieve this context.');
-      expect(text(await detailC({ ids: [handoffId] }))).not.toContain('Only the recipient should be able to retrieve this context.');
-
-      // New memories default to project visibility, but an upsert must not turn
-      // an existing targeted handoff public simply because visibility is omitted.
-      const ownerUpdate = await getHandler(first.server as any, 'memorix_store')({
-        entityName: 'team-handoff',
-        type: 'session-request',
-        title: 'Updated targeted visibility handoff',
-        narrative: 'The sender can update the handoff without changing who can read it.',
-        topicKey: `handoff:visibility-task:${idA}`,
-      });
-      expect(ownerUpdate.isError).not.toBe(true);
-      expect(text(await searchB({ query: 'Updated targeted visibility handoff' }))).toContain('Updated targeted visibility handoff');
-      expect(text(await searchC({ query: 'Updated targeted visibility handoff' }))).not.toContain('Updated targeted visibility handoff');
-
-      const overwrite = await getHandler(third.server as any, 'memorix_store')({
-        entityName: 'team-handoff',
+      const personal = await storeA({
+        entityName: 'private-topic',
         type: 'decision',
-        title: 'Overwrite targeted handoff',
-        narrative: 'A third agent must not be able to mutate a targeted handoff by guessing its topic key.',
-        topicKey: `handoff:visibility-task:${idA}`,
+        title: 'Owner-only keyed decision',
+        narrative: 'Only agent A may read or update this keyed personal memory.',
+        topicKey: `personal:visibility:${idA}`,
+        visibility: 'personal',
+      });
+      expect(personal.isError).not.toBe(true);
+      expect(text(await searchB({ query: 'Owner-only keyed decision' }))).not.toContain('Owner-only keyed decision');
+      expect(text(await searchC({ query: 'Owner-only keyed decision' }))).not.toContain('Owner-only keyed decision');
+
+      // Another agent must not be able to mutate the owner's memory by
+      // guessing its topic key.
+      const overwrite = await getHandler(third.server as any, 'memorix_store')({
+        entityName: 'private-topic',
+        type: 'decision',
+        title: 'Overwrite keyed decision',
+        narrative: 'A third agent must not be able to mutate a personal memory by guessing its topic key.',
+        topicKey: `personal:visibility:${idA}`,
       });
       expect(overwrite.isError).toBe(true);
       expect(text(overwrite)).toContain('write scope');
-
-      const forged = await getHandler(second.server as any, 'memorix_handoff')({
-        fromAgentId: idA,
-        summary: 'Forged sender',
-        context: 'This must fail.',
-      });
-      expect(forged.isError).toBe(true);
-      expect(text(forged)).toContain('must match');
     } finally {
       if (previousDataDir === undefined) delete process.env.MEMORIX_DATA_DIR;
       else process.env.MEMORIX_DATA_DIR = previousDataDir;
