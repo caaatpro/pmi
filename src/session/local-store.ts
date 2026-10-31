@@ -114,6 +114,10 @@ export class LocalSessionStore {
     const now = new Date().toISOString();
     const state = boundState({ ...input.state, deviceId: this.deviceId, updatedAt: now });
     const existing = this.get(state.sessionId);
+    // CLI, daemon and MCP server write this store from separate processes. A
+    // deferred transaction that reads first fails with SQLITE_BUSY at once when
+    // another process commits before it writes (busy_timeout does not cover the
+    // upgrade), so every write transaction here runs as BEGIN IMMEDIATE.
     const write = this.db.transaction(() => {
       this.db.prepare(`
         INSERT INTO pmi_sessions (id, project_id, status, state_json, workspace_root, device_id, agent_pid,
@@ -136,7 +140,7 @@ export class LocalSessionStore {
       });
       if (queue) this.enqueue(state.sessionId, 'session.upsert', { state });
     });
-    write();
+    write.immediate();
     return this.get(state.sessionId)!;
   }
 
@@ -193,7 +197,7 @@ export class LocalSessionStore {
       this.enqueue(id, 'checkpoint', { id: checkpointId, seq, trigger, state });
       return { id: checkpointId, sessionId: id, seq, trigger, state, createdAt: now };
     });
-    return run();
+    return run.immediate();
   }
 
   checkpoints(id: string): LocalCheckpoint[] {
@@ -217,7 +221,7 @@ export class LocalSessionStore {
       this.db.prepare('UPDATE pmi_sessions SET status = ?, state_json = ?, updated_at = ? WHERE id = ?').run(status, JSON.stringify(state), now, id);
       if (op) this.enqueue(id, op.kind, op.payload);
     });
-    run();
+    run.immediate();
     return this.require(id);
   }
 
