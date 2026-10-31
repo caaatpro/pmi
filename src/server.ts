@@ -1,11 +1,11 @@
 /**
- * Memorix MCP Server
+ * Baton MCP Server
  *
  * Registers all MCP tools and handles the server lifecycle.
  *
  * Tool sources:
- * - memorix_store / memorix_search / memorix_detail / memorix_timeline:
- *     Memorix extensions using claude-mem's 3-layer Progressive Disclosure
+ * - baton_store / baton_search / baton_detail / baton_timeline:
+ *     Baton extensions using claude-mem's 3-layer Progressive Disclosure
  *
  * Extensibility:
  * - Tools live in src/mcp/tools/<domain>.ts and receive connection state via ServerToolContext
@@ -49,18 +49,18 @@ import { registerRetrievalTools } from './mcp/tools/retrieval.js';
 import { registerProjectBriefTools } from './mcp/tools/project-brief.js';
 import { registerMaintenanceTools } from './mcp/tools/maintenance.js';
 import { registerIntegrationTools } from './mcp/tools/integrations.js';
-import { registerMemorixSessionTools } from './mcp/tools/memorix-session.js';
+import { registerBatonSessionTools } from './mcp/tools/baton-session.js';
 import { registerTeamTools } from './mcp/tools/team.js';
 
 /**
- * Create and configure the Memorix MCP Server.
+ * Create and configure the Baton MCP Server.
  */
 /** Optional shared TeamStore — passed by serve-http so all sessions share state */
 export interface SharedTeamStore {
   teamStore: import('./team/team-store.js').TeamStore;
 }
 
-export interface CreateMemorixServerOptions {
+export interface CreateBatonServerOptions {
   allowUntrackedFallback?: boolean;
   deferProjectInitUntilBound?: boolean;
   /**
@@ -90,11 +90,11 @@ export interface CreateMemorixServerOptions {
  * a hidden synchronous barrier.
  */
 export const BOOTSTRAP_SAFE_TOOL_NAMES = new Set([
-  'memorix_project_context',
-  'memorix_codegraph_status',
-  'memorix_graph_context',
-  'memorix_context_pack',
-  'memorix_session_start',
+  'baton_project_context',
+  'baton_codegraph_status',
+  'baton_graph_context',
+  'baton_context_pack',
+  'baton_session_start',
 ]);
 
 const AUTOPILOT_RETRIEVAL_BOUNDARY_TTL_MS = 2 * 60 * 1000;
@@ -103,11 +103,11 @@ export function shouldAwaitProjectRuntime(toolName: string): boolean {
   return !BOOTSTRAP_SAFE_TOOL_NAMES.has(toolName);
 }
 
-export async function createMemorixServer(
+export async function createBatonServer(
   cwd?: string,
   existingServer?: McpServer,
   sharedTeam?: SharedTeamStore,
-  options: CreateMemorixServerOptions = {},
+  options: CreateBatonServerOptions = {},
 ): Promise<{
   server: McpServer;
   graphManager: KnowledgeGraphManager;
@@ -117,7 +117,7 @@ export async function createMemorixServer(
   switchProject: (newCwd: string, source?: ProjectBindingSource) => Promise<boolean>;
   getProjectDataDir: () => string;
   isExplicitlyBound: () => boolean;
-  getRequestContext: () => import('./server/request-context.js').MemorixRequestContext;
+  getRequestContext: () => import('./server/request-context.js').BatonRequestContext;
   handleTransportClose: () => void;
 }> {
   // Detect current project — strict .git-based detection
@@ -128,7 +128,7 @@ export async function createMemorixServer(
   const configuredDashboardPort = options.dashboardPort ?? (dashboardMode === 'control-plane' ? 3211 : 3210);
   const toolProfile = resolveToolProfile({
     explicit: options.toolProfile,
-    envValue: process.env.MEMORIX_MODE,
+    envValue: process.env.BATON_MODE,
     fallback: sharedTeam ? 'team' : 'lite',
   });
   const teamFeaturesEnabled = isToolInProfile('team_manage', toolProfile);
@@ -170,10 +170,10 @@ export async function createMemorixServer(
       ? { id: `untracked/${name}`, name, rootPath: basePath }
       : { id: '__unresolved__', name, rootPath: basePath };
     if (!allowUntrackedFallback && !deferProjectInitUntilBound) {
-      console.error(`[memorix] WARNING: ${projectResolutionError}`);
+      console.error(`[baton] WARNING: ${projectResolutionError}`);
     } else if (allowUntrackedFallback) {
-      console.error(`[memorix] WARNING: No .git found in "${basePath}" - project isolation degraded`);
-      console.error(`[memorix] Run "git init" in your project for proper isolation.`);
+      console.error(`[baton] WARNING: No .git found in "${basePath}" - project isolation degraded`);
+      console.error(`[baton] Run "git init" in your project for proper isolation.`);
     }
   }
 
@@ -182,7 +182,7 @@ export async function createMemorixServer(
     const { migrateSubdirsToFlat } = await import('./store/persistence.js');
     const migrated = await migrateSubdirsToFlat();
     if (migrated) {
-      console.error(`[memorix] Migrated per-project subdirectories into flat storage`);
+      console.error(`[baton] Migrated per-project subdirectories into flat storage`);
     }
   } catch { /* migration is optional */ }
 
@@ -196,7 +196,7 @@ export async function createMemorixServer(
     const canonicalId = await registerAlias(rawProject);
     project = { ...rawProject, id: canonicalId };
     if (canonicalId !== rawProject.id) {
-      console.error(`[memorix] Alias resolved: ${rawProject.id} -> ${canonicalId}`);
+      console.error(`[baton] Alias resolved: ${rawProject.id} -> ${canonicalId}`);
     }
   }
   if (projectResolved) {
@@ -221,7 +221,7 @@ export async function createMemorixServer(
   await registerMaintenanceTarget();
 
   // Initialize project root for YAML config resolution — ensures all config getters
-  // (getLLMApiKey, getGitConfig, etc.) pick up project-level memorix.yml, not just user-level.
+  // (getLLMApiKey, getGitConfig, etc.) pick up project-level baton.yml, not just user-level.
   // Also load .env from project root for secrets (API keys, base URLs).
   try {
     const { initProjectRoot } = await import('./config/yaml-loader.js');
@@ -237,7 +237,7 @@ export async function createMemorixServer(
   await initSessionStore(projectDir);
   {
     const store = getObservationStore();
-    console.error(`[memorix] ObservationStore backend: ${store.getBackendName()}, generation: ${store.getGeneration()}`);
+    console.error(`[baton] ObservationStore backend: ${store.getBackendName()}, generation: ${store.getGeneration()}`);
   }
   let graphManager = new KnowledgeGraphManager(projectDir, project.id);
   if (!deferProjectRuntimeInit) {
@@ -258,26 +258,26 @@ export async function createMemorixServer(
 
     const indexed = await prepareSearchIndex();
     if (indexed > 0) {
-      console.error(`[memorix] Prepared search index for ${indexed} observations in project: ${project.id}`);
+      console.error(`[baton] Prepared search index for ${indexed} observations in project: ${project.id}`);
     }
 
     const llmConfig = initLLM();
     if (llmConfig) {
-      console.error(`[memorix] LLM enhanced mode: ${llmConfig.provider}/${llmConfig.model}`);
+      console.error(`[baton] LLM enhanced mode: ${llmConfig.provider}/${llmConfig.model}`);
     } else {
-      console.error(`[memorix] LLM mode: off (set MEMORIX_LLM_API_KEY or OPENAI_API_KEY to enable)`);
+      console.error(`[baton] LLM mode: off (set BATON_LLM_API_KEY or OPENAI_API_KEY to enable)`);
     }
 
     if (logPrefix === 'startup') {
-      console.error(`[memorix] Tool profile: ${describeProfile(toolProfile)}`);
+      console.error(`[baton] Tool profile: ${describeProfile(toolProfile)}`);
     }
 
     if (logPrefix === 'startup') {
-      console.error(`[memorix] Project: ${project.id} (${project.name})`);
-      console.error(`[memorix] Data dir: ${projectDir}`);
+      console.error(`[baton] Project: ${project.id} (${project.name})`);
+      console.error(`[baton] Data dir: ${projectDir}`);
     } else {
-      console.error(`[memorix] Project switched to: ${project.id} (${project.name})`);
-      console.error(`[memorix] Data dir: ${projectDir}`);
+      console.error(`[baton] Project switched to: ${project.id} (${project.name})`);
+      console.error(`[baton] Data dir: ${projectDir}`);
     }
   };
 
@@ -292,7 +292,7 @@ export async function createMemorixServer(
       : [...new Set(getAllObservations().map(o => o.projectId))];
     const merged = await autoMergeByBaseName(observedIds);
     if (merged > 0) {
-      console.error(`[memorix] Auto-merged ${merged} alias group(s) by base name`);
+      console.error(`[baton] Auto-merged ${merged} alias group(s) by base name`);
     }
   } catch { /* auto-merge is optional */ }
 
@@ -306,13 +306,13 @@ export async function createMemorixServer(
       if (group.aliases.length > 1) {
         const migrated = await migrateProjectIds(group.aliases, group.canonical);
         if (migrated > 0) {
-          console.error(`[memorix] Migrated ${migrated} observations → ${group.canonical}`);
+          console.error(`[baton] Migrated ${migrated} observations → ${group.canonical}`);
           totalMigrated += migrated;
         }
       }
     }
     if (totalMigrated > 0) {
-      console.error(`[memorix] Total migrated: ${totalMigrated} observations across ${groups.filter(g => g.aliases.length > 1).length} project(s)`);
+      console.error(`[baton] Total migrated: ${totalMigrated} observations across ${groups.filter(g => g.aliases.length > 1).length} project(s)`);
     }
   } catch { /* migration is optional */ }
 
@@ -342,7 +342,7 @@ export async function createMemorixServer(
             : [...new Set(getAllObservations().map(o => o.projectId))];
           const merged = await autoMergeByBaseName(observedIds);
           if (merged > 0) {
-            console.error(`[memorix] Auto-merged ${merged} alias group(s) by base name`);
+            console.error(`[baton] Auto-merged ${merged} alias group(s) by base name`);
           }
         } catch { /* auto-merge is optional */ }
 
@@ -355,13 +355,13 @@ export async function createMemorixServer(
             if (group.aliases.length > 1) {
               const migrated = await migrateProjectIds(group.aliases, group.canonical);
               if (migrated > 0) {
-                console.error(`[memorix] Migrated ${migrated} observations → ${group.canonical}`);
+                console.error(`[baton] Migrated ${migrated} observations → ${group.canonical}`);
                 totalMigrated += migrated;
               }
             }
           }
           if (totalMigrated > 0) {
-            console.error(`[memorix] Total migrated: ${totalMigrated} observations across ${groups.filter(g => g.aliases.length > 1).length} project(s)`);
+            console.error(`[baton] Total migrated: ${totalMigrated} observations across ${groups.filter(g => g.aliases.length > 1).length} project(s)`);
           }
         } catch { /* migration is optional */ }
 
@@ -487,8 +487,8 @@ export async function createMemorixServer(
         text:
           `Cannot ${action} yet.\n` +
           `${projectResolutionError ?? 'No git-backed project is currently bound to this session.'}\n\n` +
-          'To bind this session to a project, call memorix_session_start with the projectRoot parameter:\n' +
-          '  memorix_session_start({ projectRoot: "/path/to/your/project" })\n\n' +
+          'To bind this session to a project, call baton_session_start with the projectRoot parameter:\n' +
+          '  baton_session_start({ projectRoot: "/path/to/your/project" })\n\n' +
           'The path should point to a directory containing a .git folder.',
       }],
       isError: true as const,
@@ -515,9 +515,9 @@ export async function createMemorixServer(
         try {
           return await maybeHandler(...handlerArgs);
         } finally {
-          // Any tool call is agent activity: the PMI daemon releases a session
-          // only after its agent has been silent for PMI_AGENT_IDLE_MS.
-          if (connectionSessionId) await touchPmiSession(projectDir, connectionSessionId);
+          // Any tool call is agent activity: the Baton daemon releases a session
+          // only after its agent has been silent for BATON_AGENT_IDLE_MS.
+          if (connectionSessionId) await touchBatonSession(projectDir, connectionSessionId);
         }
       };
       return (originalRegisterTool as (...innerArgs: unknown[]) => unknown)(name, maybeConfig, wrappedHandler, ...args.slice(2)) as never;
@@ -564,7 +564,7 @@ export async function createMemorixServer(
       content: [{
         type: 'text' as const,
         text:
-          'Memorix Autopilot retrieval boundary: the latest `memorix_project_context` already supplied the default bounded brief for this coding turn, so no additional memory was retrieved. ' +
+          'Baton Autopilot retrieval boundary: the latest `baton_project_context` already supplied the default bounded brief for this coding turn, so no additional memory was retrieved. ' +
           'Verify the current project first. To intentionally expand beyond that brief, call `' + toolName + '` again with `purpose` naming the specific missing fact or the user\'s explicit request.',
       }],
     };
@@ -578,7 +578,7 @@ export async function createMemorixServer(
       content: [{
         type: 'text' as const,
         text:
-          'Memorix Autopilot retrieval boundary: every requested memory is already represented in the latest project brief, so no duplicate detail was retrieved. ' +
+          'Baton Autopilot retrieval boundary: every requested memory is already represented in the latest project brief, so no duplicate detail was retrieved. ' +
           'Inspect the current project or seek a new source. Retry with `force: true` only when the user explicitly asks to read the underlying record in full.',
       }],
     };
@@ -590,7 +590,7 @@ export async function createMemorixServer(
       content: [{
         type: 'text' as const,
         text:
-          'Memorix write boundary: the latest task is read-only or asks not to modify files, so no memory was stored. ' +
+          'Baton write boundary: the latest task is read-only or asks not to modify files, so no memory was stored. ' +
           'Persist a record only when the user explicitly asks to save it, then retry with `overrideReadOnly: true`.',
       }],
     };
@@ -642,13 +642,13 @@ export async function createMemorixServer(
   registerProjectBriefTools(server, ctx);
   registerMaintenanceTools(server, ctx);
   registerIntegrationTools(server, ctx);
-  registerMemorixSessionTools(server, ctx);
+  registerBatonSessionTools(server, ctx);
   registerSessionTools(server, {
     dataDir: () => projectDir,
     project: () => ({ id: project.id, rootPath: project.rootPath }),
     connectionSessionId: () => connectionSessionId,
     setConnectionSessionId: (id) => { connectionSessionId = id; },
-    openMemorixSession: async (sessionId, agent) => {
+    openBatonSession: async (sessionId, agent) => {
       const { startSession } = await import('./memory/session.js');
       await startSession(projectDir, project.id, { sessionId, agent, reader: getObservationReader() });
     },
@@ -682,13 +682,13 @@ export async function createMemorixServer(
       const installedAgents = statuses.filter((s) => s.installed).map((s) => s.agent);
 
       if (installedAgents.length === 0) {
-        console.error('[memorix] No hooks installed. Run "memorix hooks install" to set up auto-capture.');
+        console.error('[baton] No hooks installed. Run "baton hooks install" to set up auto-capture.');
       } else {
-        console.error(`[memorix] Hooks active: ${installedAgents.join(', ')}`);
+        console.error(`[baton] Hooks active: ${installedAgents.join(', ')}`);
       }
     } catch { /* skip */ }
 
-    // Git auto-hook: install post-commit hook if memorix.yml has git.autoHook: true
+    // Git auto-hook: install post-commit hook if baton.yml has git.autoHook: true
     // Uses worktree-safe hook path resolution (.git may be a file in worktree setups)
     try {
       const { getGitConfig } = await import('./config.js');
@@ -699,18 +699,18 @@ export async function createMemorixServer(
         if (resolved) {
           const { existsSync, readFileSync, writeFileSync, chmodSync } = await import('node:fs');
           const { hookPath } = resolved;
-          const HOOK_MARKER = '# [memorix-git-hook]';
+          const HOOK_MARKER = '# [baton-git-hook]';
           const needsInstall = !existsSync(hookPath) || !readFileSync(hookPath, 'utf-8').includes(HOOK_MARKER);
           if (needsInstall) {
-            const hookScript = `#!/bin/sh\n${HOOK_MARKER}\n# Memorix: Auto-ingest git commits as memories\nif command -v memorix >/dev/null 2>&1; then\n  memorix ingest commit --auto >/dev/null 2>&1 &\nfi\n`;
+            const hookScript = `#!/bin/sh\n${HOOK_MARKER}\n# Baton: Auto-ingest git commits as memories\nif command -v baton >/dev/null 2>&1; then\n  baton ingest commit --auto >/dev/null 2>&1 &\nfi\n`;
             if (existsSync(hookPath)) {
               const existing = readFileSync(hookPath, 'utf-8');
-              writeFileSync(hookPath, existing.trimEnd() + '\n\n' + `${HOOK_MARKER}\nif command -v memorix >/dev/null 2>&1; then\n  memorix ingest commit --auto >/dev/null 2>&1 &\nfi\n`, 'utf-8');
+              writeFileSync(hookPath, existing.trimEnd() + '\n\n' + `${HOOK_MARKER}\nif command -v baton >/dev/null 2>&1; then\n  baton ingest commit --auto >/dev/null 2>&1 &\nfi\n`, 'utf-8');
             } else {
               writeFileSync(hookPath, hookScript, 'utf-8');
             }
             try { chmodSync(hookPath, 0o755); } catch { /* Windows */ }
-            console.error('[memorix] Auto-installed git post-commit hook (git.autoHook: true)');
+            console.error('[baton] Auto-installed git post-commit hook (git.autoHook: true)');
           }
         }
       }
@@ -727,7 +727,7 @@ export async function createMemorixServer(
     // Memory search results must stay pure retrieval content; injecting agent
     // instructions here causes context pollution and tool-loop misbehavior.
     if (!behaviorConfig.syncAdvisory) {
-      console.error('[memorix] Sync advisory disabled via config.');
+      console.error('[baton] Sync advisory disabled via config.');
     } else try {
       const engine = new WorkspaceSyncEngine(project.rootPath);
       const scan = await engine.scan();
@@ -737,11 +737,11 @@ export async function createMemorixServer(
       const totalRules = scan.rulesCount;
       const totalWorkflows = scan.workflows.length;
       const hasSyncTargets = totalMCP > 0 || totalSkills > 0 || totalRules > 0 || totalWorkflows > 0;
-      console.error(`[memorix] Sync advisory: ${hasSyncTargets ? 'available' : 'nothing to sync'}`);
+      console.error(`[baton] Sync advisory: ${hasSyncTargets ? 'available' : 'nothing to sync'}`);
     } catch { /* sync scan is optional */ }
 
     if (!behaviorConfig.autoCleanup) {
-      console.error('[memorix] Auto-cleanup disabled via config.');
+      console.error('[baton] Auto-cleanup disabled via config.');
     }
 
     // Maintenance is durable and leased: retention, consolidation, and vector
@@ -763,13 +763,13 @@ export async function createMemorixServer(
     if (source === 'mcp-roots' && projectBinding.isExplicit()) return false;
     const { detectProjectWithDiagnostics } = await import('./project/detector.js');
     if (isHomeDirectory(newCwd)) {
-      console.error(`[memorix] Refusing to bind $HOME as a project root: ${newCwd}`);
+      console.error(`[baton] Refusing to bind $HOME as a project root: ${newCwd}`);
       return false;
     }
     const result = detectProjectWithDiagnostics(newCwd);
     if (!result.project || isHomeDirectory(result.project.rootPath)) {
       if (result.failure) {
-        console.error(`[memorix] Project detection failed for "${newCwd}": [${result.failure.reason}] ${result.failure.detail}`);
+        console.error(`[baton] Project detection failed for "${newCwd}": [${result.failure.reason}] ${result.failure.detail}`);
       }
       return false;
     }
@@ -793,7 +793,7 @@ export async function createMemorixServer(
     maintenanceWorker?.stop();
     maintenanceWorker = null;
 
-    console.error(`[memorix] Switching project: ${project.id} → ${newCanonicalId}`);
+    console.error(`[baton] Switching project: ${project.id} → ${newCanonicalId}`);
 
     // Phase 4a: clear agent identity — old project's agent is not valid in new project
     currentAgentId = undefined;
@@ -836,7 +836,7 @@ export async function createMemorixServer(
     runtimeHydratedForDir = null;
     projectRuntimeInitPromise = null;
     void ensureProjectRuntimeInitialized().catch((err) => {
-      console.error(`[memorix] Background project runtime init failed: ${err instanceof Error ? err.message : err}`);
+      console.error(`[baton] Background project runtime init failed: ${err instanceof Error ? err.message : err}`);
     });
     try {
       await startProjectMaintenanceWorker();
@@ -867,14 +867,14 @@ export async function createMemorixServer(
   };
 }
 
-// ── PMI session continuity glue ───────────────────────────────────
+// ── Baton session continuity glue ───────────────────────────────────
 
 /**
  * Record agent activity on the session; never fails a tool call. Awaited by
  * the tool wrapper: a write that outlives the call could reopen the database
  * after its owner closed it (Windows then cannot delete the file).
  */
-async function touchPmiSession(dataDir: string, sessionId: string): Promise<void> {
+async function touchBatonSession(dataDir: string, sessionId: string): Promise<void> {
   try {
     const { LocalSessionStore } = await import('./session/local-store.js');
     const store = new LocalSessionStore(dataDir);

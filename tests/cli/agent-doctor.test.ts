@@ -44,7 +44,7 @@ describe('agent doctor and repair', () => {
   let repoDir = '';
 
   beforeEach(() => {
-    sandboxRoot = mkdtempSync(path.join(tmpdir(), 'memorix-agent-doctor-'));
+    sandboxRoot = mkdtempSync(path.join(tmpdir(), 'baton-agent-doctor-'));
     repoDir = path.join(sandboxRoot, 'repo');
     process.env.HOME = sandboxRoot;
     process.env.USERPROFILE = sandboxRoot;
@@ -65,9 +65,9 @@ describe('agent doctor and repair', () => {
 
   function writeStaleClaudeSetup() {
     writeFileSync(path.join(repoDir, 'CLAUDE.md'), [
-      '# Memorix - Agent Instructions for Claude Code',
+      '# Baton - Agent Instructions for Claude Code',
       '',
-      'Use `memorix_search` when prior project context would help.',
+      'Use `baton_search` when prior project context would help.',
       '',
       '## Dev Log',
       '',
@@ -77,10 +77,10 @@ describe('agent doctor and repair', () => {
 
     writeFileSync(path.join(repoDir, '.claude', 'settings.json'), JSON.stringify({
       mcpServers: {
-        memorix: {
+        baton: {
           command: 'node',
           args: [
-            'E:\\old\\memorix\\.worktrees\\1.1.6-release-hardening\\dist\\cli\\index.js',
+            'E:\\old\\baton\\.worktrees\\1.1.6-release-hardening\\dist\\cli\\index.js',
             'serve',
             '--mode',
             'micro',
@@ -95,7 +95,7 @@ describe('agent doctor and repair', () => {
       projects: {
         [repoDir.replace(/\\/g, '/')]: {
           mcpServers: {
-            memorix: {
+            baton: {
               type: 'stdio',
               command: 'node',
               args: [
@@ -113,14 +113,14 @@ describe('agent doctor and repair', () => {
 
   function writeCurrentClaudeGuidance() {
     writeFileSync(path.join(repoDir, 'CLAUDE.md'), [
-      '# Memorix - Agent Instructions for Claude Code',
+      '# Baton - Agent Instructions for Claude Code',
       '',
       '## Memory Autopilot',
       '',
-      '- Default first step for non-trivial coding work: call `memorix_project_context` with the user task.',
-      '- Continuation fallback is mandatory: `memorix resume "<task>"` for prior work.',
-      '- Do not call more Memorix retrieval tools after a complete brief.',
-      '- For read-only work, do not call `memorix_store` unless the user asks to preserve a record.',
+      '- Default first step for non-trivial coding work: call `baton_project_context` with the user task.',
+      '- Continuation fallback is mandatory: `baton resume "<task>"` for prior work.',
+      '- Do not call more Baton retrieval tools after a complete brief.',
+      '- For read-only work, do not call `baton_store` unless the user asks to preserve a record.',
       '',
     ].join('\n'), 'utf-8');
   }
@@ -140,9 +140,9 @@ describe('agent doctor and repair', () => {
       projects: {
         [repoDir.replace(/\\/g, '/')]: {
           mcpServers: {
-            memorix: {
+            baton: {
               type: 'stdio',
-              command: 'memorix',
+              command: 'baton',
               args: ['serve'],
               alwaysLoad: true,
             },
@@ -154,14 +154,14 @@ describe('agent doctor and repair', () => {
 
   function writeCurrentCodexPluginSetup(options: { trustedHooks?: boolean } = {}) {
     const trustedHooks = options.trustedHooks ?? true;
-    const pluginPath = path.join(sandboxRoot, 'plugins', 'memorix');
+    const pluginPath = path.join(sandboxRoot, 'plugins', 'baton');
     mkdirSync(path.join(pluginPath, '.codex-plugin'), { recursive: true });
     mkdirSync(path.join(pluginPath, 'hooks'), { recursive: true });
     mkdirSync(path.join(sandboxRoot, '.codex'), { recursive: true });
     mkdirSync(path.join(sandboxRoot, '.agents', 'plugins'), { recursive: true });
 
     writeFileSync(path.join(pluginPath, '.codex-plugin', 'plugin.json'), JSON.stringify({
-      name: 'memorix',
+      name: 'baton',
       version: getCliVersion(),
       hooks: './hooks/hooks.json',
     }, null, 2), 'utf-8');
@@ -176,29 +176,29 @@ describe('agent doctor and repair', () => {
     }, null, 2), 'utf-8');
     writeFileSync(path.join(pluginPath, '.mcp.json'), JSON.stringify({
       mcpServers: {
-        memorix: { command: 'memorix', args: ['serve'] },
+        baton: { command: 'baton', args: ['serve'] },
       },
     }, null, 2), 'utf-8');
     const hookTrust = [
-      '[hooks.state."memorix@personal:hooks/hooks.json:session_start:0:0"]',
+      '[hooks.state."baton@personal:hooks/hooks.json:session_start:0:0"]',
       'trusted_hash = "sha256:test"',
-      '[hooks.state."memorix@personal:hooks/hooks.json:user_prompt_submit:0:0"]',
+      '[hooks.state."baton@personal:hooks/hooks.json:user_prompt_submit:0:0"]',
       'trusted_hash = "sha256:test"',
-      '[hooks.state."memorix@personal:hooks/hooks.json:post_tool_use:0:0"]',
+      '[hooks.state."baton@personal:hooks/hooks.json:post_tool_use:0:0"]',
       'trusted_hash = "sha256:test"',
-      '[hooks.state."memorix@personal:hooks/hooks.json:pre_compact:0:0"]',
+      '[hooks.state."baton@personal:hooks/hooks.json:pre_compact:0:0"]',
       'trusted_hash = "sha256:test"',
-      '[hooks.state."memorix@personal:hooks/hooks.json:stop:0:0"]',
+      '[hooks.state."baton@personal:hooks/hooks.json:stop:0:0"]',
       'trusted_hash = "sha256:test"',
     ];
     writeFileSync(path.join(sandboxRoot, '.codex', 'config.toml'), trustedHooks
       ? hookTrust.join('\n')
-      : '[plugins."memorix@personal"]\nenabled = true\n', 'utf-8');
+      : '[plugins."baton@personal"]\nenabled = true\n', 'utf-8');
     writeFileSync(path.join(sandboxRoot, '.agents', 'plugins', 'marketplace.json'), JSON.stringify({
       name: 'personal',
       plugins: [{
-        name: 'memorix',
-        source: { source: 'local', path: './plugins/memorix' },
+        name: 'baton',
+        source: { source: 'local', path: './plugins/baton' },
       }],
     }, null, 2), 'utf-8');
   }
@@ -207,14 +207,14 @@ describe('agent doctor and repair', () => {
     const codexDir = path.join(sandboxRoot, '.codex');
     mkdirSync(codexDir, { recursive: true });
     writeFileSync(path.join(codexDir, 'AGENTS.md'), [
-      '# Memorix - Agent Instructions for Codex',
+      '# Baton - Agent Instructions for Codex',
       '',
       '## Memory Autopilot',
       '',
-      '- Default first step for non-trivial coding work: call `memorix_project_context` with the user task.',
-      '- Continuation fallback is mandatory: `memorix resume "<task>"` for prior work.',
-      '- Do not call more Memorix retrieval tools after a complete brief.',
-      '- For read-only work, do not call `memorix_store` unless the user asks to preserve a record.',
+      '- Default first step for non-trivial coding work: call `baton_project_context` with the user task.',
+      '- Continuation fallback is mandatory: `baton resume "<task>"` for prior work.',
+      '- Do not call more Baton retrieval tools after a complete brief.',
+      '- For read-only work, do not call `baton_store` unless the user asks to preserve a record.',
       '',
     ].join('\n'), 'utf-8');
   }
@@ -224,8 +224,8 @@ describe('agent doctor and repair', () => {
       status: 0,
       stdout: JSON.stringify({
         installed: [{
-          pluginId: 'memorix@personal',
-          name: 'memorix',
+          pluginId: 'baton@personal',
+          name: 'baton',
           marketplaceName: 'personal',
           version: getCliVersion(),
           installed: true,
@@ -260,10 +260,10 @@ describe('agent doctor and repair', () => {
     expect(claude.mcp.issues).toContain('claude-project-config-not-read');
     expect(claude.guidance.status).toBe('repairable');
     expect(claude.guidance.issues).toContain('guidance-outdated');
-    expect(parsed.agents.repairCommand).toContain('memorix repair agents --agent claude');
+    expect(parsed.agents.repairCommand).toContain('baton repair agents --agent claude');
   });
 
-  it('repair agents upgrades owned guidance and rewrites the Memorix MCP entry', async () => {
+  it('repair agents upgrades owned guidance and rewrites the Baton MCP entry', async () => {
     writeStaleClaudeSetup();
 
     const result = await runCommand(repairCommand, {
@@ -280,17 +280,17 @@ describe('agent doctor and repair', () => {
 
     // The stale entry in .claude/settings.json (never read by Claude Code) is gone; .mcp.json has the server.
     const legacy = JSON.parse(readFileSync(path.join(repoDir, '.claude', 'settings.json'), 'utf-8'));
-    expect(legacy.mcpServers?.memorix).toBeUndefined();
+    expect(legacy.mcpServers?.baton).toBeUndefined();
     const settings = JSON.parse(readFileSync(path.join(repoDir, '.mcp.json'), 'utf-8'));
-    expect(settings.mcpServers.memorix).toMatchObject({
-      command: 'memorix',
+    expect(settings.mcpServers.baton).toMatchObject({
+      command: 'baton',
       args: ['serve', '--mode', 'lite'],
       alwaysLoad: true,
     });
 
     const guidance = readFileSync(path.join(repoDir, 'CLAUDE.md'), 'utf-8');
     expect(guidance).toContain('Default first step for non-trivial coding work');
-    expect(guidance).toContain('memorix_project_context');
+    expect(guidance).toContain('baton_project_context');
     expect(guidance).not.toContain('read this first in every new session');
   });
 
@@ -338,7 +338,7 @@ describe('agent doctor and repair', () => {
     expect(parsed.agents.summary.ok).toBe(1);
   });
 
-  it('repair agents rewrites Claude local MCP config to memorix serve', async () => {
+  it('repair agents rewrites Claude local MCP config to baton serve', async () => {
     writeStaleClaudeLocalMcpSetup();
 
     const result = await runCommand(repairCommand, {
@@ -354,9 +354,9 @@ describe('agent doctor and repair', () => {
 
     const config = JSON.parse(readFileSync(path.join(sandboxRoot, '.claude.json'), 'utf-8'));
     const project = config.projects[repoDir.replace(/\\/g, '/')];
-    expect(project.mcpServers.memorix).toEqual({
+    expect(project.mcpServers.baton).toEqual({
       type: 'stdio',
-      command: 'memorix',
+      command: 'baton',
       args: ['serve', '--mode', 'lite'],
       alwaysLoad: true,
     });
@@ -396,7 +396,7 @@ describe('agent doctor and repair', () => {
     expect(codex.mcp).toMatchObject({ status: 'ok', issues: [] });
     expect(codex.mcp.checks[0]).toMatchObject({
       managedByPlugin: true,
-      server: { command: 'memorix', args: ['serve'] },
+      server: { command: 'baton', args: ['serve'] },
     });
   });
 
@@ -434,7 +434,7 @@ describe('agent doctor and repair', () => {
   it('parses a Codex plugin list even when a Windows diagnostic precedes its JSON', () => {
     const parsed = parseCodexPluginList(`warning from Codex\n${JSON.stringify({
       installed: [{
-        pluginId: 'memorix@personal',
+        pluginId: 'baton@personal',
         installed: true,
         enabled: true,
       }],
@@ -489,7 +489,7 @@ describe('agent doctor and repair', () => {
 
     mkdirSync(path.join(sandboxRoot, '.grok'), { recursive: true });
     writeFileSync(path.join(sandboxRoot, '.grok', 'config.toml'), [
-      '[mcp_servers.memorix]',
+      '[mcp_servers.baton]',
       'url = "http://localhost:3211/mcp"',
       '',
     ].join('\n'), 'utf-8');

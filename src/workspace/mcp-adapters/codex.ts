@@ -9,7 +9,7 @@ import { join } from 'node:path';
  * Structure:
  *   [mcp_servers.<name>]
  *   command = "npx"
- *   args = ["-y", "memorix-mcp"]
+ *   args = ["-y", "baton-mcp"]
  *   url = "https://..."   # for HTTP servers
  *
  *   [mcp_servers.<name>.env]

@@ -17,7 +17,7 @@ import { resetProvider } from '../../src/embedding/provider.js';
  */
 
 const projectId = 'stress/corpus';
-const originalEmbedding = process.env.MEMORIX_EMBEDDING;
+const originalEmbedding = process.env.BATON_EMBEDDING;
 let sandbox = '';
 
 const CORPUS_SIZE = 2_000;
@@ -52,13 +52,13 @@ async function seedCorpus(): Promise<void> {
 
 describe('corpus stress exam', () => {
   beforeEach(() => {
-    sandbox = mkdtempSync(path.join(tmpdir(), 'memorix-stress-corpus-'));
-    process.env.MEMORIX_EMBEDDING = 'off';
+    sandbox = mkdtempSync(path.join(tmpdir(), 'baton-stress-corpus-'));
+    process.env.BATON_EMBEDDING = 'off';
   });
 
   afterEach(async () => {
-    if (originalEmbedding === undefined) delete process.env.MEMORIX_EMBEDDING;
-    else process.env.MEMORIX_EMBEDDING = originalEmbedding;
+    if (originalEmbedding === undefined) delete process.env.BATON_EMBEDDING;
+    else process.env.BATON_EMBEDDING = originalEmbedding;
     resetProvider();
     resetObservationStore();
     await resetDb();

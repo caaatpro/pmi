@@ -66,7 +66,7 @@ describe('detectQueryIntent', () => {
   });
 
   it('should return general for ambiguous queries', () => {
-    const r1 = detectQueryIntent('memorix dashboard');
+    const r1 = detectQueryIntent('baton dashboard');
     expect(r1.intent).toBe('general');
     expect(r1.confidence).toBe(0);
 
@@ -108,7 +108,7 @@ describe('applyIntentBoost', () => {
   });
 
   it('should skip boosting at low confidence', () => {
-    const intent = detectQueryIntent('memorix');
+    const intent = detectQueryIntent('baton');
     const boosted = applyIntentBoost(1.0, 'decision', intent);
     expect(boosted).toBe(1.0); // confidence too low
   });

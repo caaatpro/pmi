@@ -23,11 +23,11 @@ import { startSession, endSession } from '../../src/memory/session.js';
 
 const projectId = 'eval/always-on';
 const fixtureRoot = path.resolve(process.cwd(), 'tests/fixtures/workset-evaluation');
-const originalEmbedding = process.env.MEMORIX_EMBEDDING;
+const originalEmbedding = process.env.BATON_EMBEDDING;
 let sandboxRoot = '';
 
 function makeSandbox(): { repoDir: string; dataDir: string } {
-  sandboxRoot = mkdtempSync(path.join(tmpdir(), 'memorix-always-on-'));
+  sandboxRoot = mkdtempSync(path.join(tmpdir(), 'baton-always-on-'));
   const repoDir = path.join(sandboxRoot, 'repo');
   const dataDir = path.join(sandboxRoot, 'data');
   cpSync(path.join(fixtureRoot, 'typescript-auth'), repoDir, { recursive: true });
@@ -36,8 +36,8 @@ function makeSandbox(): { repoDir: string; dataDir: string } {
 }
 
 afterEach(async () => {
-  if (originalEmbedding === undefined) delete process.env.MEMORIX_EMBEDDING;
-  else process.env.MEMORIX_EMBEDDING = originalEmbedding;
+  if (originalEmbedding === undefined) delete process.env.BATON_EMBEDDING;
+  else process.env.BATON_EMBEDDING = originalEmbedding;
   resetObservationStore();
   resetSessionStore();
   await resetDb();
@@ -52,7 +52,7 @@ describe('always-on brief block exam', () => {
 
   beforeEach(async () => {
     ({ repoDir, dataDir } = makeSandbox());
-    process.env.MEMORIX_EMBEDDING = 'off';
+    process.env.BATON_EMBEDDING = 'off';
     await initObservationStore(dataDir);
     await initObservations(dataDir);
     await initSessionStore(dataDir);

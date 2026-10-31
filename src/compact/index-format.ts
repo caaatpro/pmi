@@ -329,8 +329,8 @@ function getTypeIcon(type: string): string {
 }
 
 function getProgressiveDisclosureHint(hasProject: boolean, surface: RetrievalSurface): string {
-  const detailCommand = surface === 'cli' ? 'memorix memory detail' : 'memorix_detail';
-  const timelineCommand = surface === 'cli' ? 'memorix memory timeline' : 'memorix_timeline';
+  const detailCommand = surface === 'cli' ? 'baton memory detail' : 'baton_detail';
+  const timelineCommand = surface === 'cli' ? 'baton memory timeline' : 'baton_timeline';
   const lines = [
     '[TIP] **Progressive Disclosure:** This index shows WHAT exists and retrieval COST.',
     `- Use \`${detailCommand}\` with typed refs (obs:42@org/project) to fetch full details`,
@@ -347,7 +347,7 @@ function getProgressiveDisclosureHint(hasProject: boolean, surface: RetrievalSur
 
 // ── Phase 3a display helpers ──────────────────────────────────────
 
-/** Format an entry reference as a canonical typed ref usable in memorix_detail */
+/** Format an entry reference as a canonical typed ref usable in baton_detail */
 export function formatEntryRef(entry: IndexEntry): string {
   return entry.projectId ? `obs:${entry.id}@${entry.projectId}` : `obs:${entry.id}`;
 }

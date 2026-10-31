@@ -528,7 +528,7 @@ export class MaintenanceJobWorker {
       kinds?: readonly MaintenanceJobKind[];
     } = {},
   ) {
-    this.workerId = options.workerId ?? `memorix-${process.pid}-${randomUUID().slice(0, 8)}`;
+    this.workerId = options.workerId ?? `baton-${process.pid}-${randomUUID().slice(0, 8)}`;
     this.leaseMs = clampPositiveInteger(options.leaseMs, DEFAULT_LEASE_MS);
     this.pollIntervalMs = clampPositiveInteger(options.pollIntervalMs, DEFAULT_POLL_INTERVAL_MS);
     this.projectId = options.projectId;

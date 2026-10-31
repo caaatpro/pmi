@@ -1,9 +1,9 @@
 /**
- * Moving snapshots between this machine and the PMI server: incremental
+ * Moving snapshots between this machine and the Baton server: incremental
  * upload (only blobs the project does not have yet), registration, and
  * download with verification before anything is restored.
  */
-import type { PmiApiClient } from '../client/api.js';
+import type { BatonApiClient } from '../client/api.js';
 import type { LocalSnapshots, LocalSnapshot } from './local.js';
 import type { RestoreReport } from './restore.js';
 import { manifestBlobs, manifestSha256, type SnapshotManifest } from './snapshot.js';
@@ -16,13 +16,13 @@ export interface UploadReport {
 }
 
 export async function uploadSnapshot(
-  api: PmiApiClient,
+  api: BatonApiClient,
   projectId: string,
   snapshots: LocalSnapshots,
   snapshotId: string,
 ): Promise<UploadReport> {
   const snapshot = snapshots.get(snapshotId);
-  if (!snapshot) throw new Error(`[pmi] snapshot ${snapshotId} is not on this device`);
+  if (!snapshot) throw new Error(`[baton] snapshot ${snapshotId} is not on this device`);
   const blobs = manifestBlobs(snapshot.manifest);
   const { missing } = await api.post<{ missing: string[] }>(`/v1/projects/${projectId}/blobs/missing`, { sha256: blobs });
   let uploadedBytes = 0;
@@ -46,7 +46,7 @@ export async function uploadSnapshot(
  * verifying the manifest hash and each blob's SHA-256 on the way in.
  */
 export async function downloadSnapshot(
-  api: PmiApiClient,
+  api: BatonApiClient,
   projectId: string,
   snapshots: LocalSnapshots,
   snapshotId: string,
@@ -56,7 +56,7 @@ export async function downloadSnapshot(
     `/v1/snapshots/${encodeURIComponent(snapshotId)}`,
   );
   if (response && manifestSha256(response.snapshot.manifest) !== response.snapshot.manifestSha256) {
-    throw new Error('[pmi] the downloaded manifest does not match its SHA-256; nothing was changed');
+    throw new Error('[baton] the downloaded manifest does not match its SHA-256; nothing was changed');
   }
   const snapshot = local ?? snapshots.importManifest(response!.snapshot.manifest, response!.snapshot.manifestSha256, response!.snapshot.pinned);
   for (const sha of manifestBlobs(snapshot.manifest)) {
@@ -66,7 +66,7 @@ export async function downloadSnapshot(
   return snapshot;
 }
 
-export async function reportRestore(api: PmiApiClient, report: RestoreReport): Promise<void> {
+export async function reportRestore(api: BatonApiClient, report: RestoreReport): Promise<void> {
   await api.post(`/v1/snapshots/${encodeURIComponent(report.snapshotId)}/restored`, {
     mode: report.mode,
     verified: report.verified,

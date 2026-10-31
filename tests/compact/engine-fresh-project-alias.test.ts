@@ -47,34 +47,34 @@ describe("compactSearch", () => {
 	});
 
 	test("does not treat alias-backed memories as a fresh project", async () => {
-		resolveAliases.mockResolvedValue(["AVIDS2/memorix", "AVIDS2/memorix-alias"]);
+		resolveAliases.mockResolvedValue(["AVIDS2/baton", "AVIDS2/baton-alias"]);
 		getAllObservations.mockReturnValue([
-			{ projectId: "AVIDS2/memorix-alias" },
+			{ projectId: "AVIDS2/baton-alias" },
 		]);
 
 		const result = await compactSearch({
-			projectId: "AVIDS2/memorix",
+			projectId: "AVIDS2/baton",
 			query: "anything",
 			limit: 20,
 		} as any);
 
-		expect(result.formatted).toContain("This project does have stored Memorix memories");
-		expect(result.formatted).not.toContain("This project does not have any Memorix memories yet.");
+		expect(result.formatted).toContain("This project does have stored Baton memories");
+		expect(result.formatted).not.toContain("This project does not have any Baton memories yet.");
 		expect(result.formatted).not.toContain("fresh project");
 	});
 
 	test("still reports fresh project when no canonical or alias memories exist", async () => {
-		resolveAliases.mockResolvedValue(["AVIDS2/memorix", "AVIDS2/memorix-alias"]);
+		resolveAliases.mockResolvedValue(["AVIDS2/baton", "AVIDS2/baton-alias"]);
 		getAllObservations.mockReturnValue([
 			{ projectId: "other/project" },
 		]);
 
 		const result = await compactSearch({
-			projectId: "AVIDS2/memorix",
+			projectId: "AVIDS2/baton",
 			query: "anything",
 			limit: 20,
 		} as any);
 
-		expect(result.formatted).toContain("This project does not have any Memorix memories yet.");
+		expect(result.formatted).toContain("This project does not have any Baton memories yet.");
 	});
 });

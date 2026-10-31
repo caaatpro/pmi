@@ -30,7 +30,7 @@ describe('SQLite persistent lexical index', () => {
   let store: SqliteBackend;
 
   beforeEach(async () => {
-    dataDir = await mkdtemp(path.join(tmpdir(), 'memorix-fts-'));
+    dataDir = await mkdtemp(path.join(tmpdir(), 'baton-fts-'));
     store = new SqliteBackend();
     await store.init(dataDir);
   });
@@ -120,7 +120,7 @@ describe('initializeObservationLexicalIndex under contention', () => {
   let dataDir: string;
 
   beforeEach(async () => {
-    dataDir = await mkdtemp(path.join(tmpdir(), 'memorix-fts-init-'));
+    dataDir = await mkdtemp(path.join(tmpdir(), 'baton-fts-init-'));
   });
 
   afterEach(() => {

@@ -35,10 +35,10 @@ export default defineCommand({
         }
 
         default:
-          console.log('Memorix Formation Commands');
+          console.log('Baton Formation Commands');
           console.log('');
           console.log('Usage:');
-          console.log('  memorix formation metrics');
+          console.log('  baton formation metrics');
       }
     } catch (error) {
       emitError(error instanceof Error ? error.message : String(error), asJson);

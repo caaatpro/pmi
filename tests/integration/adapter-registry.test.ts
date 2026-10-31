@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   getAgentIntegrationEntries,
   getSetupAgentTargets,
-  MEMORIX_INTEGRATIONS,
+  BATON_INTEGRATIONS,
   validateIntegrationRegistry,
 } from '../../src/integrations/registry.js';
 
@@ -48,7 +48,7 @@ describe('integration capability registry', () => {
 
   it('passes registry validation and keeps setup rows derived from it', () => {
     expect(validateIntegrationRegistry()).toEqual([]);
-    const setupRows = MEMORIX_INTEGRATIONS.filter(entry => entry.setup !== false && entry.agent !== 'any-mcp');
+    const setupRows = BATON_INTEGRATIONS.filter(entry => entry.setup !== false && entry.agent !== 'any-mcp');
     expect(setupRows.map(entry => entry.agent)).toEqual(getSetupAgentTargets());
   });
 });

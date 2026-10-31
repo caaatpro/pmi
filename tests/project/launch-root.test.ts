@@ -21,12 +21,12 @@ describe('launch-root guards', () => {
     expect(isHomeDirectory(`${home}/`, home)).toBe(true);
     expect(isHomeDirectory(`${home}/Projects/app`, home)).toBe(false);
     expect(() => assertNotHomeDataDir(home, home)).toThrow(/Refusing to bind \$HOME/);
-    expect(homeProjectRootError(home)).toContain('~/memorix.db');
+    expect(homeProjectRootError(home)).toContain('~/baton.db');
   });
 
   it('persists and reads last-project-root, ignoring $HOME and missing paths', () => {
-    const home = mkdtempSync(path.join(os.tmpdir(), 'memorix-launch-home-'));
-    const project = mkdtempSync(path.join(os.tmpdir(), 'memorix-launch-proj-'));
+    const home = mkdtempSync(path.join(os.tmpdir(), 'baton-launch-home-'));
+    const project = mkdtempSync(path.join(os.tmpdir(), 'baton-launch-proj-'));
     try {
       writeLastProjectRoot(home, home);
       expect(readLastProjectRoot(home)).toBeNull();
@@ -43,9 +43,9 @@ describe('launch-root guards', () => {
     }
   });
 
-  it('inherits MEMORIX_PROJECT_ROOT or last-project-root when launched from $HOME', () => {
-    const home = mkdtempSync(path.join(os.tmpdir(), 'memorix-inherit-home-'));
-    const project = mkdtempSync(path.join(os.tmpdir(), 'memorix-inherit-proj-'));
+  it('inherits BATON_PROJECT_ROOT or last-project-root when launched from $HOME', () => {
+    const home = mkdtempSync(path.join(os.tmpdir(), 'baton-inherit-home-'));
+    const project = mkdtempSync(path.join(os.tmpdir(), 'baton-inherit-proj-'));
     try {
       expect(inheritProjectRootFromHome({ homeDir: home })).toBeNull();
       expect(inheritProjectRootFromHome({
@@ -62,7 +62,7 @@ describe('launch-root guards', () => {
 
   it('never resolves the shared store onto $HOME', () => {
     const home = '/home/tester';
-    const globalDataDir = path.join(home, '.memorix', 'data');
+    const globalDataDir = path.join(home, '.baton', 'data');
     expect(resolveControlPlaneDataDir({
       requestedDataDir: home,
       homeDir: home,

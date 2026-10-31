@@ -29,7 +29,7 @@ const PROJECT_A = 'test/project-a';
 const PROJECT_B = 'test/project-b';
 
 beforeEach(async () => {
-  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-attr-test-'));
+  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-attr-test-'));
   await resetDb();
   await initObservationStore(testDir);
   await initObservations(testDir);

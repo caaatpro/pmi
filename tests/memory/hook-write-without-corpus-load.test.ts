@@ -52,7 +52,7 @@ function makeObs(id: number): Observation {
 let testDir: string;
 
 beforeEach(async () => {
-  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-hook-write-'));
+  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-hook-write-'));
   resetObservationRuntime();
   resetObservationStore();
   await resetDb();
@@ -95,7 +95,7 @@ describe('hook write without corpus load', () => {
     });
 
     const { observation } = await storeObservation({
-      entityName: 'memorix-e2e',
+      entityName: 'baton-e2e',
       type: 'what-changed',
       title: 'PostToolUse hook write',
       narrative: 'Native hook capture without hydrating Orama or loadAll.',

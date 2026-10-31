@@ -10,12 +10,12 @@ import { loadTomlConfig, resetTomlConfigCache } from '../../src/config/toml-load
 
 describe('config paths', () => {
   it('builds global and project TOML paths deterministically', () => {
-    expect(getGlobalConfigTomlPath('C:\\Users\\Test')).toBe(join('C:\\Users\\Test', '.memorix', 'config.toml'));
-    expect(getProjectConfigTomlPath('E:\\repo\\demo')).toBe(join('E:\\repo\\demo', 'memorix.toml'));
+    expect(getGlobalConfigTomlPath('C:\\Users\\Test')).toBe(join('C:\\Users\\Test', '.baton', 'config.toml'));
+    expect(getProjectConfigTomlPath('E:\\repo\\demo')).toBe(join('E:\\repo\\demo', 'baton.toml'));
   });
 });
 
-const TMP = join(tmpdir(), `pmi-toml-loader-test-${process.pid}`);
+const TMP = join(tmpdir(), `baton-toml-loader-test-${process.pid}`);
 const HOME = join(TMP, 'home');
 const PROJECT = join(TMP, 'project');
 
@@ -26,26 +26,26 @@ describe('loadTomlConfig', () => {
 
   beforeEach(() => {
     rmSync(TMP, { recursive: true, force: true });
-    mkdirSync(join(HOME, '.memorix'), { recursive: true });
+    mkdirSync(join(HOME, '.baton'), { recursive: true });
     mkdirSync(PROJECT, { recursive: true });
     resetTomlConfigCache();
   });
 
   it('loads global config.toml', () => {
-    writeFileSync(join(HOME, '.memorix', 'config.toml'), '[memory]\ninject = "minimal"\n', 'utf8');
+    writeFileSync(join(HOME, '.baton', 'config.toml'), '[memory]\ninject = "minimal"\n', 'utf8');
 
     expect(loadTomlConfig({ projectRoot: null, homeDir: HOME }).memory?.inject).toBe('minimal');
   });
 
-  it('lets project memorix.toml override global config.toml', () => {
-    writeFileSync(join(HOME, '.memorix', 'config.toml'), '[memory]\ninject = "silent"\n', 'utf8');
-    writeFileSync(join(PROJECT, 'memorix.toml'), '[memory]\ninject = "full"\n', 'utf8');
+  it('lets project baton.toml override global config.toml', () => {
+    writeFileSync(join(HOME, '.baton', 'config.toml'), '[memory]\ninject = "silent"\n', 'utf8');
+    writeFileSync(join(PROJECT, 'baton.toml'), '[memory]\ninject = "full"\n', 'utf8');
 
     expect(loadTomlConfig({ projectRoot: PROJECT, homeDir: HOME }).memory?.inject).toBe('full');
   });
 
-  it('parses nested tables and primitive values used by Memorix config', () => {
-    writeFileSync(join(HOME, '.memorix', 'config.toml'), [
+  it('parses nested tables and primitive values used by Baton config', () => {
+    writeFileSync(join(HOME, '.baton', 'config.toml'), [
       '[agent]',
       'provider = "deepseek"',
       'model = "deepseek-chat"',
@@ -87,7 +87,7 @@ describe('loadTomlConfig', () => {
   });
 
   it('accepts TOML literal strings and preserves hashes inside them', () => {
-    writeFileSync(join(PROJECT, 'memorix.toml'), [
+    writeFileSync(join(PROJECT, 'baton.toml'), [
       '[memory]',
       "inject = 'minimal' # standard TOML literal string",
       '',

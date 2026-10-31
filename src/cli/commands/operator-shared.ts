@@ -45,7 +45,7 @@ async function resolveCliProjectContext(options?: CliContextOptions): Promise<{
   const invocation = getCliInvocation();
   const requestedRoot = options?.projectRoot
     ?? invocation.projectRoot
-    ?? process.env.MEMORIX_PROJECT_ROOT
+    ?? process.env.BATON_PROJECT_ROOT
     ?? process.cwd();
   if (isHomeDirectory(requestedRoot)) {
     throw new Error(homeProjectRootError(requestedRoot));
@@ -306,7 +306,7 @@ export function resolveCliWriteScope(
   const visibility = coerceObservationVisibility(visibilityInput);
   if (visibility !== 'project' && !context.identity) {
     throw new Error(
-      `visibility=${visibility} requires an active CLI identity. Run "memorix identity join --agent-type <agent>" or "memorix identity use --agent-id <id>" first.`,
+      `visibility=${visibility} requires an active CLI identity. Run "baton identity join --agent-type <agent>" or "baton identity use --agent-id <id>" first.`,
     );
   }
   if (visibility === 'team' && context.reader.isTeamMember !== true) {
@@ -331,7 +331,7 @@ export function resolveCliActorId(
 ): string | undefined {
   const explicit = typeof explicitValue === 'string' ? explicitValue.trim() : '';
   if (identity && explicit && explicit !== identity.agentId) {
-    throw new Error(`${field} does not match the active CLI identity. Use "memorix identity clear" before acting as a different agent.`);
+    throw new Error(`${field} does not match the active CLI identity. Use "baton identity clear" before acting as a different agent.`);
   }
   return explicit || identity?.agentId;
 }

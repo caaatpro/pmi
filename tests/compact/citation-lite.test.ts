@@ -214,7 +214,7 @@ describe('formatTimeline: synthesized annotation', () => {
 // ── P5-B: matchedFields evidence-type tags ────────────────────────────
 // These are unit tests against the tag logic itself (cannot easily unit-test
 // searchObservations without a full Orama instance, so we verify the
-// MemorixDocument field conditions that drive each tag).
+// BatonDocument field conditions that drive each tag).
 
 describe('matchedFields evidence tag logic (inline verification)', () => {
   it('isGitEvidence condition: sourceDetail=git-ingest triggers git evidence tag', () => {

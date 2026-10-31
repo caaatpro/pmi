@@ -1,5 +1,5 @@
 /**
- * PMI session continuity domain (docs/PMI/SESSION_CONTINUITY.md): the
+ * Baton session continuity domain (docs/baton/SESSION_CONTINUITY.md): the
  * SessionState document, its statuses and transitions, and the deterministic
  * Handoff Brief. Pure functions shared by the local client, the daemon, the
  * central server and the MCP tools.
@@ -194,8 +194,8 @@ export interface ResumeHints {
   nextActionInferred: boolean;
 }
 
-/** Agent and PMI configuration directories: changed, but not the task's work. */
-const TOOLING_PATH = /^\.(pmi|claude|codex|cursor|windsurf|memorix|gemini|kiro|vscode|idea)\//;
+/** Agent and Baton configuration directories: changed, but not the task's work. */
+const TOOLING_PATH = /^\.(baton|claude|codex|cursor|windsurf|baton|gemini|kiro|vscode|idea)\//;
 
 export function resumeHints(state: SessionState, decisionFiles: string[] = []): ResumeHints {
   const files = [

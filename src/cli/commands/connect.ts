@@ -1,15 +1,15 @@
 /**
- * Connected mode: `pmi login`, `pmi logout`, `pmi project link|show`.
+ * Connected mode: `baton login`, `baton logout`, `baton project link|show`.
  *
  * Login verifies the token against `/v1/me` before saving it, so a typo never
- * leaves a broken credential behind. Linking writes `.pmi/project.json`; the
- * next `pmi sync` uploads the existing local memory (engine diff against
+ * leaves a broken credential behind. Linking writes `.baton/project.json`; the
+ * next `baton sync` uploads the existing local memory (engine diff against
  * `sync_row_state`), so nothing has to be exported by hand.
  */
 import { execFileSync } from 'node:child_process';
 import { defineCommand } from 'citty';
 
-import { createApiClient, PmiApiError } from '../../client/api.js';
+import { createApiClient, BatonApiError } from '../../client/api.js';
 import {
   normalizeServerUrl,
   readCredentials,
@@ -29,7 +29,7 @@ interface MeResponse {
 
 function fail(error: unknown, asJson: boolean): void {
   emitError((error as Error).message, asJson);
-  process.exitCode = error instanceof PmiApiError && error.offline ? 3 : 1;
+  process.exitCode = error instanceof BatonApiError && error.offline ? 3 : 1;
 }
 
 async function readStdinToken(): Promise<string | undefined> {
@@ -40,18 +40,18 @@ async function readStdinToken(): Promise<string | undefined> {
 }
 
 export const login = defineCommand({
-  meta: { name: 'login', description: 'Save a personal access token for a PMI server (verified first)' },
+  meta: { name: 'login', description: 'Save a personal access token for a Baton server (verified first)' },
   args: {
-    server: { type: 'positional', description: 'Server URL, e.g. https://pmi.example.com', required: true },
-    token: { type: 'string', description: 'Personal access token (or pipe it on stdin, or set PMI_TOKEN)' },
+    server: { type: 'positional', description: 'Server URL, e.g. https://baton.example.com', required: true },
+    token: { type: 'string', description: 'Personal access token (or pipe it on stdin, or set BATON_TOKEN)' },
     json: { type: 'boolean', default: false },
   },
   async run({ args }) {
     const asJson = Boolean(args.json);
     try {
       const server = normalizeServerUrl(String(args.server));
-      const token = (args.token as string | undefined)?.trim() || process.env.PMI_TOKEN?.trim() || await readStdinToken();
-      if (!token) throw new Error('no token given; pass --token, pipe it on stdin, or set PMI_TOKEN (issue one with `pmi-server issue-token <email>`)');
+      const token = (args.token as string | undefined)?.trim() || process.env.BATON_TOKEN?.trim() || await readStdinToken();
+      if (!token) throw new Error('no token given; pass --token, pipe it on stdin, or set BATON_TOKEN (issue one with `baton-server issue-token <email>`)');
       const me = await createApiClient(server, token).get<MeResponse>('/v1/me');
       const credentials = readCredentials();
       credentials.servers[server] = { token, email: me.user.email, savedAt: new Date().toISOString() };
@@ -69,7 +69,7 @@ export const login = defineCommand({
 });
 
 export const logout = defineCommand({
-  meta: { name: 'logout', description: 'Forget the saved token for a PMI server' },
+  meta: { name: 'logout', description: 'Forget the saved token for a Baton server' },
   args: {
     server: { type: 'positional', description: 'Server URL (default: the last one logged in to)', required: false },
     json: { type: 'boolean', default: false },
@@ -86,7 +86,7 @@ export const logout = defineCommand({
       delete credentials.servers[server];
       if (credentials.default === server) credentials.default = Object.keys(credentials.servers)[0];
       writeCredentials(credentials);
-      emitResult({ server, removed: true }, `Removed the token for ${server}. Revoke it on the server with \`pmi-server revoke-token\`.`, asJson);
+      emitResult({ server, removed: true }, `Removed the token for ${server}. Revoke it on the server with \`baton-server revoke-token\`.`, asJson);
     } catch (error) {
       fail(error, asJson);
     }
@@ -128,13 +128,13 @@ export function describeCandidates(candidates: ProjectCandidate[]): string {
     ...candidates.map((candidate) => {
       const ref = candidate.org ? `${candidate.org}/${candidate.slug}` : candidate.slug;
       const ids = candidate.legacyProjectIds?.length ? ` [${candidate.legacyProjectIds.join(', ')}]` : '';
-      return `  ${ref}${candidate.name && candidate.name !== candidate.slug ? ` — ${candidate.name}` : ''}${ids}\n    pmi project link --project ${ref}`;
+      return `  ${ref}${candidate.name && candidate.name !== candidate.slug ? ` — ${candidate.name}` : ''}${ids}\n    baton project link --project ${ref}`;
     }),
   ].join('\n');
 }
 
 const link = defineCommand({
-  meta: { name: 'link', description: 'Link this working copy to a project on the PMI server' },
+  meta: { name: 'link', description: 'Link this working copy to a project on the Baton server' },
   args: {
     server: { type: 'string', description: 'Server URL (default: the last one logged in to)' },
     project: { type: 'string', description: 'Choose among several matching projects: org/slug, slug or id' },
@@ -148,9 +148,9 @@ const link = defineCommand({
     const asJson = Boolean(args.json);
     try {
       const server = args.server ? normalizeServerUrl(String(args.server)) : readCredentials().default;
-      if (!server) throw new Error('no server; run `pmi login <url>` first or pass --server');
+      if (!server) throw new Error('no server; run `baton login <url>` first or pass --server');
       const token = tokenFor(server);
-      if (!token) throw new Error(`no token for ${server}; run \`pmi login ${server}\``);
+      if (!token) throw new Error(`no token for ${server}; run \`baton login ${server}\``);
 
       const { getCliProjectContext } = await import('./operator-shared.js');
       const { project } = await getCliProjectContext();
@@ -179,16 +179,16 @@ const link = defineCommand({
       if (!unchanged) writeProjectLink(project.rootPath, projectLink);
       emitResult(
         { ...projectLink, created: result.created },
-        `${result.created ? 'Created and linked' : 'Linked'} project ${result.project.slug} on ${server}.\nRun \`pmi sync\` to upload local memory and pull the team's.`,
+        `${result.created ? 'Created and linked' : 'Linked'} project ${result.project.slug} on ${server}.\nRun \`baton sync\` to upload local memory and pull the team's.`,
         asJson,
       );
     } catch (error) {
-      if (error instanceof PmiApiError && error.code === 'project_not_found' && !args.project) {
+      if (error instanceof BatonApiError && error.code === 'project_not_found' && !args.project) {
         emitError('no project on the server matches this repository; ask an org admin, or pass --create if you are one', asJson);
         process.exitCode = 1;
         return;
       }
-      if (error instanceof PmiApiError && Array.isArray(error.details) && error.details.length > 0) {
+      if (error instanceof BatonApiError && Array.isArray(error.details) && error.details.length > 0) {
         const candidates = error.details as ProjectCandidate[];
         if (asJson) console.error(JSON.stringify({ error: error.message, code: error.code, candidates }, null, 2));
         else console.error(`Error: ${error.message}\n${describeCandidates(candidates)}`);
@@ -201,7 +201,7 @@ const link = defineCommand({
 });
 
 const show = defineCommand({
-  meta: { name: 'show', description: 'Show which PMI project this working copy is linked to' },
+  meta: { name: 'show', description: 'Show which Baton project this working copy is linked to' },
   args: { json: { type: 'boolean', default: false } },
   async run({ args }) {
     const asJson = Boolean(args.json);
@@ -217,6 +217,6 @@ const show = defineCommand({
 });
 
 export const projectCommand = defineCommand({
-  meta: { name: 'project', description: 'Connect this working copy to a PMI server project' },
+  meta: { name: 'project', description: 'Connect this working copy to a Baton server project' },
   subCommands: { link, show },
 });

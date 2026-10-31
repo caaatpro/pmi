@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import path from 'node:path';
 
 /**
- * These sources describe how Memorix learned a workspace binding. They are
+ * These sources describe how Baton learned a workspace binding. They are
  * product facts, intentionally separate from any MCP transport session ID.
  */
 export type ProjectBindingSource = 'startup-cwd' | 'mcp-roots' | 'explicit-project-root';
@@ -49,7 +49,7 @@ export interface ProjectBindingSnapshot {
   projectId?: string;
 }
 
-export interface MemorixRequestContext extends ProjectBindingSnapshot {
+export interface BatonRequestContext extends ProjectBindingSnapshot {
   actorId?: string;
 }
 
@@ -95,7 +95,7 @@ export class ProjectBindingController {
     return { ...this.current };
   }
 
-  requestContext(actorId?: string): MemorixRequestContext {
+  requestContext(actorId?: string): BatonRequestContext {
     return {
       ...this.snapshot(),
       ...(actorId ? { actorId } : {}),

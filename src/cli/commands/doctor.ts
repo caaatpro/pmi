@@ -1,5 +1,5 @@
 /**
- * memorix doctor — One-stop diagnostic command
+ * baton doctor — One-stop diagnostic command
  *
  * Answers: "I stored something but the agent doesn't know" by showing
  * which layer in the chain is working and which is degraded.
@@ -10,7 +10,7 @@ import { defineCommand } from 'citty';
 export default defineCommand({
   meta: {
     name: 'doctor',
-    description: 'Diagnose Memorix health — project identity, embedding, data, conflicts',
+    description: 'Diagnose Baton health — project identity, embedding, data, conflicts',
   },
   args: {
     agent: {
@@ -114,7 +114,7 @@ export default defineCommand({
         const detail = result.failure?.detail ?? '';
         lines.push(fail(`No git project detected: [${reason}]`));
         lines.push(info(detail));
-        issues.push(`Memorix requires a git repo to establish project identity. Run \`git init\` in this workspace first. (${reason})`);
+        issues.push(`Baton requires a git repo to establish project identity. Run \`git init\` in this workspace first. (${reason})`);
         report.project = { error: reason, detail };
       }
     } catch (e) {
@@ -126,8 +126,8 @@ export default defineCommand({
     lines.push('');
     lines.push('┌─ Runtime Mode ─────────────────────────────────────');
 
-    const memorixDir = join(homedir(), '.memorix');
-    const bgStatePath = join(memorixDir, 'background.json');
+    const batonDir = join(homedir(), '.baton');
+    const bgStatePath = join(batonDir, 'background.json');
     let bgRunning = false;
     let bgPort = 0;
     let bgPid = 0;
@@ -162,17 +162,17 @@ export default defineCommand({
           lines.push(ok('Health check: OK'));
         } else {
           lines.push(warn('Health check: FAILED (process alive but not responding)'));
-          issues.push('Background process is alive but health check failed. Try "memorix background restart".');
+          issues.push('Background process is alive but health check failed. Try "baton background restart".');
         }
       } catch {
         lines.push(warn('Health check: could not connect'));
-        issues.push('Background process is alive but its health endpoint could not be reached. Try "memorix background restart".');
+        issues.push('Background process is alive but its health endpoint could not be reached. Try "baton background restart".');
       }
       report.mode = { type: 'background', pid: bgPid, port: bgPort, healthy: backgroundHealthy };
     } else {
       lines.push(info('Background control plane: not running'));
       lines.push(info('Current invocation: CLI (stdio)'));
-      tips.push('Start background mode with: memorix background start');
+      tips.push('Start background mode with: baton background start');
       report.mode = { type: 'cli-stdio' };
     }
 
@@ -191,7 +191,7 @@ export default defineCommand({
         });
         if (portUsed) {
           lines.push(warn('Unmanaged foreground instance detected on port 3211'));
-          issues.push('A foreground "memorix serve-http" is running but not managed by background mode.');
+          issues.push('A foreground "baton serve-http" is running but not managed by background mode.');
           (report.mode as any).unmanagedForeground = true;
         }
       } catch { /* ignore */ }
@@ -259,7 +259,7 @@ export default defineCommand({
 
         // Check cached embeddings count
         try {
-          const cachePath = join(memorixDir, 'embedding-cache.json');
+          const cachePath = join(batonDir, 'embedding-cache.json');
           if (existsSync(cachePath)) {
             const cache = JSON.parse(readFileSync(cachePath, 'utf-8'));
             const cacheCount = Object.keys(cache).length;
@@ -413,7 +413,7 @@ export default defineCommand({
           lines.push(info(`Languages: ${languageText}`));
         } else {
           lines.push(warn('Code memory: no project scan found yet'));
-          tips.push('Run `memorix codegraph refresh` once to seed project context.');
+          tips.push('Run `baton codegraph refresh` once to seed project context.');
         }
 
         lines.push(info(
@@ -478,7 +478,7 @@ export default defineCommand({
           for (const job of lifecycle.maintenance.failedJobs) {
             lines.push(info(`Failed: ${job.kind} after ${job.attempts} attempt(s)`));
           }
-          issues.push('Knowledge maintenance has failed work. Run `memorix doctor --json` to inspect the affected job kind.');
+          issues.push('Knowledge maintenance has failed work. Run `baton doctor --json` to inspect the affected job kind.');
         } else if (queued > 0 || running > 0) {
           lines.push(info(`Maintenance: ${queued} queued, ${running} running`));
         } else {
@@ -520,7 +520,7 @@ export default defineCommand({
 
     // Check for lock file (indicates another process is writing)
     if (dataDir) {
-      const lockFile = join(dataDir, '.memorix.lock');
+      const lockFile = join(dataDir, '.baton.lock');
       if (existsSync(lockFile)) {
         try {
           const lockData = JSON.parse(readFileSync(lockFile, 'utf-8'));
@@ -562,7 +562,7 @@ export default defineCommand({
         report.llm = { enabled: true, provider: config?.provider, model: config?.model };
       } else {
         lines.push(info('LLM mode: off (heuristic dedup only)'));
-        tips.push('Enable LLM for better memory quality: memorix configure → LLM Enhanced Mode');
+        tips.push('Enable LLM for better memory quality: baton configure → LLM Enhanced Mode');
         report.llm = { enabled: false };
       }
     } catch {

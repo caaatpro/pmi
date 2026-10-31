@@ -36,7 +36,7 @@ describe('Orama-to-persistent semantic queue bridge', () => {
   });
 
   it('resolves the provider after Orama reset and queues the new vector', async () => {
-    dataDir = await mkdtemp(path.join(tmpdir(), 'memorix-semantic-queue-'));
+    dataDir = await mkdtemp(path.join(tmpdir(), 'baton-semantic-queue-'));
     await resetDb();
 
     await queueSemanticVector(dataDir, {
@@ -57,7 +57,7 @@ describe('Orama-to-persistent semantic queue bridge', () => {
   });
 
   it('batches concurrent observation writes through the Orama bridge', async () => {
-    dataDir = await mkdtemp(path.join(tmpdir(), 'memorix-semantic-queue-batch-'));
+    dataDir = await mkdtemp(path.join(tmpdir(), 'baton-semantic-queue-batch-'));
     await Promise.all(Array.from({ length: 25 }, (_, index) => queueSemanticVector(dataDir, {
       observationId: index + 1,
       projectId: 'queue-project',

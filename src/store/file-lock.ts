@@ -104,7 +104,7 @@ export async function releaseLock(lockPath: string): Promise<void> {
  * @returns The return value of fn
  */
 export async function withFileLock<T>(projectDir: string, fn: () => Promise<T>): Promise<T> {
-  const lockPath = path.join(projectDir, '.memorix.lock');
+  const lockPath = path.join(projectDir, '.baton.lock');
   await acquireLock(lockPath);
   try {
     return await fn();

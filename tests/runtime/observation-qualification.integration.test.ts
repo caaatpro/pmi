@@ -22,7 +22,7 @@ let projectRoot = '';
 let dataDir = '';
 
 beforeEach(async () => {
-  sandbox = await fs.mkdtemp(path.join(tmpdir(), 'memorix-observation-qualification-'));
+  sandbox = await fs.mkdtemp(path.join(tmpdir(), 'baton-observation-qualification-'));
   projectRoot = path.join(sandbox, 'repo');
   dataDir = path.join(sandbox, 'data');
   await fs.mkdir(path.join(projectRoot, 'src'), { recursive: true });

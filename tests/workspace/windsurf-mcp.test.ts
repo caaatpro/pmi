@@ -11,7 +11,7 @@ describe('WindsurfMCPAdapter', () => {
         it('should parse stdio servers', () => {
             const config = JSON.stringify({
                 mcpServers: {
-                    memorix: { command: 'npx', args: ['-y', 'memorix', 'serve'] },
+                    baton: { command: 'npx', args: ['-y', 'baton', 'serve'] },
                 },
             });
             const servers = adapter.parse(config);

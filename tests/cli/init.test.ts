@@ -35,7 +35,7 @@ describe('init-shared', () => {
 
   it('returns the correct target dir for global scope', () => {
     expect(getInitTargetDir('global', 'E:/repo', 'C:/Users/tester')).toBe(
-      path.join('C:/Users/tester', '.memorix'),
+      path.join('C:/Users/tester', '.baton'),
     );
   });
 
@@ -58,7 +58,7 @@ describe('init-shared', () => {
 
   it('uses TOML config filenames for new init flows', () => {
     expect(getInitConfigFilename()).toBe('config.toml');
-    expect(getInitProjectConfigFilename()).toBe('memorix.toml');
+    expect(getInitProjectConfigFilename()).toBe('baton.toml');
   });
 });
 

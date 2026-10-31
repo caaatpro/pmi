@@ -58,7 +58,7 @@ export class KnowledgeGraphManager {
 
   /** Persist current state to SQLite */
   private async save(): Promise<void> {
-    if (!this.store) throw new Error('[memorix] KnowledgeGraphManager not initialized');
+    if (!this.store) throw new Error('[baton] KnowledgeGraphManager not initialized');
     this.store.replaceAll(this.entities, this.relations);
   }
 

@@ -32,7 +32,7 @@ const PROJECT_ID = 'test/ingest-log-dedup';
 let testDir: string;
 
 beforeEach(async () => {
-  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-ingest-dedup-'));
+  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-ingest-dedup-'));
   await resetDb();
   await initObservations(testDir);
 });

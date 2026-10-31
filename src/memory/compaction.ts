@@ -51,7 +51,7 @@ export function buildCompactionWorkset(
   const header = `${headerLines.join('\n')}\n\n`;
   const fallback = checkpoint.captureKind === 'native-summary'
     ? ''
-    : 'The host did not expose a native compact summary. Reconstruct only what the current task needs from current code and Memorix evidence.';
+    : 'The host did not expose a native compact summary. Reconstruct only what the current task needs from current code and Baton evidence.';
   const source = sanitizeCredentials(checkpoint.summary?.trim() || fallback);
   const available = Math.max(0, budget - countTextTokens(header) - 4);
   let excerpt = source ? truncateToTokenBudget(source, available) : '';

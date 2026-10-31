@@ -7,7 +7,7 @@
  * This is an optional dependency — if fastembed is not installed,
  * the provider module gracefully falls back to fulltext-only search.
  *
- * Persistent disk cache: embeddings are saved to ~/.memorix/data/.embedding-cache.json
+ * Persistent disk cache: embeddings are saved to ~/.baton/data/.embedding-cache.json
  * so server restarts don't need to regenerate them (saves minutes of CPU on 500+ obs).
  */
 
@@ -24,7 +24,7 @@ import {
   type EmbeddingProvider,
 } from './provider.js';
 
-const CACHE_DIR = process.env.MEMORIX_DATA_DIR || join(homedir(), '.memorix', 'data');
+const CACHE_DIR = process.env.BATON_DATA_DIR || join(homedir(), '.baton', 'data');
 const CACHE_FILE = join(CACHE_DIR, '.embedding-cache.json');
 
 // In-memory cache keyed by text hash → embedding
@@ -43,7 +43,7 @@ async function loadDiskCache(): Promise<void> {
   try {
     const raw = await readFile(CACHE_FILE, 'utf-8');
     if (Buffer.byteLength(raw, 'utf8') > MAX_CACHE_FILE_BYTES) {
-      console.error('[memorix] FastEmbed cache exceeds the disk load limit; starting with an empty cache');
+      console.error('[baton] FastEmbed cache exceeds the disk load limit; starting with an empty cache');
       return;
     }
     const entries: unknown = JSON.parse(raw);
@@ -52,7 +52,7 @@ async function loadDiskCache(): Promise<void> {
       if (!Array.isArray(entry) || typeof entry[0] !== 'string' || !isVector(entry[1])) continue;
       cacheSet(entry[0], entry[1], false);
     }
-    console.error(`[memorix] Loaded ${cache.size} cached embeddings from disk`);
+    console.error(`[baton] Loaded ${cache.size} cached embeddings from disk`);
   } catch {
     // No cache file or corrupt — start fresh
   }
@@ -63,7 +63,7 @@ function isVector(value: unknown): value is number[] {
 }
 
 function maxCachePayloadBytes(): number {
-  const raw = Number.parseInt(process.env.MEMORIX_EMBEDDING_CACHE_MAX_BYTES ?? '', 10);
+  const raw = Number.parseInt(process.env.BATON_EMBEDDING_CACHE_MAX_BYTES ?? '', 10);
   return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_CACHE_PAYLOAD_BYTES;
 }
 
@@ -174,7 +174,7 @@ export class FastEmbedProvider implements EmbeddingProvider {
 
     // Batch embed uncached texts
     if (uncachedTexts.length > 0) {
-      console.error(`[memorix] Embedding ${uncachedTexts.length}/${texts.length} uncached texts (${texts.length - uncachedTexts.length} from cache)`);
+      console.error(`[baton] Embedding ${uncachedTexts.length}/${texts.length} uncached texts (${texts.length - uncachedTexts.length} from cache)`);
       let batchIdx = 0;
       for await (const batch of this.model.embed(uncachedTexts, 64)) {
         for (const vec of batch) {

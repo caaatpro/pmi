@@ -260,7 +260,7 @@ export async function createManualLongTermMemory(input: CreateManualLongTermMemo
   evidence: LongTermMemoryEvidence[];
 }> {
   const owner = await resolveLocalMemoryOwner(input.dataDir, { create: true });
-  if (!owner) throw new Error('Memorix could not resolve a local memory owner.');
+  if (!owner) throw new Error('Baton could not resolve a local memory owner.');
   assertScope(input.scope);
   const evidence: LongTermMemoryEvidenceInput[] = input.scope === 'user'
     ? [{ kind: 'user', referenceId: owner.id, relation: 'user-confirmed' }]
@@ -302,7 +302,7 @@ export async function promoteObservationToLongTermMemory(input: PromoteObservati
   evidence: LongTermMemoryEvidence[];
 }> {
   const owner = await resolveLocalMemoryOwner(input.dataDir, { create: true });
-  if (!owner) throw new Error('Memorix could not resolve a local memory owner.');
+  if (!owner) throw new Error('Baton could not resolve a local memory owner.');
   return createLongTermMemoryWithDataDir({
     dataDir: input.dataDir,
     originProjectId: input.observation.projectId,

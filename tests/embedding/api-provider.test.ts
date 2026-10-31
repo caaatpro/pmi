@@ -73,16 +73,16 @@ describe('API Embedding Provider', () => {
     cacheMetadataPayload = undefined;
     process.env = {
       ...originalEnv,
-      MEMORIX_EMBEDDING: 'api',
-      MEMORIX_EMBEDDING_API_KEY: 'test-key-123',
-      MEMORIX_EMBEDDING_BASE_URL: 'https://api.test.com/v1',
-      MEMORIX_EMBEDDING_MODEL: 'text-embedding-3-small',
+      BATON_EMBEDDING: 'api',
+      BATON_EMBEDDING_API_KEY: 'test-key-123',
+      BATON_EMBEDDING_BASE_URL: 'https://api.test.com/v1',
+      BATON_EMBEDDING_MODEL: 'text-embedding-3-small',
     };
     // Remove dimension override and non-embedding lane keys by default
-    delete process.env.MEMORIX_EMBEDDING_DIMENSIONS;
-    delete process.env.MEMORIX_API_KEY;
-    delete process.env.MEMORIX_LLM_API_KEY;
-    delete process.env.MEMORIX_LLM_BASE_URL;
+    delete process.env.BATON_EMBEDDING_DIMENSIONS;
+    delete process.env.BATON_API_KEY;
+    delete process.env.BATON_LLM_API_KEY;
+    delete process.env.BATON_LLM_BASE_URL;
     delete process.env.OPENAI_API_KEY;
     delete process.env.DASHSCOPE_API_KEY;
     delete process.env.ALIYUN_API_KEY;
@@ -135,7 +135,7 @@ describe('API Embedding Provider', () => {
     });
 
     it('should support custom dimensions (shortening)', async () => {
-      process.env.MEMORIX_EMBEDDING_DIMENSIONS = '512';
+      process.env.BATON_EMBEDDING_DIMENSIONS = '512';
       const vec512 = makeVector(512);
       mockFetch.mockResolvedValueOnce(mockEmbeddingResponse([vec512]));
 
@@ -147,13 +147,13 @@ describe('API Embedding Provider', () => {
     });
 
     it('should not reuse cached probe dimensions across requested dimension changes', async () => {
-      process.env.MEMORIX_EMBEDDING_DIMENSIONS = '512';
+      process.env.BATON_EMBEDDING_DIMENSIONS = '512';
       mockFetch.mockResolvedValueOnce(mockEmbeddingResponse([makeVector(512)]));
 
       const shortenedProvider = await APIEmbeddingProvider.create();
       expect(shortenedProvider.dimensions).toBe(512);
 
-      delete process.env.MEMORIX_EMBEDDING_DIMENSIONS;
+      delete process.env.BATON_EMBEDDING_DIMENSIONS;
       mockFetch.mockResolvedValueOnce(mockEmbeddingResponse([makeVector(1536)]));
 
       const nativeProvider = await APIEmbeddingProvider.create();
@@ -163,30 +163,30 @@ describe('API Embedding Provider', () => {
     });
 
     it('should not fall back to memory LLM API key when embedding key is not set', async () => {
-      delete process.env.MEMORIX_EMBEDDING_API_KEY;
-      process.env.MEMORIX_LLM_API_KEY = 'llm-key-456';
+      delete process.env.BATON_EMBEDDING_API_KEY;
+      process.env.BATON_LLM_API_KEY = 'llm-key-456';
 
       await expect(APIEmbeddingProvider.create()).rejects.toThrow('No API key');
     });
 
-    it('should not fall back to memory LLM MEMORIX_API_KEY when embedding key is not set', async () => {
-      delete process.env.MEMORIX_EMBEDDING_API_KEY;
-      process.env.MEMORIX_API_KEY = 'legacy-unified-key';
+    it('should not fall back to memory LLM BATON_API_KEY when embedding key is not set', async () => {
+      delete process.env.BATON_EMBEDDING_API_KEY;
+      process.env.BATON_API_KEY = 'legacy-unified-key';
 
       await expect(APIEmbeddingProvider.create()).rejects.toThrow('No API key');
     });
 
     it('should not fall back to provider OPENAI_API_KEY when embedding key is not set', async () => {
-      delete process.env.MEMORIX_EMBEDDING_API_KEY;
-      delete process.env.MEMORIX_LLM_API_KEY;
+      delete process.env.BATON_EMBEDDING_API_KEY;
+      delete process.env.BATON_LLM_API_KEY;
       process.env.OPENAI_API_KEY = 'openai-key-789';
 
       await expect(APIEmbeddingProvider.create()).rejects.toThrow('No API key');
     });
 
     it('should throw if no API key available', async () => {
-      delete process.env.MEMORIX_EMBEDDING_API_KEY;
-      delete process.env.MEMORIX_LLM_API_KEY;
+      delete process.env.BATON_EMBEDDING_API_KEY;
+      delete process.env.BATON_LLM_API_KEY;
       delete process.env.OPENAI_API_KEY;
 
       await expect(APIEmbeddingProvider.create()).rejects.toThrow('No API key');
@@ -247,7 +247,7 @@ describe('API Embedding Provider', () => {
       const firstResult = await smallProvider.embed('shared-text');
       expect(firstResult.length).toBe(1536);
 
-      process.env.MEMORIX_EMBEDDING_MODEL = 'text-embedding-3-large';
+      process.env.BATON_EMBEDDING_MODEL = 'text-embedding-3-large';
       const largeProbe = makeVector(3072, 0.2);
       mockFetch.mockResolvedValueOnce(mockEmbeddingResponse([largeProbe], 'text-embedding-3-large'));
       const largeProvider = await APIEmbeddingProvider.create();
@@ -324,8 +324,8 @@ describe('API Embedding Provider', () => {
     });
 
     it('should respect DashScope batch size limits', async () => {
-      process.env.MEMORIX_EMBEDDING_BASE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
-      process.env.MEMORIX_EMBEDDING_MODEL = 'text-embedding-v4';
+      process.env.BATON_EMBEDDING_BASE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
+      process.env.BATON_EMBEDDING_MODEL = 'text-embedding-v4';
 
       const probeVec = makeVector(1024);
       mockFetch.mockResolvedValueOnce(mockEmbeddingResponse([probeVec], 'text-embedding-v4'));
@@ -543,8 +543,8 @@ describe('API Embedding Provider', () => {
 
   describe('Qwen model compatibility', () => {
     it('should work with Qwen text-embedding-v3 (1024d)', async () => {
-      process.env.MEMORIX_EMBEDDING_MODEL = 'text-embedding-v3';
-      process.env.MEMORIX_EMBEDDING_BASE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
+      process.env.BATON_EMBEDDING_MODEL = 'text-embedding-v3';
+      process.env.BATON_EMBEDDING_BASE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
 
       const vec1024 = makeVector(1024);
       mockFetch.mockResolvedValueOnce(mockEmbeddingResponse([vec1024], 'text-embedding-v3'));

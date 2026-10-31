@@ -2,7 +2,7 @@ node_modules
 dist
 .git
 .github
-.memorix
+.baton
 coverage
 *.log
 npm-debug.log*
@@ -18,7 +18,7 @@ serve-http-audit.err
 .cursor
 .kiro
 .windsurf/hooks.json
-.windsurf/rules/memorix.md
+.windsurf/rules/baton.md
 .github/copilot-instructions.md
 docs/dev-log
 test-smoke.txt

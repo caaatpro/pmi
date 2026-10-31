@@ -17,8 +17,8 @@ let sandbox = '';
 
 describe('concurrency stress exam', () => {
   beforeEach(() => {
-    sandbox = mkdtempSync(path.join(tmpdir(), 'memorix-stress-concurrency-'));
-    process.env.MEMORIX_EMBEDDING = 'off';
+    sandbox = mkdtempSync(path.join(tmpdir(), 'baton-stress-concurrency-'));
+    process.env.BATON_EMBEDDING = 'off';
   });
 
   afterEach(async () => {

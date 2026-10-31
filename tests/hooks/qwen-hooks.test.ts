@@ -14,7 +14,7 @@ describe('Qwen Code hooks', () => {
   });
 
   it('writes the official settings shape while preserving user settings', async () => {
-    projectRoot = await mkdtemp(path.join(tmpdir(), 'memorix-qwen-hooks-'));
+    projectRoot = await mkdtemp(path.join(tmpdir(), 'baton-qwen-hooks-'));
     const settingsPath = path.join(projectRoot, '.qwen', 'settings.json');
     await fsMkdir(path.dirname(settingsPath));
     await fsWrite(settingsPath, JSON.stringify({ model: 'custom-model', hooks: {
@@ -36,7 +36,7 @@ describe('Qwen Code hooks', () => {
 
   it('normalizes Qwen Claude-compatible event payloads', () => {
     const input = normalizeHookInput({
-      _memorix_agent: 'qwen',
+      _baton_agent: 'qwen',
       hook_event_name: 'PostToolUse',
       session_id: 'qwen-session',
       cwd: 'C:/workspace',
@@ -54,8 +54,8 @@ describe('Qwen Code hooks', () => {
     });
   });
 
-  it('removes only Memorix hooks during uninstall', async () => {
-    projectRoot = await mkdtemp(path.join(tmpdir(), 'memorix-qwen-uninstall-'));
+  it('removes only Baton hooks during uninstall', async () => {
+    projectRoot = await mkdtemp(path.join(tmpdir(), 'baton-qwen-uninstall-'));
     const settingsPath = path.join(projectRoot, '.qwen', 'settings.json');
     await fsMkdir(path.dirname(settingsPath));
     await fsWrite(settingsPath, JSON.stringify({ model: 'custom-model' }));

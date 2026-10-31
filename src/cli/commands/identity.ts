@@ -45,7 +45,7 @@ export default defineCommand({
             },
             identity
               ? `CLI identity: ${agent?.name ?? identity.agentId} (${identity.agentId})`
-              : identityWarning ?? 'CLI identity: project-scoped only. Use "memorix identity join" or "memorix identity use --agent-id <id>" for private/team operations.',
+              : identityWarning ?? 'CLI identity: project-scoped only. Use "baton identity join" or "baton identity use --agent-id <id>" for private/team operations.',
             asJson,
           );
           return;

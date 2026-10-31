@@ -15,7 +15,7 @@ function obs(overrides: Partial<Observation>): Observation {
     concepts: ['runtime'],
     tokens: 50,
     createdAt: new Date('2026-06-01T00:00:00.000Z').toISOString(),
-    projectId: 'AVIDS2/memorix',
+    projectId: 'AVIDS2/baton',
     status: 'active',
     source: 'manual',
     sourceDetail: 'explicit',
@@ -34,18 +34,18 @@ describe('buildGraphContextPacket', () => {
 
   it('turns flat memories into an entity-centered context packet', () => {
     const packet = buildGraphContextPacket([
-      obs({ id: 1, entityName: 'memcode-runtime', title: 'Use native memory status', narrative: 'memcode should expose native Memorix memory runtime status.', type: 'decision', valueCategory: 'core', relatedEntities: ['memory-injection'], relatedCommits: ['abc123456789'] }),
+      obs({ id: 1, entityName: 'memcode-runtime', title: 'Use native memory status', narrative: 'memcode should expose native Baton memory runtime status.', type: 'decision', valueCategory: 'core', relatedEntities: ['memory-injection'], relatedCommits: ['abc123456789'] }),
       obs({ id: 2, entityName: 'memory-injection', title: 'Inject only relevant memory', narrative: 'Memory injection should stay intent gated and avoid greetings.', type: 'gotcha', facts: ['Skip greetings'], concepts: ['injection', 'intent'] }),
       obs({ id: 3, entityName: 'ui-noise', title: 'Thinking', narrative: 'Thinking...', type: 'discovery', facts: [], filesModified: [], concepts: [], source: 'agent', sourceDetail: 'hook', valueCategory: 'ephemeral' }),
       obs({ id: 4, entityName: 'memcode-runtime', title: 'Different project copy', narrative: 'Should be ignored by project scoping.', projectId: 'other/project' }),
     ], {
-      projectId: 'AVIDS2/memorix',
+      projectId: 'AVIDS2/baton',
       query: 'memcode memory status injection',
       limit: 4,
       referenceTime: new Date('2026-06-02T00:00:00.000Z'),
     });
 
-    expect(packet.projectId).toBe('AVIDS2/memorix');
+    expect(packet.projectId).toBe('AVIDS2/baton');
     expect(packet.query).toBe('memcode memory status injection');
     expect(packet.memories.map((memory) => memory.id)).toEqual([1, 2]);
     expect(packet.entities.map((entity) => entity.name)).toEqual(['memcode-runtime', 'memory-injection']);
@@ -62,7 +62,7 @@ describe('buildGraphContextPacket', () => {
   it('falls back to core recent memories when the query has no lexical hit', () => {
     const packet = buildGraphContextPacket([
       obs({ id: 1, entityName: 'release-flow', title: 'Release is user controlled', narrative: 'The user performs publish and release operations manually.', type: 'decision', valueCategory: 'core' }),
-    ], { projectId: 'AVIDS2/memorix', query: 'unmatched phrase', limit: 3 });
+    ], { projectId: 'AVIDS2/baton', query: 'unmatched phrase', limit: 3 });
 
     expect(packet.memories.map((memory) => memory.id)).toEqual([1]);
     expect(packet.entities[0].name).toBe('release-flow');
@@ -88,7 +88,7 @@ describe('buildGraphContextPacket', () => {
         admissionState: 'candidate',
         valueCategory: 'contextual',
       }),
-    ], { projectId: 'AVIDS2/memorix', query: 'auth session', limit: 5 });
+    ], { projectId: 'AVIDS2/baton', query: 'auth session', limit: 5 });
 
     expect(packet.memories.map((memory) => memory.id)).toEqual([1]);
   });
@@ -98,7 +98,7 @@ describe('buildGraphContextPacket', () => {
       obs({ id: 1, entityName: 'memcode-memory', title: 'Graph context injection', narrative: 'Use GraphContext Packet for memory injection.', type: 'decision', valueCategory: 'core' }),
       obs({ id: 2, entityName: 'memcode-memory', title: 'Thinking', narrative: 'Thinking...', facts: [], filesModified: [], concepts: [], source: 'agent', sourceDetail: 'hook', valueCategory: 'ephemeral' }),
       obs({ id: 3, entityName: 'unrelated-shell-noise', title: 'Ran: Select-String memory-game noisy command', narrative: 'Shell command output.', facts: [], filesModified: [], concepts: [], source: 'agent', sourceDetail: 'hook', valueCategory: 'ephemeral' }),
-    ], { projectId: 'AVIDS2/memorix', query: 'memcode memory injection', limit: 3 });
+    ], { projectId: 'AVIDS2/baton', query: 'memcode memory injection', limit: 3 });
 
     expect(packet.risks.map((risk) => risk.id)).toContain(2);
     expect(packet.risks.map((risk) => risk.id)).not.toContain(3);
@@ -110,7 +110,7 @@ describe('buildGraphContextPacket', () => {
       obs({ id: 1, entityName: 'memcode-memory', title: 'Graph context injection', narrative: 'Use GraphContext Packet for memory injection.', type: 'decision', valueCategory: 'core' }),
       obs({ id: 2, entityName: 'diagnostics-noise', title: 'Thinking', narrative: 'Thinking about diagnostics.', facts: [], filesModified: [], concepts: [], relatedEntities: ['memcode-memory'], source: 'agent', sourceDetail: 'hook', valueCategory: 'ephemeral' }),
       obs({ id: 3, entityName: 'old-memory-game', title: 'Memory game test output', narrative: 'Old unrelated output that only shares the generic word memory.', facts: [], filesModified: [], concepts: [], source: 'agent', sourceDetail: 'hook', valueCategory: 'ephemeral' }),
-    ], { projectId: 'AVIDS2/memorix', query: 'memcode memory injection', limit: 3 });
+    ], { projectId: 'AVIDS2/baton', query: 'memcode memory injection', limit: 3 });
 
     expect(packet.risks.map((risk) => risk.id)).toContain(2);
     expect(packet.risks.map((risk) => risk.id)).not.toContain(3);
@@ -129,25 +129,25 @@ describe('buildGraphContextPacket', () => {
       }),
       obs({
         id: 2,
-        entityName: 'memorix-memory-graph-context',
-        title: 'Graph context promoted to core Memorix',
-        narrative: 'Implemented memorix_graph_context as a core Memorix memory graph capability for agents.',
+        entityName: 'baton-memory-graph-context',
+        title: 'Graph context promoted to core Baton',
+        narrative: 'Implemented baton_graph_context as a core Baton memory graph capability for agents.',
         type: 'what-changed',
         valueCategory: 'core',
-        concepts: ['memorix_graph_context', 'memory graph', 'memcode native memory'],
+        concepts: ['baton_graph_context', 'memory graph', 'memcode native memory'],
         createdAt: new Date('2026-06-17T22:00:00.000Z').toISOString(),
       }),
       obs({
         id: 3,
         entityName: 'memcode-runtime-status',
         title: 'Memcode exposes semantic memory readiness',
-        narrative: 'memcode reports Memorix embedding readiness and search mode in the footer/status surface.',
+        narrative: 'memcode reports Baton embedding readiness and search mode in the footer/status surface.',
         type: 'decision',
         valueCategory: 'core',
-        concepts: ['memcode', 'memorix', 'embedding'],
+        concepts: ['memcode', 'baton', 'embedding'],
         createdAt: new Date('2026-06-17T21:00:00.000Z').toISOString(),
       }),
-    ], { projectId: 'AVIDS2/memorix', query: '搜索一下记忆', limit: 2 });
+    ], { projectId: 'AVIDS2/baton', query: '搜索一下记忆', limit: 2 });
 
     expect(packet.memories.map((memory) => memory.id)).toEqual([2, 3]);
     expect(packet.entities.map((entity) => entity.name)).not.toContain('team-handoff');
@@ -159,7 +159,7 @@ describe('buildGraphContextPacket', () => {
       obs({ id: 2, entityName: 'npm-token', title: 'Token only reaches publish', narrative: 'The npm credential is used only after the gates pass.', type: 'why-it-exists', source: 'manual', sourceDetail: 'explicit', valueCategory: 'core' }),
       obs({ id: 3, entityName: 'unrelated', title: 'Unrelated result', narrative: 'This must not be graph-expanded.', type: 'discovery' }),
     ], {
-      projectId: 'AVIDS2/memorix', query: 'release verification', limit: 1, graphEvidenceLimit: 2, graphEvidenceTokenBudget: 48,
+      projectId: 'AVIDS2/baton', query: 'release verification', limit: 1, graphEvidenceLimit: 2, graphEvidenceTokenBudget: 48,
       referenceTime: new Date('2026-06-02T00:00:00.000Z'),
     });
 
@@ -179,7 +179,7 @@ describe('buildGraphContextPacket', () => {
       obs({ id: 1, entityName: 'release-flow', title: 'Release verification', narrative: 'Run focused checks before publishing.', type: 'decision', valueCategory: 'core', relatedEntities: ['old-token'] }),
       obs({ id: 2, entityName: 'old-token', title: 'Old credential route', narrative: 'Historical setup.', type: 'why-it-exists', status: 'resolved' }),
     ], {
-      projectId: 'AVIDS2/memorix', query: 'release verification', limit: 1, graphEvidenceTokenBudget: 0,
+      projectId: 'AVIDS2/baton', query: 'release verification', limit: 1, graphEvidenceTokenBudget: 0,
       referenceTime: new Date('2026-06-02T00:00:00.000Z'),
     });
 

@@ -1,6 +1,6 @@
 /**
- * `pmi daemon start|stop|status|run` — the automatic checkpointer
- * (src/session/daemon.ts). `pmi session start` and `pmi session resume`
+ * `baton daemon start|stop|status|run` — the automatic checkpointer
+ * (src/session/daemon.ts). `baton session start` and `baton session resume`
  * start it on their own in Connected mode.
  */
 import { defineCommand } from 'citty';
@@ -22,20 +22,20 @@ export default defineCommand({
           await daemon.runDaemon(dataDir);
           return;
         case 'start': {
-          const pid = daemon.ensureDaemon(dataDir, daemon.currentCliPath(), { ...process.env, PMI_DAEMON: 'on' });
-          emitResult({ running: Boolean(pid), pid: pid ?? null }, pid ? `PMI daemon running (pid ${pid})` : 'Could not start the daemon (run it with `pmi daemon run`).', asJson);
+          const pid = daemon.ensureDaemon(dataDir, daemon.currentCliPath(), { ...process.env, BATON_DAEMON: 'on' });
+          emitResult({ running: Boolean(pid), pid: pid ?? null }, pid ? `Baton daemon running (pid ${pid})` : 'Could not start the daemon (run it with `baton daemon run`).', asJson);
           return;
         }
         case 'stop': {
           const pid = daemon.runningDaemonPid(dataDir);
           if (!pid) {
-            emitResult({ running: false }, 'PMI daemon is not running.', asJson);
+            emitResult({ running: false }, 'Baton daemon is not running.', asJson);
             return;
           }
           process.kill(pid, 'SIGTERM');
           const deadline = Date.now() + 10_000;
           while (daemon.isProcessAlive(pid) && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 100));
-          emitResult({ running: daemon.isProcessAlive(pid), pid }, daemon.isProcessAlive(pid) ? `PMI daemon ${pid} did not stop in time` : `PMI daemon ${pid} stopped (unsaved changes were checkpointed)`, asJson);
+          emitResult({ running: daemon.isProcessAlive(pid), pid }, daemon.isProcessAlive(pid) ? `Baton daemon ${pid} did not stop in time` : `Baton daemon ${pid} stopped (unsaved changes were checkpointed)`, asJson);
           return;
         }
         case 'status': {
@@ -47,7 +47,7 @@ export default defineCommand({
           const outbox = store.countPendingOps();
           emitResult(
             { running: Boolean(pid), pid: pid ?? null, liveSessions: live.map((session) => session.id), outbox, settings: daemon.daemonSettings() },
-            [`PMI daemon: ${pid ? `running (pid ${pid})` : 'not running'}`, `Live sessions on this device: ${live.length}`, `Queued for the server: ${outbox}`].join('\n'),
+            [`Baton daemon: ${pid ? `running (pid ${pid})` : 'not running'}`, `Live sessions on this device: ${live.length}`, `Queued for the server: ${outbox}`].join('\n'),
             asJson,
           );
           return;

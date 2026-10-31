@@ -5,18 +5,18 @@ import { isIP } from 'node:net';
  *
  * Extensible embedding interface. **Disabled by default** to minimize resource usage.
  *
- * Environment variable MEMORIX_EMBEDDING controls which provider to use:
- *   - MEMORIX_EMBEDDING=off (default) → no embedding, BM25 fulltext search only (~50MB RAM)
- *   - MEMORIX_EMBEDDING=fastembed     → local ONNX inference (384-dim bge-small, ~300MB RAM)
- *   - MEMORIX_EMBEDDING=transformers  → pure JS WASM inference (384-dim MiniLM, ~500MB RAM)
- *   - MEMORIX_EMBEDDING=api           → remote API via OpenAI-compatible /v1/embeddings (zero local RAM)
- *   - MEMORIX_EMBEDDING=auto          → try configured API → fastembed → transformers → off
+ * Environment variable BATON_EMBEDDING controls which provider to use:
+ *   - BATON_EMBEDDING=off (default) → no embedding, BM25 fulltext search only (~50MB RAM)
+ *   - BATON_EMBEDDING=fastembed     → local ONNX inference (384-dim bge-small, ~300MB RAM)
+ *   - BATON_EMBEDDING=transformers  → pure JS WASM inference (384-dim MiniLM, ~500MB RAM)
+ *   - BATON_EMBEDDING=api           → remote API via OpenAI-compatible /v1/embeddings (zero local RAM)
+ *   - BATON_EMBEDDING=auto          → try configured API → fastembed → transformers → off
  *
- * API mode env vars (MEMORIX_EMBEDDING=api):
- *   - MEMORIX_EMBEDDING_API_KEY       → embedding API key
- *   - MEMORIX_EMBEDDING_BASE_URL      → base URL (default: https://api.openai.com/v1)
- *   - MEMORIX_EMBEDDING_MODEL         → model (default: text-embedding-3-small)
- *   - MEMORIX_EMBEDDING_DIMENSIONS    → optional dimension override
+ * API mode env vars (BATON_EMBEDDING=api):
+ *   - BATON_EMBEDDING_API_KEY       → embedding API key
+ *   - BATON_EMBEDDING_BASE_URL      → base URL (default: https://api.openai.com/v1)
+ *   - BATON_EMBEDDING_MODEL         → model (default: text-embedding-3-small)
+ *   - BATON_EMBEDDING_DIMENSIONS    → optional dimension override
  *
  * Resource impact of local embedding:
  *   - First load: 90%+ CPU for 5-30 seconds (model initialization)
@@ -216,7 +216,7 @@ function warnOnce(message: string): void {
  * Default is 'off' to minimize resource usage.
  */
 function embeddingModeToken(): string {
-  return process.env.MEMORIX_EMBEDDING?.toLowerCase()?.trim() ?? '';
+  return process.env.BATON_EMBEDDING?.toLowerCase()?.trim() ?? '';
 }
 
 function getEmbeddingMode(): EmbeddingMode {
@@ -271,7 +271,7 @@ function hasAPIEmbeddingConfig(): boolean {
       getEmbeddingModel?.(),
     );
   } catch {
-    return Boolean(process.env.MEMORIX_EMBEDDING_API_KEY);
+    return Boolean(process.env.BATON_EMBEDDING_API_KEY);
   }
 }
 
@@ -324,7 +324,7 @@ function markTemporaryFailure(reason: unknown): void {
     occurredAt: lastFailureTimestamp,
   };
   const message = reason instanceof Error ? reason.message : String(reason);
-  warnOnce(`[memorix] Embedding provider unavailable at runtime: ${message}`);
+  warnOnce(`[baton] Embedding provider unavailable at runtime: ${message}`);
 }
 
 function markProviderReady(candidate: EmbeddingProvider): EmbeddingProvider {
@@ -339,8 +339,8 @@ async function createFastEmbedProvider(): Promise<EmbeddingProvider | null> {
     const { FastEmbedProvider } = await import('./fastembed-provider.js');
     return await FastEmbedProvider.create();
   } catch (e) {
-    warnOnce(`[memorix] Failed to load fastembed: ${e instanceof Error ? e.message : e}`);
-    warnOnce('[memorix] Install with: npm install fastembed');
+    warnOnce(`[baton] Failed to load fastembed: ${e instanceof Error ? e.message : e}`);
+    warnOnce('[baton] Install with: npm install fastembed');
     return null;
   }
 }
@@ -350,8 +350,8 @@ async function createTransformersProvider(): Promise<EmbeddingProvider | null> {
     const { TransformersProvider } = await import('./transformers-provider.js');
     return await TransformersProvider.create();
   } catch (e) {
-    warnOnce(`[memorix] Failed to load transformers: ${e instanceof Error ? e.message : e}`);
-    warnOnce('[memorix] Install with: npm install @huggingface/transformers');
+    warnOnce(`[baton] Failed to load transformers: ${e instanceof Error ? e.message : e}`);
+    warnOnce('[baton] Install with: npm install @huggingface/transformers');
     return null;
   }
 }
@@ -361,7 +361,7 @@ async function createAPIProvider(options?: GetEmbeddingProviderOptions): Promise
     const { APIEmbeddingProvider } = await import('./api-provider.js');
     return await APIEmbeddingProvider.create(options ?? {});
   } catch (e) {
-    warnOnce(`[memorix] Failed to init API embedding: ${e instanceof Error ? e.message : e}`);
+    warnOnce(`[baton] Failed to init API embedding: ${e instanceof Error ? e.message : e}`);
     return null;
   }
 }
@@ -387,11 +387,11 @@ function wrapProvider(candidate: EmbeddingProvider): EmbeddingProvider {
         return await candidate.embed(text, options);
       } catch (error) {
         if (kind === 'api' && getEmbeddingMode() === 'auto' && isTemporaryEmbeddingFailure(error)) {
-          warnOnce('[memorix] API embedding temporarily unavailable — switching to local fallback provider');
+          warnOnce('[baton] API embedding temporarily unavailable — switching to local fallback provider');
           const fallback = await createLocalFallbackProvider();
           if (fallback) {
             provider = wrapProvider(fallback);
-            warnOnce(`[memorix] Embedding fallback activated: ${provider.name} (${provider.dimensions}d)`);
+            warnOnce(`[baton] Embedding fallback activated: ${provider.name} (${provider.dimensions}d)`);
             return provider.embed(text, options);
           }
         }
@@ -407,11 +407,11 @@ function wrapProvider(candidate: EmbeddingProvider): EmbeddingProvider {
         return await candidate.embedBatch(texts, options);
       } catch (error) {
         if (kind === 'api' && getEmbeddingMode() === 'auto' && isTemporaryEmbeddingFailure(error)) {
-          warnOnce('[memorix] API embedding temporarily unavailable — switching to local fallback provider');
+          warnOnce('[baton] API embedding temporarily unavailable — switching to local fallback provider');
           const fallback = await createLocalFallbackProvider();
           if (fallback) {
             provider = wrapProvider(fallback);
-            warnOnce(`[memorix] Embedding fallback activated: ${provider.name} (${provider.dimensions}d)`);
+            warnOnce(`[baton] Embedding fallback activated: ${provider.name} (${provider.dimensions}d)`);
             return provider.embedBatch(texts, options);
           }
         }
@@ -445,7 +445,7 @@ let lastFailureTimestamp = 0;
  *   - mode === 'auto' and NO local provider installed → permanently null (no retry)
  *   - provider init failed due to network/API/temp error → retry after cooldown
  *
- * Controlled by MEMORIX_EMBEDDING environment variable (default: off).
+ * Controlled by BATON_EMBEDDING environment variable (default: off).
  */
 export async function getEmbeddingProvider(
   options: GetEmbeddingProviderOptions = {},
@@ -484,7 +484,7 @@ export async function getEmbeddingProvider(
 
     // Explicit OFF — skip all embedding initialization (permanent, no retry)
     if (mode === 'off') {
-      warnOnce('[memorix] Embedding disabled (MEMORIX_EMBEDDING=off) — using BM25 fulltext search');
+      warnOnce('[baton] Embedding disabled (BATON_EMBEDDING=off) — using BM25 fulltext search');
       return null;
     }
 
@@ -493,7 +493,7 @@ export async function getEmbeddingProvider(
       const initialized = await createFastEmbedProvider();
       if (!initialized) return null;
       provider = markProviderReady(initialized);
-      warnOnce(`[memorix] Embedding provider: ${provider.name} (${provider.dimensions}d)`);
+      warnOnce(`[baton] Embedding provider: ${provider.name} (${provider.dimensions}d)`);
       return provider;
     }
 
@@ -502,7 +502,7 @@ export async function getEmbeddingProvider(
       const initialized = await createTransformersProvider();
       if (!initialized) return null;
       provider = markProviderReady(initialized);
-      warnOnce(`[memorix] Embedding provider: ${provider.name} (${provider.dimensions}d)`);
+      warnOnce(`[baton] Embedding provider: ${provider.name} (${provider.dimensions}d)`);
       return provider;
     }
 
@@ -511,7 +511,7 @@ export async function getEmbeddingProvider(
       const initialized = await createAPIProvider(options);
       if (!initialized) return null;
       provider = markProviderReady(initialized);
-      warnOnce(`[memorix] Embedding provider: ${provider.name} (${provider.dimensions}d)`);
+      warnOnce(`[baton] Embedding provider: ${provider.name} (${provider.dimensions}d)`);
       return provider;
     }
 
@@ -520,7 +520,7 @@ export async function getEmbeddingProvider(
       const initialized = await createAPIProvider(options);
       if (initialized) {
         provider = markProviderReady(initialized);
-        warnOnce(`[memorix] Embedding provider: ${provider.name} (${provider.dimensions}d)`);
+        warnOnce(`[baton] Embedding provider: ${provider.name} (${provider.dimensions}d)`);
         return provider;
       }
     }
@@ -528,11 +528,11 @@ export async function getEmbeddingProvider(
     const localFallback = await createLocalFallbackProvider();
     if (localFallback) {
       provider = markProviderReady(localFallback);
-      warnOnce(`[memorix] Embedding provider: ${provider.name} (${provider.dimensions}d)`);
+      warnOnce(`[baton] Embedding provider: ${provider.name} (${provider.dimensions}d)`);
       return provider;
     }
 
-    warnOnce('[memorix] No embedding provider available — using BM25 fulltext search');
+    warnOnce('[baton] No embedding provider available — using BM25 fulltext search');
     return null;
   })();
 
@@ -545,7 +545,7 @@ export async function getEmbeddingProvider(
     if (mode === 'api' || mode === 'fastembed' || mode === 'transformers') {
       lastInitWasTemporaryFailure = true;
       lastFailureTimestamp = Date.now();
-      warnOnce(`[memorix] Embedding provider temporarily unavailable — will retry after ${RETRY_COOLDOWN_MS / 1000}s`);
+      warnOnce(`[baton] Embedding provider temporarily unavailable — will retry after ${RETRY_COOLDOWN_MS / 1000}s`);
     }
     // 'auto' with no providers → permanent null, no retry needed
   }

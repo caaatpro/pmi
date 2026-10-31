@@ -26,7 +26,7 @@ describe('GitHub Copilot hooks paths', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-copilot-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-copilot-'));
     await fs.mkdir(path.join(tmpDir, '.git'), { recursive: true });
   });
 
@@ -36,9 +36,9 @@ describe('GitHub Copilot hooks paths', () => {
 
   // ─── Project path ───
 
-  it('project path should be .github/hooks/memorix.json', () => {
+  it('project path should be .github/hooks/baton.json', () => {
     const p = getProjectConfigPath('copilot', tmpDir);
-    expect(p).toBe(path.join(tmpDir, '.github', 'hooks', 'memorix.json'));
+    expect(p).toBe(path.join(tmpDir, '.github', 'hooks', 'baton.json'));
   });
 
   // ─── Global path ───
@@ -58,7 +58,7 @@ describe('GitHub Copilot hooks paths', () => {
   it('should install hooks at project level', async () => {
     const result = await installHooks('copilot', tmpDir, false);
     expect(result.agent).toBe('copilot');
-    expect(result.configPath).toBe(path.join(tmpDir, '.github', 'hooks', 'memorix.json'));
+    expect(result.configPath).toBe(path.join(tmpDir, '.github', 'hooks', 'baton.json'));
 
     // File should exist and be valid JSON
     const content = await fs.readFile(result.configPath, 'utf-8');
@@ -87,7 +87,7 @@ describe('GitHub Copilot hooks paths', () => {
     // No file should be created at the wrong path
     const wrongPath = path.join(os.homedir(), '.claude', 'settings.json');
     // We can't check the actual file content (it may exist for Claude),
-    // but we verify that no memorix hooks were injected there.
+    // but we verify that no baton hooks were injected there.
     // The key point: installHooks returns a rejection, not a success.
   });
 
@@ -102,7 +102,7 @@ describe('GitHub Copilot hooks paths', () => {
 
   it('should uninstall project-level hooks', async () => {
     await installHooks('copilot', tmpDir, false);
-    const pluginPath = path.join(tmpDir, '.github', 'hooks', 'memorix.json');
+    const pluginPath = path.join(tmpDir, '.github', 'hooks', 'baton.json');
     await fs.access(pluginPath); // exists
 
     const result = await uninstallHooks('copilot', tmpDir, false);
@@ -142,7 +142,7 @@ describe('GitHub Copilot hooks paths', () => {
 
   it('should generate version:1 config with correct hook events', async () => {
     await installHooks('copilot', tmpDir, false);
-    const pluginPath = path.join(tmpDir, '.github', 'hooks', 'memorix.json');
+    const pluginPath = path.join(tmpDir, '.github', 'hooks', 'baton.json');
     const content = await fs.readFile(pluginPath, 'utf-8');
     const config = JSON.parse(content);
 
@@ -151,13 +151,13 @@ describe('GitHub Copilot hooks paths', () => {
     expect(config.hooks.sessionEnd).toBeDefined();
     expect(config.hooks.userPromptSubmitted).toBeDefined();
     expect(config.hooks.postToolUse).toBeDefined();
-    // preToolUse should be omitted (memorix is observer, not gatekeeper)
+    // preToolUse should be omitted (baton is observer, not gatekeeper)
     expect(config.hooks.preToolUse).toBeUndefined();
   });
 
   it('should include bash key in hook entries (powershell is conditional on pwsh availability)', async () => {
     await installHooks('copilot', tmpDir, false);
-    const pluginPath = path.join(tmpDir, '.github', 'hooks', 'memorix.json');
+    const pluginPath = path.join(tmpDir, '.github', 'hooks', 'baton.json');
     const content = await fs.readFile(pluginPath, 'utf-8');
     const config = JSON.parse(content);
 

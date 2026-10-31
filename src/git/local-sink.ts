@@ -1,6 +1,6 @@
 /**
  * Local mode of git intelligence: the cursor lives in SQLite
- * (`pmi_git_cursors`), proposals become observations (source `git`, topic
+ * (`baton_git_cursors`), proposals become observations (source `git`, topic
  * keys per commit, so re-analysis updates instead of duplicating), and
  * knowledge the commits may have outdated gets a review mark. Connected
  * mode does the same on the server (src/server/central/git-repo.ts).
@@ -52,17 +52,17 @@ function cursorKey(branch: string | null): string {
 }
 
 export function readLocalCursor(dataDir: string, root: string, branch: string | null): string | null {
-  const row = getDatabase(dataDir).prepare('SELECT cursor FROM pmi_git_cursors WHERE root_commit = ? AND branch = ?').get(root, cursorKey(branch)) as { cursor: string } | undefined;
+  const row = getDatabase(dataDir).prepare('SELECT cursor FROM baton_git_cursors WHERE root_commit = ? AND branch = ?').get(root, cursorKey(branch)) as { cursor: string } | undefined;
   return row?.cursor ?? null;
 }
 
 function writeLocalCursor(dataDir: string, root: string, branch: string | null, projectId: string, cursor: string, reconciled = false): void {
   const now = new Date().toISOString();
   getDatabase(dataDir).prepare(`
-    INSERT INTO pmi_git_cursors (root_commit, branch, project_id, cursor, last_full_reconcile_at, updated_at)
+    INSERT INTO baton_git_cursors (root_commit, branch, project_id, cursor, last_full_reconcile_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?)
     ON CONFLICT(root_commit, branch) DO UPDATE SET cursor = excluded.cursor, updated_at = excluded.updated_at,
-      last_full_reconcile_at = COALESCE(excluded.last_full_reconcile_at, pmi_git_cursors.last_full_reconcile_at)
+      last_full_reconcile_at = COALESCE(excluded.last_full_reconcile_at, baton_git_cursors.last_full_reconcile_at)
   `).run(root, cursorKey(branch), projectId, cursor, reconciled ? now : null, now);
 }
 
@@ -141,10 +141,10 @@ export async function analyzeLocal(input: {
   const git = input.git ?? defaultGitRunner(input.root);
   const branch = currentBranch(git);
   // The root commit is computed once (it walks the history) and remembered with the cursor.
-  const known = getDatabase(input.dataDir).prepare('SELECT root_commit FROM pmi_git_cursors WHERE project_id = ? AND branch = ?')
+  const known = getDatabase(input.dataDir).prepare('SELECT root_commit FROM baton_git_cursors WHERE project_id = ? AND branch = ?')
     .get(input.projectId, cursorKey(branch)) as { root_commit: string } | undefined;
   const repo = known?.root_commit ?? rootCommit(git);
-  if (!repo) throw new Error('[pmi] the repository has no commits to analyze');
+  if (!repo) throw new Error('[baton] the repository has no commits to analyze');
   const from = readLocalCursor(input.dataDir, repo, branch);
   const result = analyzeRange(git, from, { initialCommits: input.initialCommits, domainPaths: input.domainPaths });
   let written = 0;

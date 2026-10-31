@@ -2,12 +2,12 @@
  * S3-compatible object-store sync.
  *
  * Configuration is read from:
- * - MEMORIX_SYNC_S3_BUCKET
- * - MEMORIX_SYNC_S3_ENDPOINT
- * - MEMORIX_SYNC_S3_ACCESS_KEY_ID
- * - MEMORIX_SYNC_S3_SECRET_ACCESS_KEY
- * - MEMORIX_SYNC_S3_REGION
- * - MEMORIX_SYNC_S3_PREFIX (optional; key namespace so a shared bucket can
+ * - BATON_SYNC_S3_BUCKET
+ * - BATON_SYNC_S3_ENDPOINT
+ * - BATON_SYNC_S3_ACCESS_KEY_ID
+ * - BATON_SYNC_S3_SECRET_ACCESS_KEY
+ * - BATON_SYNC_S3_REGION
+ * - BATON_SYNC_S3_PREFIX (optional; key namespace so a shared bucket can
  *   host other data or several independent stores)
  */
 
@@ -129,11 +129,11 @@ interface S3Module {
 export async function createS3ObjectStore(
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<ObjectStoreClient> {
-  const bucket = requiredEnv(env, 'MEMORIX_SYNC_S3_BUCKET');
-  const endpoint = requiredEnv(env, 'MEMORIX_SYNC_S3_ENDPOINT');
-  const accessKeyId = requiredEnv(env, 'MEMORIX_SYNC_S3_ACCESS_KEY_ID');
-  const secretAccessKey = requiredEnv(env, 'MEMORIX_SYNC_S3_SECRET_ACCESS_KEY');
-  const region = requiredEnv(env, 'MEMORIX_SYNC_S3_REGION');
+  const bucket = requiredEnv(env, 'BATON_SYNC_S3_BUCKET');
+  const endpoint = requiredEnv(env, 'BATON_SYNC_S3_ENDPOINT');
+  const accessKeyId = requiredEnv(env, 'BATON_SYNC_S3_ACCESS_KEY_ID');
+  const secretAccessKey = requiredEnv(env, 'BATON_SYNC_S3_SECRET_ACCESS_KEY');
+  const region = requiredEnv(env, 'BATON_SYNC_S3_REGION');
 
   const moduleName = '@aws-sdk/client-s3';
   // The SDK is optional by design, so a static import would make every install require it.
@@ -142,7 +142,7 @@ export async function createS3ObjectStore(
     sdk = await import(moduleName) as unknown as S3Module;
   } catch (cause) {
     throw new Error(
-      'S3 sync requires @aws-sdk/client-s3. Install it in the application using Memorix.',
+      'S3 sync requires @aws-sdk/client-s3. Install it in the application using Baton.',
       { cause },
     );
   }
@@ -166,7 +166,7 @@ export async function createS3ObjectStore(
         if (!isPreconditionFailure(error)) throw error;
         const existing = await client.get(key);
         if (existing !== body) {
-          throw new Error('[memorix] object-store relay key already contains a different payload');
+          throw new Error('[baton] object-store relay key already contains a different payload');
         }
       }
     },
@@ -203,7 +203,7 @@ export async function createS3ObjectStore(
         if (object.Key !== undefined) keys.push(object.Key);
       }
       if (response.IsTruncated && !response.NextContinuationToken) {
-        throw new Error('[memorix] S3 sync list was truncated without a continuation token');
+        throw new Error('[baton] S3 sync list was truncated without a continuation token');
       }
       return { keys, nextCursor: response.IsTruncated ? response.NextContinuationToken : undefined };
     },
@@ -243,16 +243,16 @@ function isNotFound(error: unknown): boolean {
 
 function assertBatchNamespace(batch: ChangeBatch, namespace: string): void {
   if (batch.namespace !== namespace) {
-    throw new Error('[memorix] sync batch namespace does not match the object-store relay');
+    throw new Error('[baton] sync batch namespace does not match the object-store relay');
   }
   if (!isSafeSyncDeviceId(batch.deviceId)) {
-    throw new Error('[memorix] sync batch has an invalid device id');
+    throw new Error('[baton] sync batch has an invalid device id');
   }
 }
 
 function assertLimit(limit: number): void {
   if (!Number.isSafeInteger(limit) || limit < 1) {
-    throw new Error('[memorix] sync pull limit must be a positive integer');
+    throw new Error('[baton] sync pull limit must be a positive integer');
   }
 }
 
@@ -261,7 +261,7 @@ function normalizePrefix(value: string): string {
   if (!trimmed) return '';
   const segments = trimmed.split('/');
   if (segments.some((segment) => segment.length === 0 || segment === '.' || segment === '..')) {
-    throw new Error('[memorix] MEMORIX_SYNC_S3_PREFIX must be a relative key prefix');
+    throw new Error('[baton] BATON_SYNC_S3_PREFIX must be a relative key prefix');
   }
   return `${trimmed}/`;
 }

@@ -1,5 +1,5 @@
 /**
- * CLI Command: memorix integrate
+ * CLI Command: baton integrate
  *
  * Explicit, opt-in IDE integration generation.
  * This is the product-facing wrapper around hooks/rules installers.
@@ -47,11 +47,11 @@ export default defineCommand({
       return;
     }
 
-    p.intro('Memorix Integrations');
+    p.intro('Baton Integrations');
     p.log.info(`Install only what you need for the ${scopeLabel}.`);
 
     const selected = await p.multiselect({
-      message: 'Which IDE integrations should Memorix generate?',
+      message: 'Which IDE integrations should Baton generate?',
       options: detectedAgents.map((agent) => ({
         value: agent,
         label: getAgentLabel(agent),
@@ -137,7 +137,7 @@ function getAgentHint(agent: string): string {
     trae: 'rules',
     dsh: 'MCP patch + AGENTS.md + skills',
     workbuddy: 'MCP + AGENTS.md',
-    grok: 'hooks file (~/.grok/hooks/memorix.json)',
+    grok: 'hooks file (~/.grok/hooks/baton.json)',
   };
   return hints[agent] || 'integration files';
 }

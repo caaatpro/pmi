@@ -5,7 +5,7 @@
  *
  * Measures the same seedAndIndex path as scripts/benchmark-retrieval.mjs,
  * plus steady-state write latency, search, peak RSS, and cache integrity.
- * After the SDK seed closes, this also writes via HTTP MCP and `memorix hook`
+ * After the SDK seed closes, this also writes via HTTP MCP and `baton hook`
  * in child processes, then reopens the SDK in this same Node process.
  *
  *   node scripts/large-store-gate.mjs
@@ -208,7 +208,7 @@ async function exerciseHttpMcp(port, projectRoot, lookupToken) {
     jsonrpc: '2.0',
     method: 'tools/call',
     params: {
-      name: 'memorix_session_start',
+      name: 'baton_session_start',
       arguments: { agent: 'large-store-gate', projectRoot },
     },
     id: 2,
@@ -219,7 +219,7 @@ async function exerciseHttpMcp(port, projectRoot, lookupToken) {
     jsonrpc: '2.0',
     method: 'tools/call',
     params: {
-      name: 'memorix_project_context',
+      name: 'baton_project_context',
       arguments: {
         task: 'Verify large-store persistence, retrieval, and release readiness.',
         format: 'receipt',
@@ -237,7 +237,7 @@ async function exerciseHttpMcp(port, projectRoot, lookupToken) {
     jsonrpc: '2.0',
     method: 'tools/call',
     params: {
-      name: 'memorix_search',
+      name: 'baton_search',
       arguments: {
         query: lookupToken,
         quality: 'fast',
@@ -256,7 +256,7 @@ async function exerciseHttpMcp(port, projectRoot, lookupToken) {
     jsonrpc: '2.0',
     method: 'tools/call',
     params: {
-      name: 'memorix_store',
+      name: 'baton_store',
       arguments: {
         entityName: 'large-store-mcp',
         type: 'discovery',
@@ -308,15 +308,15 @@ function storeViaHook(projectRoot, dataDir, childHome) {
     timeout: 20_000,
     env: {
       ...process.env,
-      MEMORIX_DATA_DIR: dataDir,
-      MEMORIX_EMBEDDING: 'off',
+      BATON_DATA_DIR: dataDir,
+      BATON_EMBEDDING: 'off',
       HOME: childHome,
       USERPROFILE: childHome,
       HOMEPATH: childHome,
     },
   });
   if (result.status !== 0) {
-    throw new Error(`memorix hook failed: ${result.stderr || result.stdout || `exit ${result.status}`}`);
+    throw new Error(`baton hook failed: ${result.stderr || result.stdout || `exit ${result.status}`}`);
   }
   return Number((performance.now() - startedAt).toFixed(3));
 }
@@ -332,7 +332,7 @@ function listDiskObservations(dataDir) {
     }
     return new (require('node:sqlite').DatabaseSync)(dbPath);
   }
-  const db = openDatabase(path.join(dataDir, 'memorix.db'));
+  const db = openDatabase(path.join(dataDir, 'baton.db'));
   try {
     return db.prepare('SELECT title, sourceDetail, visibility FROM observations').all();
   } finally {
@@ -354,13 +354,13 @@ async function writeAcrossTransports(projectRoot, dataDir, sandbox, lookupToken)
     cwd: projectRoot,
     env: {
       ...process.env,
-      MEMORIX_DATA_DIR: dataDir,
-      MEMORIX_EMBEDDING: 'off',
+      BATON_DATA_DIR: dataDir,
+      BATON_EMBEDDING: 'off',
       HOME: childHome,
       USERPROFILE: childHome,
       HOMEPATH: childHome,
       // Skip the CLI heap respawn so this child is the listener we can stop.
-      __MEMORIX_HEAP: '1',
+      __BATON_HEAP: '1',
     },
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
@@ -389,12 +389,12 @@ async function writeAcrossTransports(projectRoot, dataDir, sandbox, lookupToken)
 
 async function main() {
   const records = readPositiveOption('--records', 1_000, 100_000);
-  const sandbox = await mkdtemp(path.join(tmpdir(), 'memorix-large-store-gate-'));
+  const sandbox = await mkdtemp(path.join(tmpdir(), 'baton-large-store-gate-'));
   const projectRoot = path.join(sandbox, 'project');
   const dataDir = path.join(sandbox, 'data');
 
-  process.env.MEMORIX_DATA_DIR = dataDir;
-  process.env.MEMORIX_EMBEDDING = 'off';
+  process.env.BATON_DATA_DIR = dataDir;
+  process.env.BATON_EMBEDDING = 'off';
 
   let client;
   try {

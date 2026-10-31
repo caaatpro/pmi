@@ -1,8 +1,8 @@
 /**
- * CLI Command: memorix ingest commit
+ * CLI Command: baton ingest commit
  *
  * Extract engineering knowledge from a git commit and store as memory.
- * This is the Git→Memory direction — unique to Memorix.
+ * This is the Git→Memory direction — unique to Baton.
  */
 
 import { defineCommand } from 'citty';
@@ -95,7 +95,7 @@ export default defineCommand({
         maxDiffSize: gitCfg.maxDiffSize,
       });
       if (policy.skip && auto) {
-        console.error(`[memorix] Skipped ${commit.shortHash}: ${policy.reason}`);
+        console.error(`[baton] Skipped ${commit.shortHash}: ${policy.reason}`);
         process.exit(0);
         return;
       }
@@ -110,7 +110,7 @@ export default defineCommand({
       });
       if (filterResult.skip && !force) {
         if (auto) {
-          console.error(`[memorix] Skipped ${commit.shortHash}: ${filterResult.reason}`);
+          console.error(`[baton] Skipped ${commit.shortHash}: ${filterResult.reason}`);
           process.exit(0);
         } else {
           p.log.warn(`Commit ${commit.shortHash} filtered as noise: ${filterResult.reason}`);
@@ -121,7 +121,7 @@ export default defineCommand({
 
       const result = ingestCommit(commit);
 
-      // Store via memorix_store logic
+      // Store via baton_store logic
       const { initObservations, storeObservation } = await import('../../memory/observations.js');
       const { getProjectDataDir } = await import('../../store/persistence.js');
       const { detectProject } = await import('../../project/detector.js');
@@ -189,14 +189,14 @@ export default defineCommand({
       });
 
       if (auto) {
-        console.error(`[memorix] Git memory: ${commit.shortHash} — ${commit.subject}`);
+        console.error(`[baton] Git memory: ${commit.shortHash} — ${commit.subject}`);
         process.exit(0);
       } else {
         p.outro(`Memory stored from commit ${commit.shortHash}.`);
       }
     } catch (err) {
       if (auto) {
-        console.error(`[memorix] Git hook ingest failed: ${err}`);
+        console.error(`[baton] Git hook ingest failed: ${err}`);
         process.exit(1);
       } else {
         console.error(`Failed to ingest commit: ${err}`);

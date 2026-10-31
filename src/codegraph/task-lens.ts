@@ -156,7 +156,7 @@ const KEYWORDS: Record<Exclude<TaskLensId, 'general'>, string[]> = {
 //   AMBIGUOUS  — "继续" / "continue" / "恢复" are everyday verbs. Bare, they
 //                are filler meaning "go on" (and "恢复" usually means "restore
 //                the service" in ops work). Carrying a real task they are a
-//                genuine resume request — `memorix resume "继续处理发布阻塞问题"`
+//                genuine resume request — `baton resume "继续处理发布阻塞问题"`
 //                is documented usage — so they require substantive content.
 const EXPLICIT_HANDOFF_KEYWORDS = [
   'handoff',

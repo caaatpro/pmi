@@ -222,7 +222,7 @@ function scoreForPacket(obs: Observation, queryTokens: string[], referenceTime: 
   if (queryTokens.length > 0 && matchingTokens.length === 0) {
     score -= 8;
   }
-  if (broadMemoryQuery && /memorix|memcode|memory-(?:graph|injection|runtime|quality|formation)|graph-context/.test(text)) {
+  if (broadMemoryQuery && /baton|memcode|memory-(?:graph|injection|runtime|quality|formation)|graph-context/.test(text)) {
     score += 8;
   }
   if (/\bmemory[- ]?game\b|e2e-test\/memory-game|team-handoff/.test(text)) {

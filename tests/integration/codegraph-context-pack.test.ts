@@ -18,7 +18,7 @@ vi.mock('../../src/embedding/provider.js', () => ({
 let dir: string | null = null;
 
 function tempDir(): string {
-  dir = mkdtempSync(join(tmpdir(), 'memorix-codegraph-integration-'));
+  dir = mkdtempSync(join(tmpdir(), 'baton-codegraph-integration-'));
   return dir;
 }
 

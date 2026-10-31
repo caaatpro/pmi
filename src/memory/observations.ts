@@ -17,7 +17,7 @@ import type {
   ObservationVisibility,
   ObservationType,
   ObservationStatus,
-  MemorixDocument,
+  BatonDocument,
   ProgressInfo,
 } from '../types.js';
 import { TOPIC_KEY_FAMILIES } from '../types.js';
@@ -80,7 +80,7 @@ let loadedObservationStore: ObservationStore | null = null;
 const DEFAULT_ORAMA_HYDRATION_THRESHOLD = 10_000;
 
 function resolveOramaHydrationThreshold(): number {
-  const configured = Number.parseInt(process.env.MEMORIX_ORAMA_HYDRATION_THRESHOLD ?? '', 10);
+  const configured = Number.parseInt(process.env.BATON_ORAMA_HYDRATION_THRESHOLD ?? '', 10);
   return Number.isSafeInteger(configured) && configured > 0
     ? configured
     : DEFAULT_ORAMA_HYDRATION_THRESHOLD;
@@ -242,7 +242,7 @@ async function persistEvidenceCard(observation: Observation): Promise<void> {
     // Evidence is a derived control-plane projection. A failed projection must
     // never roll back the canonical observation, but it must be visible for a
     // later repair/sync pass.
-    console.error(`[memorix] Evidence card projection failed for obs-${observation.id}: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(`[baton] Evidence card projection failed for obs-${observation.id}: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -357,13 +357,13 @@ function scheduleObservationEmbedding(input: {
   observationId: number;
   projectId: string;
   searchableText: string;
-  doc: MemorixDocument;
+  doc: BatonDocument;
 }): void {
   const { observationId, projectId, searchableText, doc } = input;
   vectorMissingIds.add(observationId);
 
   // Ordinary store must not pay embedding-provider or cache I/O when vectors
-  // are disabled. Check before generateEmbedding() so MEMORIX_EMBEDDING=off
+  // are disabled. Check before generateEmbedding() so BATON_EMBEDDING=off
   // stays on the lexical write path.
   if (isEmbeddingExplicitlyDisabled()) {
     vectorMissingIds.delete(observationId);
@@ -389,7 +389,7 @@ function scheduleObservationEmbedding(input: {
       if (!isVectorCompatibleWithCurrentIndex(embedding)) {
         const vectorDimensions = getVectorDimensions();
         console.error(
-          `[memorix] Embedding dimension mismatch for obs-${observationId}: provider returned ${embedding.length}d, index expects ${vectorDimensions ?? 'unknown'}d (kept in backfill queue)`,
+          `[baton] Embedding dimension mismatch for obs-${observationId}: provider returned ${embedding.length}d, index expects ${vectorDimensions ?? 'unknown'}d (kept in backfill queue)`,
         );
         queueVectorBackfill(projectId);
         return;
@@ -408,7 +408,7 @@ function scheduleObservationEmbedding(input: {
         }
         vectorMissingIds.delete(observationId);
       } catch {
-        console.error(`[memorix] Embedding index update failed for obs-${observationId} (kept in backfill queue)`);
+        console.error(`[baton] Embedding index update failed for obs-${observationId} (kept in backfill queue)`);
         queueVectorBackfill(projectId);
       }
     } else if (isEmbeddingExplicitlyDisabled()) {
@@ -417,7 +417,7 @@ function scheduleObservationEmbedding(input: {
       queueVectorBackfill(projectId);
       logEmbeddingFailureOnce(
         'provider-unavailable',
-        `[memorix] Embedding provider unavailable (using BM25 until embedding recovers; queued obs-${observationId} for retry)`,
+        `[baton] Embedding provider unavailable (using BM25 until embedding recovers; queued obs-${observationId} for retry)`,
       );
     }
   }).catch((err) => {
@@ -425,7 +425,7 @@ function scheduleObservationEmbedding(input: {
     const failure = normalizeEmbeddingFailure(err);
     logEmbeddingFailureOnce(
       failure.key,
-      `[memorix] Async embedding failed (using BM25 until embedding recovers; queued obs-${observationId} for retry): ${failure.message}`,
+      `[baton] Async embedding failed (using BM25 until embedding recovers; queued obs-${observationId} for retry): ${failure.message}`,
     );
   });
 }
@@ -493,7 +493,7 @@ export async function withFreshObservations<T>(fn: () => T | Promise<T>): Promis
 /**
  * Store a new observation.
  *
- * This is the primary write API — called by the `memorix_store` MCP tool.
+ * This is the primary write API — called by the `baton_store` MCP tool.
  * Automatically:
  *   1. Assigns an incremental ID
  *   2. Counts tokens for the observation content
@@ -539,9 +539,9 @@ export async function storeObservation(input: {
   visibility?: ObservationVisibility;
   sharedWithAgentIds?: string[];
   createdByAgentId?: string;
-  /** PMI category override (src/domain/memory.ts); default comes from `type`. */
+  /** Baton category override (src/domain/memory.ts); default comes from `type`. */
   category?: MemoryCategory;
-  /** PMI confidence for agent writes: observed, inferred or proposed. Never confirmed. */
+  /** Baton confidence for agent writes: observed, inferred or proposed. Never confirmed. */
   confidence?: MemoryConfidence;
   /** Optional caller-bound write scope for topic-key upserts. */
   visibilityReader?: ObservationReader;
@@ -613,7 +613,7 @@ export async function storeObservation(input: {
   // This prevents concurrent calls from getting duplicate IDs or silently
   // losing observations due to stale in-memory state.
   let observation!: Observation;
-  let doc!: MemorixDocument;
+  let doc!: BatonDocument;
 
   let upsertedInsideLock = false;
   let reloadCacheAfterCommit = false;
@@ -917,7 +917,7 @@ async function upsertObservation(
   }
 
   // Re-index in Orama WITHOUT embedding first (non-blocking)
-  const doc: MemorixDocument = {
+  const doc: BatonDocument = {
     id: makeOramaObservationId(existing.projectId, existing.id),
     observationId: existing.id,
     entityName: existing.entityName,
@@ -1095,7 +1095,7 @@ export async function resolveObservations(
     try {
       const { removeObservation: removeObs } = await import('../store/orama-store.js');
       await removeObs(makeOramaObservationId(obs.projectId, id));
-      const doc: MemorixDocument = {
+      const doc: BatonDocument = {
         id: makeOramaObservationId(obs.projectId, obs.id),
         observationId: obs.id,
         entityName: obs.entityName,
@@ -1297,7 +1297,7 @@ export async function reindexObservations(): Promise<number> {
   }
 
   if (provider && !canBatchEmbedAtStartup) {
-    console.error('[memorix] Startup reindex: restored cached API embeddings; uncached vectors stay in background recovery');
+    console.error('[baton] Startup reindex: restored cached API embeddings; uncached vectors stay in background recovery');
   }
 
   if (canBatchEmbedAtStartup) {
@@ -1318,11 +1318,11 @@ export async function reindexObservations(): Promise<number> {
       if (embedding && !compatibleEmbedding) {
         const vectorDimensions = getVectorDimensions();
         console.error(
-          `[memorix] Startup reindex embedding mismatch for obs-${obs.id}: provider returned ${embedding.length}d, index expects ${vectorDimensions ?? 'unknown'}d (queued for backfill)`,
+          `[baton] Startup reindex embedding mismatch for obs-${obs.id}: provider returned ${embedding.length}d, index expects ${vectorDimensions ?? 'unknown'}d (queued for backfill)`,
         );
       }
       const docId = makeOramaObservationId(obs.projectId, obs.id);
-      const doc: MemorixDocument = {
+      const doc: BatonDocument = {
         id: docId,
         observationId: obs.id,
         entityName: obs.entityName,
@@ -1355,7 +1355,7 @@ export async function reindexObservations(): Promise<number> {
       }
       count++;
     } catch (err) {
-      console.error(`[memorix] Failed to reindex observation #${obs.id}: ${err}`);
+      console.error(`[baton] Failed to reindex observation #${obs.id}: ${err}`);
     }
   }
   searchIndexPrepared = true;
@@ -1461,7 +1461,7 @@ export function getVectorStatus(projectId?: string): {
 
 /**
  * Return search-index state from the same module graph that owns the hydrated
- * Orama instance. This avoids split singleton state when tools load Memorix
+ * Orama instance. This avoids split singleton state when tools load Baton
  * TypeScript sources through runtime loaders.
  */
 export function getSearchIndexStatus(projectId?: string): {
@@ -1588,7 +1588,7 @@ export async function backfillVectorEmbeddings(options: {
           if (!isVectorCompatibleWithCurrentIndex(embedding)) {
             const vectorDimensions = getVectorDimensions();
             console.error(
-              `[memorix] Backfill embedding mismatch for obs-${id}: provider returned ${embedding.length}d, index expects ${vectorDimensions ?? 'unknown'}d (kept in queue)`,
+              `[baton] Backfill embedding mismatch for obs-${id}: provider returned ${embedding.length}d, index expects ${vectorDimensions ?? 'unknown'}d (kept in queue)`,
             );
             recordFailure(`dimension mismatch: provider returned ${embedding.length}d, index expects ${vectorDimensions ?? 'unknown'}d`);
             failed++;
@@ -1599,7 +1599,7 @@ export async function backfillVectorEmbeddings(options: {
             const { removeObservation: removeObs } = await import('../store/orama-store.js');
             await removeObs(oramaId);
           } catch { /* may not exist */ }
-          const doc: MemorixDocument = {
+          const doc: BatonDocument = {
             id: oramaId,
             observationId: obs.id,
             entityName: obs.entityName,
@@ -1664,7 +1664,7 @@ export async function backfillVectorEmbeddings(options: {
 }
 
 /**
- * Mark observations as possibly outdated (PMI `needs_review`) without
+ * Mark observations as possibly outdated (Baton `needs_review`) without
  * touching their content, e.g. after a commit changed their related files.
  * The search index is unaffected; the mark clears when the memory is rewritten.
  */

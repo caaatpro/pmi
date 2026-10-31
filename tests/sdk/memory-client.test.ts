@@ -17,11 +17,11 @@ let testDir: string;
 let dataDir: string;
 
 const EMBEDDING_ENV_KEYS = [
-  'MEMORIX_EMBEDDING',
-  'MEMORIX_EMBEDDING_API_KEY',
-  'MEMORIX_EMBEDDING_BASE_URL',
-  'MEMORIX_EMBEDDING_MODEL',
-  'MEMORIX_EMBEDDING_DIMENSIONS',
+  'BATON_EMBEDDING',
+  'BATON_EMBEDDING_API_KEY',
+  'BATON_EMBEDDING_BASE_URL',
+  'BATON_EMBEDDING_MODEL',
+  'BATON_EMBEDDING_DIMENSIONS',
 ];
 let savedEmbeddingEnv: Record<string, string | undefined> = {};
 
@@ -31,7 +31,7 @@ function forceEmbeddingOffForTest(): void {
     savedEmbeddingEnv[key] = process.env[key];
     delete process.env[key];
   }
-  process.env.MEMORIX_EMBEDDING = 'off';
+  process.env.BATON_EMBEDDING = 'off';
   resetConfigCache();
   resetProvider();
 }
@@ -49,10 +49,10 @@ function restoreEmbeddingEnv(): void {
 }
 
 function createTestGitRepo(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'memorix-sdk-test-'));
+  const dir = mkdtempSync(join(tmpdir(), 'baton-sdk-test-'));
   execSync('git init', { cwd: dir, stdio: 'ignore' });
-  execSync('git config user.name "Memorix Test"', { cwd: dir, stdio: 'ignore' });
-  execSync('git config user.email "tests@memorix.local"', { cwd: dir, stdio: 'ignore' });
+  execSync('git config user.name "Baton Test"', { cwd: dir, stdio: 'ignore' });
+  execSync('git config user.email "tests@baton.local"', { cwd: dir, stdio: 'ignore' });
   execSync('git commit --allow-empty -m "init"', { cwd: dir, stdio: 'ignore' });
   return dir;
 }
@@ -84,49 +84,49 @@ function writeExternalObservation(input: {
         }
         return new (require('node:sqlite').DatabaseSync)(dbPath);
       }
-      const db = openDatabase(process.env.MEMORIX_WRITER_DB);
-      if (process.env.MEMORIX_WRITER_UPDATE_ID) {
+      const db = openDatabase(process.env.BATON_WRITER_DB);
+      if (process.env.BATON_WRITER_UPDATE_ID) {
         db.prepare('UPDATE observations SET title = ? WHERE id = ?').run(
-          process.env.MEMORIX_WRITER_UPDATE_TITLE,
-          Number(process.env.MEMORIX_WRITER_UPDATE_ID),
+          process.env.BATON_WRITER_UPDATE_TITLE,
+          Number(process.env.BATON_WRITER_UPDATE_ID),
         );
       }
       db.prepare(\`INSERT OR REPLACE INTO observations (
         id, entityName, type, title, narrative, facts, filesModified, concepts,
         tokens, createdAt, projectId, status, source, sourceDetail
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\`).run(
-        Number(process.env.MEMORIX_WRITER_ID),
+        Number(process.env.BATON_WRITER_ID),
         'external-writer',
         'discovery',
-        process.env.MEMORIX_WRITER_TITLE,
+        process.env.BATON_WRITER_TITLE,
         'Inserted after MemoryClient.close()',
         '[]',
         '[]',
         '[]',
         8,
         new Date().toISOString(),
-        process.env.MEMORIX_WRITER_PROJECT,
+        process.env.BATON_WRITER_PROJECT,
         'active',
         'agent',
         'external',
       );
       db.prepare("UPDATE meta SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT) WHERE key = 'storage_generation'").run();
-      db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('next_id', ?)").run(process.env.MEMORIX_WRITER_NEXT_ID);
+      db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('next_id', ?)").run(process.env.BATON_WRITER_NEXT_ID);
       db.close();
     `],
     {
       cwd: process.cwd(),
       env: {
         ...process.env,
-        MEMORIX_WRITER_DB: join(input.dataDir, 'memorix.db'),
-        MEMORIX_WRITER_ID: String(input.id),
-        MEMORIX_WRITER_TITLE: input.title,
-        MEMORIX_WRITER_PROJECT: input.projectId,
-        MEMORIX_WRITER_NEXT_ID: String(input.nextId),
+        BATON_WRITER_DB: join(input.dataDir, 'baton.db'),
+        BATON_WRITER_ID: String(input.id),
+        BATON_WRITER_TITLE: input.title,
+        BATON_WRITER_PROJECT: input.projectId,
+        BATON_WRITER_NEXT_ID: String(input.nextId),
         ...(input.updateId !== undefined
           ? {
-              MEMORIX_WRITER_UPDATE_ID: String(input.updateId),
-              MEMORIX_WRITER_UPDATE_TITLE: input.updateTitle ?? '',
+              BATON_WRITER_UPDATE_ID: String(input.updateId),
+              BATON_WRITER_UPDATE_TITLE: input.updateTitle ?? '',
             }
           : {}),
       },
@@ -143,7 +143,7 @@ describe('MemoryClient (unit)', () => {
   beforeEach(async () => {
     forceEmbeddingOffForTest();
 
-    testDir = mkdtempSync(join(tmpdir(), 'memorix-sdk-unit-'));
+    testDir = mkdtempSync(join(tmpdir(), 'baton-sdk-unit-'));
     dataDir = join(testDir, 'data');
     // Initialize stores for direct MemoryClient construction
     await initObservationStore(dataDir);
@@ -362,17 +362,17 @@ describe('createMemoryClient (integration)', () => {
   beforeEach(() => {
     forceEmbeddingOffForTest();
     repoDir = createTestGitRepo();
-    isolatedDataDir = mkdtempSync(join(tmpdir(), 'memorix-sdk-data-'));
-    previousDataDir = process.env.MEMORIX_DATA_DIR;
-    process.env.MEMORIX_DATA_DIR = isolatedDataDir;
+    isolatedDataDir = mkdtempSync(join(tmpdir(), 'baton-sdk-data-'));
+    previousDataDir = process.env.BATON_DATA_DIR;
+    process.env.BATON_DATA_DIR = isolatedDataDir;
   });
 
   afterEach(async () => {
     resetObservationStore();
     await resetDb();
     restoreEmbeddingEnv();
-    if (previousDataDir === undefined) delete process.env.MEMORIX_DATA_DIR;
-    else process.env.MEMORIX_DATA_DIR = previousDataDir;
+    if (previousDataDir === undefined) delete process.env.BATON_DATA_DIR;
+    else process.env.BATON_DATA_DIR = previousDataDir;
     try { rmSync(repoDir, { recursive: true, force: true }); } catch { /* best effort */ }
     try { rmSync(isolatedDataDir, { recursive: true, force: true }); } catch { /* best effort */ }
   });
@@ -398,7 +398,7 @@ describe('createMemoryClient (integration)', () => {
     await client.close();
   });
 
-  it('keeps createMemoryClient data under MEMORIX_DATA_DIR', async () => {
+  it('keeps createMemoryClient data under BATON_DATA_DIR', async () => {
     const client = await createMemoryClient({ projectRoot: repoDir, silent: true });
     expect(client.dataDir).toBe(isolatedDataDir);
     await client.close();
@@ -410,7 +410,7 @@ describe('createMemoryClient (integration)', () => {
       entityName: 'close-release',
       type: 'discovery',
       title: 'Close must drop the SQLite lock',
-      narrative: 'Windows cannot unlink memorix.db while the handle is open.',
+      narrative: 'Windows cannot unlink baton.db while the handle is open.',
     });
     expect(client.dataDir).toBe(isolatedDataDir);
     const openHandle = getDatabase(isolatedDataDir);
@@ -455,7 +455,7 @@ describe('createMemoryClient (integration)', () => {
   });
 
   it('should throw for non-git directory', async () => {
-    const nonGitDir = mkdtempSync(join(tmpdir(), 'memorix-sdk-nogit-'));
+    const nonGitDir = mkdtempSync(join(tmpdir(), 'baton-sdk-nogit-'));
     await expect(
       createMemoryClient({ projectRoot: nonGitDir, silent: true }),
     ).rejects.toThrow('No Git repository');

@@ -1,14 +1,14 @@
 /**
- * Helpers shared by the inherited Memorix MCP tools (split out of src/server.ts):
+ * Helpers shared by the inherited Baton MCP tools (split out of src/server.ts):
  * input coercion for clients that string-encode arrays, LLM timeout budgets and
- * the PMI session continuity glue called by memorix_session_start/end.
+ * the Baton session continuity glue called by baton_session_start/end.
  */
 import { createHash } from 'node:crypto';
 import { parseFormationTimeoutMs } from '../../server/formation-timeout.js';
 import type { FormationStage } from '../../memory/formation/types.js';
 
 // ── Timeout budgets for LLM-heavy paths ──────────────────────────
-export const FORMATION_TIMEOUT_MS = parseFormationTimeoutMs(process.env.MEMORIX_FORMATION_TIMEOUT_MS); // Formation pipeline (extract+resolve+evaluate)
+export const FORMATION_TIMEOUT_MS = parseFormationTimeoutMs(process.env.BATON_FORMATION_TIMEOUT_MS); // Formation pipeline (extract+resolve+evaluate)
 export const COMPACT_ON_WRITE_TIMEOUT_MS = 12_000; // Legacy compact-on-write fallback path
 export const COMPRESSION_TIMEOUT_MS = 5_000;  // Narrative compression
 
@@ -39,7 +39,7 @@ export const OBSERVATION_TYPES: [string, ...string[]] = [
  * Defensive parameter coercion for Claude Code CLI + non-Anthropic models (e.g. GLM).
  * Claude Code CLI has a known bug (#5504, #26027) where JSON objects/arrays
  * get serialized as strings. GLM models amplify this by producing string-encoded
- * arrays/numbers in tool calls. These helpers ensure Memorix works regardless.
+ * arrays/numbers in tool calls. These helpers ensure Baton works regardless.
  */
 export function coerceNumberArray(val: unknown): number[] {
   if (Array.isArray(val)) return val.map(Number);
@@ -147,10 +147,10 @@ export const AGENT_TARGETS: [string, ...string[]] = ['windsurf', 'cursor', 'clau
 export const READ_ONLY_TASK_PATTERN = /\b(?:do not|don't|never)\s+(?:modify|edit|change|write)\b|\bread[- ]only\b|(?:不要|不准|勿|禁止).{0,6}(?:修改|编辑|写入)|只读/i;
 
 /**
- * Give a new MCP session its PMI state. The agent's pid is this stdio server
+ * Give a new MCP session its Baton state. The agent's pid is this stdio server
  * process: when the agent exits, so does the server, and the daemon notices.
  */
-export async function startPmiContinuity(
+export async function startBatonContinuity(
   dataDir: string,
   project: { id: string; rootPath: string },
   sessionId: string,
@@ -176,22 +176,22 @@ export async function startPmiContinuity(
     if (service.connectedProject(project.rootPath)) {
       await service.flushOutbox(store);
       const pid = ensureDaemon(dataDir, currentCliPath());
-      if (pid) lines.push(`PMI: automatic checkpoints on (daemon pid ${pid}).`);
+      if (pid) lines.push(`Baton: automatic checkpoints on (daemon pid ${pid}).`);
       const { sessions } = await service.listProjectSessions(store, { projectId: project.id, projectRoot: project.rootPath });
       const others = sessions.filter((item) => item.id !== sessionId);
       if (others.length) {
-        lines.push('PMI: sessions waiting to be continued — call session_resume(id) to pick one up:');
+        lines.push('Baton: sessions waiting to be continued — call session_resume(id) to pick one up:');
         for (const item of others.slice(0, 5)) lines.push(`  - ${item.id} [${item.status}] ${item.task || '(no task)'} (${item.agent ?? '?'}${item.userEmail ? `, ${item.userEmail}` : ''})`);
       }
     }
-    if (!input.task) lines.push('PMI: pass `task` to memorix_session_start, then use session_checkpoint / session_handoff so others can continue this work.');
+    if (!input.task) lines.push('Baton: pass `task` to baton_session_start, then use session_checkpoint / session_handoff so others can continue this work.');
     return { lines };
   } catch (error) {
-    return { lines: [`PMI session state unavailable: ${(error as Error).message}`] };
+    return { lines: [`Baton session state unavailable: ${(error as Error).message}`] };
   }
 }
 
-export async function finishPmiContinuity(dataDir: string, sessionId: string, summary?: string): Promise<void> {
+export async function finishBatonContinuity(dataDir: string, sessionId: string, summary?: string): Promise<void> {
   try {
     const { LocalSessionStore } = await import('../../session/local-store.js');
     const { LIVE_STATUSES } = await import('../../domain/session.js');
@@ -202,6 +202,6 @@ export async function finishPmiContinuity(dataDir: string, sessionId: string, su
     service.finishSession(store, sessionId, { summary });
     await service.flushOutbox(store);
   } catch {
-    // Ending the Memorix session must not fail on PMI bookkeeping.
+    // Ending the Baton session must not fail on Baton bookkeeping.
   }
 }

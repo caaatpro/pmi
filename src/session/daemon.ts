@@ -1,5 +1,5 @@
 /**
- * The PMI daemon: automatic checkpoints that do not depend on the agent
+ * The Baton daemon: automatic checkpoints that do not depend on the agent
  * (SESSION_CONTINUITY.md §4, ARCHITECTURE.md D8). One per data directory.
  *
  * Every tick, for each live session of this device:
@@ -40,12 +40,12 @@ function envMs(env: NodeJS.ProcessEnv, name: string, fallback: number): number {
 
 export function daemonSettings(env: NodeJS.ProcessEnv = process.env): DaemonSettings {
   return {
-    tickMs: envMs(env, 'PMI_DAEMON_TICK_MS', 5_000),
-    memorySyncMs: envMs(env, 'PMI_MEMORY_SYNC_MS', 60_000),
-    debounceMs: envMs(env, 'PMI_CHECKPOINT_DEBOUNCE_MS', 60_000),
-    intervalMs: envMs(env, 'PMI_CHECKPOINT_INTERVAL_MS', 300_000),
-    agentIdleMs: envMs(env, 'PMI_AGENT_IDLE_MS', 900_000),
-    heartbeatMs: envMs(env, 'PMI_HEARTBEAT_MS', 120_000),
+    tickMs: envMs(env, 'BATON_DAEMON_TICK_MS', 5_000),
+    memorySyncMs: envMs(env, 'BATON_MEMORY_SYNC_MS', 60_000),
+    debounceMs: envMs(env, 'BATON_CHECKPOINT_DEBOUNCE_MS', 60_000),
+    intervalMs: envMs(env, 'BATON_CHECKPOINT_INTERVAL_MS', 300_000),
+    agentIdleMs: envMs(env, 'BATON_AGENT_IDLE_MS', 900_000),
+    heartbeatMs: envMs(env, 'BATON_HEARTBEAT_MS', 120_000),
   };
 }
 
@@ -128,7 +128,7 @@ export async function daemonShutdown(store: LocalSessionStore, env: NodeJS.Proce
 }
 
 export function pidFilePath(dataDir: string): string {
-  return path.join(dataDir, 'pmi-daemon.pid');
+  return path.join(dataDir, 'baton-daemon.pid');
 }
 
 export function runningDaemonPid(dataDir: string): number | undefined {
@@ -140,15 +140,15 @@ export function runningDaemonPid(dataDir: string): number | undefined {
   }
 }
 
-/** Foreground loop used by `pmi daemon run`. */
+/** Foreground loop used by `baton daemon run`. */
 export async function runDaemon(dataDir: string, env: NodeJS.ProcessEnv = process.env, log: (line: Record<string, unknown>) => void = (line) => console.log(JSON.stringify(line))): Promise<void> {
   const existing = runningDaemonPid(dataDir);
-  if (existing && existing !== process.pid) throw new Error(`[pmi] the daemon is already running (pid ${existing})`);
+  if (existing && existing !== process.pid) throw new Error(`[baton] the daemon is already running (pid ${existing})`);
   fs.mkdirSync(dataDir, { recursive: true });
   fs.writeFileSync(pidFilePath(dataDir), JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString() }));
   const store = new LocalSessionStore(dataDir);
   const settings = daemonSettings(env);
-  log({ at: new Date().toISOString(), msg: 'pmi daemon started', pid: process.pid, dataDir, settings });
+  log({ at: new Date().toISOString(), msg: 'baton daemon started', pid: process.pid, dataDir, settings });
 
   let stopping = false;
   let wake: (() => void) | undefined;
@@ -165,7 +165,7 @@ export async function runDaemon(dataDir: string, env: NodeJS.ProcessEnv = proces
     // removed (data dir deleted, `daemon stop` racing) or another daemon took
     // over, this one steps down instead of running unsupervised.
     if (runningDaemonPid(dataDir) !== process.pid) {
-      log({ at: new Date().toISOString(), msg: 'pmi daemon stepping down: pid file is gone or owned by another daemon' });
+      log({ at: new Date().toISOString(), msg: 'baton daemon stepping down: pid file is gone or owned by another daemon' });
       break;
     }
     try {
@@ -214,23 +214,23 @@ export async function runDaemon(dataDir: string, env: NodeJS.ProcessEnv = proces
   try {
     if (runningDaemonPid(dataDir) === process.pid) fs.unlinkSync(pidFilePath(dataDir));
   } catch { /* already gone */ }
-  log({ at: new Date().toISOString(), msg: 'pmi daemon stopped' });
+  log({ at: new Date().toISOString(), msg: 'baton daemon stopped' });
 }
 
 /**
- * Start the daemon in the background if it is not running. `PMI_DAEMON=off`
- * disables auto-start (the daemon can still be run with `pmi daemon start`).
+ * Start the daemon in the background if it is not running. `BATON_DAEMON=off`
+ * disables auto-start (the daemon can still be run with `baton daemon start`).
  */
 export function ensureDaemon(dataDir: string, cliPath: string | undefined, env: NodeJS.ProcessEnv = process.env): number | undefined {
-  if (env.PMI_DAEMON === 'off' || !cliPath) return undefined;
+  if (env.BATON_DAEMON === 'off' || !cliPath) return undefined;
   const running = runningDaemonPid(dataDir);
   if (running) return running;
   fs.mkdirSync(dataDir, { recursive: true });
-  const logFd = fs.openSync(path.join(dataDir, 'pmi-daemon.log'), 'a');
+  const logFd = fs.openSync(path.join(dataDir, 'baton-daemon.log'), 'a');
   const child = spawn(process.execPath, [cliPath, 'daemon', 'run'], {
     detached: true,
     stdio: ['ignore', logFd, logFd],
-    env: { ...env, MEMORIX_DATA_DIR: dataDir },
+    env: { ...env, BATON_DATA_DIR: dataDir },
   });
   child.unref();
   fs.closeSync(logFd);

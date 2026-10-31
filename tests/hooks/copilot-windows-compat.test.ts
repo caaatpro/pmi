@@ -32,7 +32,7 @@ describe('Copilot hooks: Windows runtime compatibility', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-copilot-win-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-copilot-win-'));
     await fs.mkdir(path.join(tmpDir, '.git'), { recursive: true });
     mockPwshAvailable = false; // default: pwsh not available
   });
@@ -44,7 +44,7 @@ describe('Copilot hooks: Windows runtime compatibility', () => {
 
   it('should always include bash field in copilot config', async () => {
     await installHooks('copilot', tmpDir);
-    const configPath = path.join(tmpDir, '.github', 'hooks', 'memorix.json');
+    const configPath = path.join(tmpDir, '.github', 'hooks', 'baton.json');
     const content = await fs.readFile(configPath, 'utf-8');
     const config = JSON.parse(content);
 
@@ -54,7 +54,7 @@ describe('Copilot hooks: Windows runtime compatibility', () => {
       for (const entry of entries as Record<string, unknown>[]) {
         expect(entry.bash).toBeDefined();
         expect(typeof entry.bash).toBe('string');
-        expect(entry.bash).toContain('memorix');
+        expect(entry.bash).toContain('baton');
       }
     }
   });
@@ -63,7 +63,7 @@ describe('Copilot hooks: Windows runtime compatibility', () => {
     mockPwshAvailable = true;
 
     await installHooks('copilot', tmpDir);
-    const configPath = path.join(tmpDir, '.github', 'hooks', 'memorix.json');
+    const configPath = path.join(tmpDir, '.github', 'hooks', 'baton.json');
     const content = await fs.readFile(configPath, 'utf-8');
     const config = JSON.parse(content);
 
@@ -80,7 +80,7 @@ describe('Copilot hooks: Windows runtime compatibility', () => {
     mockPwshAvailable = false;
 
     await installHooks('copilot', tmpDir);
-    const configPath = path.join(tmpDir, '.github', 'hooks', 'memorix.json');
+    const configPath = path.join(tmpDir, '.github', 'hooks', 'baton.json');
     const content = await fs.readFile(configPath, 'utf-8');
     const config = JSON.parse(content);
 
@@ -95,18 +95,18 @@ describe('Copilot hooks: Windows runtime compatibility', () => {
     }
   });
 
-  it('should use memorix.cmd on Windows for bash field', async () => {
+  it('should use baton.cmd on Windows for bash field', async () => {
     await installHooks('copilot', tmpDir);
-    const configPath = path.join(tmpDir, '.github', 'hooks', 'memorix.json');
+    const configPath = path.join(tmpDir, '.github', 'hooks', 'baton.json');
     const content = await fs.readFile(configPath, 'utf-8');
     const config = JSON.parse(content);
 
     const hooks = config.hooks as Record<string, unknown[]>;
     const firstEntry = (Object.values(hooks)[0] as Record<string, unknown>[])[0];
     if (process.platform === 'win32') {
-      expect(firstEntry.bash).toContain('memorix.cmd');
+      expect(firstEntry.bash).toContain('baton.cmd');
     } else {
-      expect(firstEntry.bash).toContain('memorix');
+      expect(firstEntry.bash).toContain('baton');
     }
   });
 

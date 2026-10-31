@@ -15,7 +15,7 @@ afterEach(async () => {
 
 describe('stateless MCP project handles', () => {
   it('survives reopening the control-plane database and expires explicitly', async () => {
-    tempDir = await mkdtemp(path.join(os.tmpdir(), 'memorix-mcp-handle-'));
+    tempDir = await mkdtemp(path.join(os.tmpdir(), 'baton-mcp-handle-'));
     const first = new McpBindingStore();
     await first.init(tempDir);
     const binding = first.create({ projectId: 'org/project', projectRoot: 'C:/repo', dataDir: 'C:/data' });

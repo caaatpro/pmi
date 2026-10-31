@@ -13,7 +13,7 @@ import path from 'node:path';
 import os from 'node:os';
 
 function makeTmpDir(): string {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'memorix-team-test-'));
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'baton-team-test-'));
 }
 
 function cleanup(dir: string): void {

@@ -1,5 +1,5 @@
 /**
- * CLI Command: memorix hooks preview
+ * CLI Command: baton hooks preview
  *
  * Preview which files will be created/modified by hooks installation.
  */
@@ -51,7 +51,7 @@ export default defineCommand({
       }
     }
 
-    p.intro('Memorix Hooks Preview');
+    p.intro('Baton Hooks Preview');
 
     const previewItems: Array<{
       agent: string;
@@ -137,7 +137,7 @@ export default defineCommand({
 
     p.note(`${createCount} files to create, ${modifyCount} files to modify`);
 
-    p.outro('Preview complete. Run "memorix hooks install" to apply.');
+    p.outro('Preview complete. Run "baton hooks install" to apply.');
   },
 });
 
@@ -164,7 +164,7 @@ function getRulesPath(agent: string, cwd: string, global: boolean): string {
   if (global) {
     switch (agent) {
       case 'cursor':
-        return path.join(home, '.cursor', 'rules', 'memorix.mdc');
+        return path.join(home, '.cursor', 'rules', 'baton.mdc');
       case 'codex':
         return path.join(home, '.codex', 'AGENTS.md');
       case 'opencode':
@@ -183,7 +183,7 @@ function getRulesPath(agent: string, cwd: string, global: boolean): string {
   } else {
     switch (agent) {
       case 'cursor':
-        return path.join(cwd, '.cursor', 'rules', 'memorix.mdc');
+        return path.join(cwd, '.cursor', 'rules', 'baton.mdc');
       case 'codex':
         return path.join(cwd, 'AGENTS.md');
       case 'opencode':

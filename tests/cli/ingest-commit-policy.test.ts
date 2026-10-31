@@ -56,10 +56,10 @@ describe('git ingest policy exam', () => {
   });
 
   it('getCommitInfo honors an explicit diff cap and defaults to 500', async () => {
-    dir = mkdtempSync(path.join(tmpdir(), 'memorix-ingest-policy-'));
+    dir = mkdtempSync(path.join(tmpdir(), 'baton-ingest-policy-'));
     execSync('git init', { cwd: dir, stdio: 'ignore' });
     execSync('git config user.email test@example.com', { cwd: dir, stdio: 'ignore' });
-    execSync('git config user.name "Memorix Test"', { cwd: dir, stdio: 'ignore' });
+    execSync('git config user.name "Baton Test"', { cwd: dir, stdio: 'ignore' });
     writeFileSync(path.join(dir, 'big.txt'), 'line ' + 'word '.repeat(500) + '\n', 'utf8');
     execSync('git add big.txt && git commit -m "test: big diff"', { cwd: dir, stdio: 'ignore' });
 

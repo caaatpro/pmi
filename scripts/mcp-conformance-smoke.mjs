@@ -7,9 +7,9 @@ import process from 'node:process'
 
 const root = process.cwd()
 const distCli = path.resolve(root, 'dist', 'cli', 'index.js')
-const tempBase = process.env.MEMORIX_TEST_TMPDIR?.trim() || path.join(root, '.tmp-memorix-smoke')
+const tempBase = process.env.BATON_TEST_TMPDIR?.trim() || path.join(root, '.tmp-baton-smoke')
 await mkdir(tempBase, { recursive: true })
-const tempRoot = await mkdtemp(path.join(tempBase, 'memorix-mcp-conformance-'))
+const tempRoot = await mkdtemp(path.join(tempBase, 'baton-mcp-conformance-'))
 const project = path.join(tempRoot, 'project')
 const dataDir = path.join(tempRoot, 'data')
 // Keep the target and all optional smoke state isolated under the selected
@@ -27,12 +27,12 @@ const env = {
   ...process.env,
   HOME: path.dirname(dataDir),
   USERPROFILE: path.dirname(dataDir),
-  MEMORIX_DATA_DIR: dataDir,
-  MEMORIX_EMBEDDING: 'off',
-  MEMORIX_LLM_API_KEY: '',
+  BATON_DATA_DIR: dataDir,
+  BATON_EMBEDDING: 'off',
+  BATON_LLM_API_KEY: '',
   OPENAI_API_KEY: '',
-  MEMORIX_LLM_PROVIDER: '',
-  MEMORIX_LLM_MODEL: '',
+  BATON_LLM_PROVIDER: '',
+  BATON_LLM_MODEL: '',
   NO_COLOR: '1',
 }
 
@@ -125,7 +125,7 @@ try {
   console.log(JSON.stringify({ smoke: 'passed', transport: 'http', port, conformance: '2026-core', legacyNegotiation: 'covered-separately' }))
 } finally {
   await stopServer()
-  if (serverStderr && process.env.MEMORIX_KEEP_SMOKE_LOGS === '1') {
+  if (serverStderr && process.env.BATON_KEEP_SMOKE_LOGS === '1') {
     await (await import('node:fs/promises')).writeFile(stderrPath, serverStderr, 'utf8')
   }
   await rm(tempRoot, { recursive: true, force: true })

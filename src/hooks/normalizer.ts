@@ -85,7 +85,7 @@ const EVENT_MAP: Record<string, HookEvent> = {
   preCompact: 'pre_compact',
   stop: 'session_end',
 
-  // OpenCode (plugin events piped via child_process.spawnSync → memorix hook)
+  // OpenCode (plugin events piped via child_process.spawnSync → baton hook)
   'session.created': 'session_start',
   'session.idle': 'session_end',
   'session.compacted': 'post_compact',
@@ -251,10 +251,10 @@ function normalizeGrok(payload: Record<string, unknown>, event: HookEvent): Part
 }
 
 function detectAgent(payload: Record<string, unknown>): AgentName {
-  // Highest priority: explicit agent identity injected by memorix hook --agent flag
+  // Highest priority: explicit agent identity injected by baton hook --agent flag
   // This is set by generated hook configs when host payloads are ambiguous.
-  if (typeof payload._memorix_agent === 'string') {
-    return payload._memorix_agent as AgentName;
+  if (typeof payload._baton_agent === 'string') {
+    return payload._baton_agent as AgentName;
   }
 
   // Windsurf uses agent_action_name
@@ -323,9 +323,9 @@ function extractEventName(payload: Record<string, unknown>, agent: AgentName): s
     case 'antigravity':
     case 'gemini-cli':
       // Gemini CLI uses hook_event_name; Antigravity hooks.json commands pass
-      // _memorix_event because the official stdin schema does not include the
+      // _baton_event because the official stdin schema does not include the
       // event key.
-      return (payload._memorix_event as string) ?? (payload.hook_event_name as string) ?? '';
+      return (payload._baton_event as string) ?? (payload.hook_event_name as string) ?? '';
     case 'copilot':
       // Copilot: infer event from payload structure
       return inferCopilotEvent(payload);

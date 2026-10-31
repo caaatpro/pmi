@@ -62,7 +62,7 @@ function safeJsonArray(value: string | string[] | null | undefined): string[] {
 }
 
 async function loadReceiptObservations(dataDir: string, projectId: string): Promise<ReceiptObservation[]> {
-  const dbPath = path.join(dataDir, 'memorix.db');
+  const dbPath = path.join(dataDir, 'baton.db');
 
   if (existsSync(dbPath)) {
     try {

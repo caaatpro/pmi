@@ -1,7 +1,7 @@
 /**
  * Session continuity acceptance tests (SESSION_CONTINUITY.md §9) with the real
- * CLI, real stdio MCP servers launched from the configs `pmi setup` writes,
- * the real daemon, pmi-server and Postgres.
+ * CLI, real stdio MCP servers launched from the configs `baton setup` writes,
+ * the real daemon, baton-server and Postgres.
  *
  * - TEST 2  (CLI): A starts, checkpoints twice, hands off; B (another user,
  *            device and agent) lists and resumes with steps, next action, files.
@@ -31,7 +31,7 @@ import {
   createRepoPair,
   installCliShims,
   machine,
-  pmi,
+  baton,
   stopDaemons,
   toolText,
   type Machine,
@@ -71,7 +71,7 @@ async function serverSession(id: string) {
 function daemonLogs(): string {
   return [alice, bob].filter(Boolean).map((m) => {
     try {
-      return `\n--- ${m.name} daemon log ---\n${readFileSync(path.join(m.env.MEMORIX_DATA_DIR, 'pmi-daemon.log'), 'utf8').slice(-3000)}`;
+      return `\n--- ${m.name} daemon log ---\n${readFileSync(path.join(m.env.BATON_DATA_DIR, 'baton-daemon.log'), 'utf8').slice(-3000)}`;
     } catch {
       return `\n--- ${m.name}: no daemon log ---`;
     }
@@ -80,7 +80,7 @@ function daemonLogs(): string {
 
 function daemonPid(m: Machine): number | undefined {
   try {
-    return Number(JSON.parse(readFileSync(path.join(m.env.MEMORIX_DATA_DIR, 'pmi-daemon.pid'), 'utf8')).pid);
+    return Number(JSON.parse(readFileSync(path.join(m.env.BATON_DATA_DIR, 'baton-daemon.pid'), 'utf8')).pid);
   } catch {
     return undefined;
   }
@@ -94,7 +94,7 @@ function startedSessionId(result: unknown): string {
 
 describe.skipIf(!pgAvailable || !cliBuilt)('session continuity end to end', () => {
   beforeAll(async () => {
-    root = mkdtempSync(path.join(tmpdir(), 'pmi-sessions-'));
+    root = mkdtempSync(path.join(tmpdir(), 'baton-sessions-'));
     pg = await startPostgres();
     db = await openDatabase(pg.url);
     await migrate(db);
@@ -110,33 +110,33 @@ describe.skipIf(!pgAvailable || !cliBuilt)('session continuity end to end', () =
     const bin = installCliShims(root);
     const tuning = {
       PATH: `${bin}${path.delimiter}${process.env.PATH ?? ''}`,
-      PMI_DAEMON_TICK_MS: '250',
-      PMI_CHECKPOINT_DEBOUNCE_MS: '500',
-      PMI_HEARTBEAT_MS: '1000',
-      PMI_AGENT_IDLE_MS: '600000',
+      BATON_DAEMON_TICK_MS: '250',
+      BATON_CHECKPOINT_DEBOUNCE_MS: '500',
+      BATON_HEARTBEAT_MS: '1000',
+      BATON_AGENT_IDLE_MS: '600000',
     };
     const [repoA, repoB] = createRepoPair(root, 'https://github.com/acme/shop.git');
     alice = machine(root, 'alice', repoA, tuning);
     bob = machine(root, 'bob', repoB, tuning);
 
-    expect((await pmi(alice, 'login', serverUrl, '--token', tokens.alice)).code).toBe(0);
-    expect((await pmi(bob, 'login', serverUrl, '--token', tokens.bob)).code).toBe(0);
-    const created = await pmi(alice, 'project', 'link', '--create', '--org', 'acme', '--slug', 'shop', '--json');
+    expect((await baton(alice, 'login', serverUrl, '--token', tokens.alice)).code).toBe(0);
+    expect((await baton(bob, 'login', serverUrl, '--token', tokens.bob)).code).toBe(0);
+    const created = await baton(alice, 'project', 'link', '--create', '--org', 'acme', '--slug', 'shop', '--json');
     expect(created.code, created.stderr).toBe(0);
     await fetch(`${serverUrl}/v1/projects/${created.json.projectId}/grants`, {
       method: 'PUT',
       headers: { authorization: `Bearer ${tokens.alice}`, 'content-type': 'application/json' },
       body: JSON.stringify({ user: 'bob@acme.test', role: 'developer' }),
     });
-    expect((await pmi(bob, 'project', 'link')).code).toBe(0);
+    expect((await baton(bob, 'project', 'link')).code).toBe(0);
 
     // The real adapters: Claude Code (project .mcp.json) on Alice's
     // machine, Codex (~/.codex/config.toml) on Bob's.
-    const claudeSetup = await pmi(alice, 'setup', '--agent', 'claude', '--noPlugin');
+    const claudeSetup = await baton(alice, 'setup', '--agent', 'claude', '--noPlugin');
     expect(claudeSetup.code, claudeSetup.stderr).toBe(0);
     const claudeConfig = JSON.parse(readFileSync(path.join(repoA, '.mcp.json'), 'utf8'));
-    mcpCommand.claude = claudeConfig.mcpServers.memorix;
-    const codexSetup = await pmi(bob, 'setup', '--agent', 'codex', '--global', '--noPlugin', '--noHooks');
+    mcpCommand.claude = claudeConfig.mcpServers.baton;
+    const codexSetup = await baton(bob, 'setup', '--agent', 'codex', '--global', '--noPlugin', '--noHooks');
     expect(codexSetup.code, codexSetup.stderr).toBe(0);
     const toml = readFileSync(path.join(bob.home, '.codex', 'config.toml'), 'utf8');
     mcpCommand.codex = {
@@ -154,29 +154,29 @@ describe.skipIf(!pgAvailable || !cliBuilt)('session continuity end to end', () =
   }, 60_000);
 
   it('uses the commands the agent configs specify', () => {
-    expect(mcpCommand.claude).toMatchObject({ command: 'memorix', args: ['serve', '--mode', 'lite'] });
-    expect(mcpCommand.codex).toMatchObject({ command: 'memorix', args: ['serve', '--mode', 'lite'] });
+    expect(mcpCommand.claude).toMatchObject({ command: 'baton', args: ['serve', '--mode', 'lite'] });
+    expect(mcpCommand.codex).toMatchObject({ command: 'baton', args: ['serve', '--mode', 'lite'] });
   });
 
   it('TEST 2: CLI handoff from one user to another', async () => {
     writeFileSync(path.join(alice.repo, 'cart.ts'), 'export const cart = [];\n');
-    const start = await pmi(alice, 'session', 'start', '--agent', 'claude-code', '--model', 'claude-opus',
+    const start = await baton(alice, 'session', 'start', '--agent', 'claude-code', '--model', 'claude-opus',
       '--task', 'Shopping cart totals', '--objective', 'cart total includes tax and discounts', '--json');
     expect(start.code, start.stderr).toBe(0);
-    const sessionId = start.json.pmi.sessionId as string;
+    const sessionId = start.json.baton.sessionId as string;
 
-    expect((await pmi(alice, 'session', 'checkpoint', '--done', 'Cart model', '--pending', 'Tax rules; Discount codes')).code).toBe(0);
-    expect((await pmi(alice, 'session', 'checkpoint', '--done', 'Tax rules', '--progress', 'tax done, discounts next')).code).toBe(0);
-    const handoff = await pmi(alice, 'session', 'handoff', '--next', 'Implement discount code validation in cart.ts', '--json');
+    expect((await baton(alice, 'session', 'checkpoint', '--done', 'Cart model', '--pending', 'Tax rules; Discount codes')).code).toBe(0);
+    expect((await baton(alice, 'session', 'checkpoint', '--done', 'Tax rules', '--progress', 'tax done, discounts next')).code).toBe(0);
+    const handoff = await baton(alice, 'session', 'handoff', '--next', 'Implement discount code validation in cart.ts', '--json');
     expect(handoff.code, handoff.stderr || handoff.stdout).toBe(0);
     expect(handoff.json.delivered).toBe(true);
 
-    const list = await pmi(bob, 'session', 'list', '--json');
+    const list = await baton(bob, 'session', 'list', '--json');
     expect(list.code, list.stderr).toBe(0);
     expect(list.json.offline, JSON.stringify(list.json)).toBe(false);
     expect(list.json.sessions.map((s: { id: string }) => s.id)).toContain(sessionId);
 
-    const resume = await pmi(bob, 'session', 'resume', sessionId, '--agent', 'codex', '--model', 'gpt-5', '--json');
+    const resume = await baton(bob, 'session', 'resume', sessionId, '--agent', 'codex', '--model', 'gpt-5', '--json');
     expect(resume.code, resume.stderr).toBe(0);
     expect(resume.json).toMatchObject({
       continuation: 'child_session',
@@ -185,13 +185,13 @@ describe.skipIf(!pgAvailable || !cliBuilt)('session continuity end to end', () =
       doNotRedo: ['Cart model', 'Tax rules'],
     });
     expect(resume.json.filesToRead).toContain('cart.ts');
-    expect(resume.json.filesToRead).not.toContain('.pmi/project.json');
+    expect(resume.json.filesToRead).not.toContain('.baton/project.json');
     expect(resume.json.state.pendingSteps.map((s: { text: string }) => s.text)).toEqual(['Discount codes']);
     expect(resume.json.state.objective).toBe('cart total includes tax and discounts');
     expect(resume.json.session).toMatchObject({ status: 'in_progress', parentSessionId: sessionId, userEmail: 'bob@acme.test' });
     expect(resume.stdout.length).toBeGreaterThan(0);
 
-    const finished = await pmi(bob, 'session', 'finish', '--sessionId', resume.json.sessionId, '--summary', 'handed back');
+    const finished = await baton(bob, 'session', 'finish', '--sessionId', resume.json.sessionId, '--summary', 'handed back');
     expect(finished.code, finished.stderr).toBe(0);
   }, 120_000);
 
@@ -200,7 +200,7 @@ describe.skipIf(!pgAvailable || !cliBuilt)('session continuity end to end', () =
     let sessionId = '';
     try {
       sessionId = startedSessionId(await claude.client.callTool({
-        name: 'memorix_session_start',
+        name: 'baton_session_start',
         arguments: { agent: 'claude-code', model: 'claude-opus', modelProvider: 'anthropic', task: 'Order export to CSV', objective: 'orders download as CSV from admin' },
       }));
       await claude.client.callTool({ name: 'session_checkpoint', arguments: { completed: ['CSV serializer'], pending: ['Admin download button', 'Escape commas'] } });
@@ -214,7 +214,7 @@ describe.skipIf(!pgAvailable || !cliBuilt)('session continuity end to end', () =
 
     const codex = await connectAgentWithCommand(bob, 'codex', mcpCommand.codex.command, mcpCommand.codex.args);
     try {
-      const card = await codex.client.callTool({ name: 'memorix_session_start', arguments: { agent: 'codex', model: 'gpt-5' } });
+      const card = await codex.client.callTool({ name: 'baton_session_start', arguments: { agent: 'codex', model: 'gpt-5' } });
       expect(toolText(card)).toContain(sessionId);
       const list = await codex.client.callTool({ name: 'session_list', arguments: {} });
       expect(toolText(list)).toContain('Order export to CSV');
@@ -242,13 +242,13 @@ describe.skipIf(!pgAvailable || !cliBuilt)('session continuity end to end', () =
   it('TEST 4: the agent is killed mid-task; automatic checkpoints let another user resume', async () => {
     const claude = await connectAgentWithCommand(alice, 'claude-code', mcpCommand.claude.command, mcpCommand.claude.args);
     const sessionId = startedSessionId(await claude.client.callTool({
-      name: 'memorix_session_start',
+      name: 'baton_session_start',
       arguments: { agent: 'claude-code', task: 'Refund webhooks', objective: 'refund events update orders' },
     }));
     await claude.client.callTool({ name: 'session_checkpoint', arguments: { completed: ['Webhook route'], pending: ['Signature check', 'Order update'] } });
     await waitFor('daemon', async () => daemonPid(alice));
 
-    // The agent keeps working without telling PMI anything more.
+    // The agent keeps working without telling Baton anything more.
     writeFileSync(path.join(alice.repo, 'refund-webhook.ts'), 'export function handleRefund() {}\n');
     writeFileSync(path.join(alice.repo, 'signature.ts'), 'export const verify = () => true;\n');
     await waitFor('automatic checkpoint on the server', async () => {
@@ -266,19 +266,19 @@ describe.skipIf(!pgAvailable || !cliBuilt)('session continuity end to end', () =
     });
     expect(released.state.lastCheckpoint.trigger).toMatch(/fs_change|timer|exit/);
 
-    const resume = await pmi(bob, 'session', 'resume', sessionId, '--agent', 'codex', '--json');
+    const resume = await baton(bob, 'session', 'resume', sessionId, '--agent', 'codex', '--json');
     expect(resume.code, resume.stderr).toBe(0);
     expect(resume.json.doNotRedo).toEqual(['Webhook route']);
     expect(resume.json.nextAction).toBe('Signature check');
     expect(resume.json.nextActionInferred).toBe(true);
     expect(resume.json.filesToRead).toEqual(expect.arrayContaining(['refund-webhook.ts', 'signature.ts']));
-    await pmi(bob, 'session', 'finish', '--sessionId', resume.json.sessionId);
+    await baton(bob, 'session', 'finish', '--sessionId', resume.json.sessionId);
   }, 120_000);
 
   it('TEST 4 (machine lost): agent and daemon die; the server lease expires and the last checkpoint is resumable', async () => {
     const claude = await connectAgentWithCommand(alice, 'claude-code', mcpCommand.claude.command, mcpCommand.claude.args);
     const sessionId = startedSessionId(await claude.client.callTool({
-      name: 'memorix_session_start',
+      name: 'baton_session_start',
       arguments: { agent: 'claude-code', task: 'Inventory sync' },
     }));
     await claude.client.callTool({ name: 'session_checkpoint', arguments: { completed: ['Inventory API client'], next: 'Nightly sync job' } });
@@ -295,17 +295,17 @@ describe.skipIf(!pgAvailable || !cliBuilt)('session continuity end to end', () =
     expect((await serverSession(sessionId)).status).not.toBe('resumable');
 
     const listed = await waitFor('lease expiry', async () => {
-      const list = await pmi(bob, 'session', 'list', '--json');
+      const list = await baton(bob, 'session', 'list', '--json');
       return list.json?.sessions.find((s: { id: string; status: string }) => s.id === sessionId && s.status === 'resumable');
     }, (LEASE_TTL_SECONDS + 10) * 1000);
     expect(listed).toBeTruthy();
 
-    const resume = await pmi(bob, 'session', 'resume', sessionId, '--agent', 'codex', '--json');
+    const resume = await baton(bob, 'session', 'resume', sessionId, '--agent', 'codex', '--json');
     expect(resume.code, resume.stderr).toBe(0);
     expect(resume.json).toMatchObject({ doNotRedo: ['Inventory API client'], nextAction: 'Nightly sync job' });
     expect(resume.json.filesToRead).toContain('inventory.ts');
-    await pmi(bob, 'session', 'finish', '--sessionId', resume.json.sessionId);
-    rmSync(path.join(alice.home, 'data', 'pmi-daemon.pid'), { force: true });
+    await baton(bob, 'session', 'finish', '--sessionId', resume.json.sessionId);
+    rmSync(path.join(alice.home, 'data', 'baton-daemon.pid'), { force: true });
   }, 120_000);
 
   it('TEST 7: two users\' agents work in parallel without touching each other\'s sessions', async () => {
@@ -313,8 +313,8 @@ describe.skipIf(!pgAvailable || !cliBuilt)('session continuity end to end', () =
     const codex = await connectAgentWithCommand(bob, 'codex', mcpCommand.codex.command, mcpCommand.codex.args);
     try {
       const [aId, bId] = await Promise.all([
-        claude.client.callTool({ name: 'memorix_session_start', arguments: { agent: 'claude-code', task: 'Search filters' } }).then(startedSessionId),
-        codex.client.callTool({ name: 'memorix_session_start', arguments: { agent: 'codex', task: 'Email receipts' } }).then(startedSessionId),
+        claude.client.callTool({ name: 'baton_session_start', arguments: { agent: 'claude-code', task: 'Search filters' } }).then(startedSessionId),
+        codex.client.callTool({ name: 'baton_session_start', arguments: { agent: 'codex', task: 'Email receipts' } }).then(startedSessionId),
       ]);
       await Promise.all([
         claude.client.callTool({ name: 'session_checkpoint', arguments: { completed: ['Price filter'] } }),

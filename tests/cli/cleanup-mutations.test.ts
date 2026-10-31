@@ -30,7 +30,7 @@ describe('cleanup persistence', () => {
   let store: SqliteBackend;
 
   beforeEach(async () => {
-    dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-cleanup-test-'));
+    dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-cleanup-test-'));
     store = new SqliteBackend();
     await store.init(dataDir);
   });

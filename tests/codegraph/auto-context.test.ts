@@ -22,13 +22,13 @@ import { resetTeamStore } from '../../src/team/team-store.js';
 
 describe('auto project context', () => {
   const originalCwd = process.cwd();
-  const originalEmbedding = process.env.MEMORIX_EMBEDDING;
+  const originalEmbedding = process.env.BATON_EMBEDDING;
   let sandboxRoot = '';
   let repoDir = '';
   let dataDir = '';
 
   beforeEach(async () => {
-    sandboxRoot = mkdtempSync(path.join(tmpdir(), 'memorix-auto-context-'));
+    sandboxRoot = mkdtempSync(path.join(tmpdir(), 'baton-auto-context-'));
     repoDir = path.join(sandboxRoot, 'repo');
     dataDir = path.join(sandboxRoot, 'data');
     mkdirSync(path.join(repoDir, 'src'), { recursive: true });
@@ -36,7 +36,7 @@ describe('auto project context', () => {
     writeFileSync(path.join(repoDir, 'src', 'worker.py'), 'def dispatch_job(name: str):\n    return name.upper()\n', 'utf8');
     execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore', windowsHide: true });
     process.chdir(repoDir);
-    process.env.MEMORIX_EMBEDDING = 'off';
+    process.env.BATON_EMBEDDING = 'off';
     await initObservationStore(dataDir);
     await initObservations(dataDir);
   }, 30_000);
@@ -44,9 +44,9 @@ describe('auto project context', () => {
   afterEach(async () => {
     process.chdir(originalCwd);
     if (originalEmbedding === undefined) {
-      delete process.env.MEMORIX_EMBEDDING;
+      delete process.env.BATON_EMBEDDING;
     } else {
-      process.env.MEMORIX_EMBEDDING = originalEmbedding;
+      process.env.BATON_EMBEDDING = originalEmbedding;
     }
     resetObservationStore();
     resetSessionStore();
@@ -104,7 +104,7 @@ describe('auto project context', () => {
     });
 
     const text = formatAutoProjectContextPrompt(context);
-    expect(text).toContain('Memorix Autopilot Brief');
+    expect(text).toContain('Baton Autopilot Brief');
     expect(text).toContain('Start here');
     expect(text).toContain('Reliable memory');
     expect(text).toContain('Code state:');

@@ -20,21 +20,21 @@ import setupCommand, {
   installOpenClawBundlePackage,
   installPiPackage,
   installPluginPackage,
-  removeLegacyCodexMemorixMcpConfig,
+  removeLegacyCodexBatonMcpConfig,
   getSetupAgentTargets,
-  rewriteBundledMemorixMcpToHttp,
+  rewriteBundledBatonMcpToHttp,
 } from '../../src/cli/commands/setup.js';
 
 function makeTmpDir(): string {
-  return fsSync.mkdtempSync(path.join(os.tmpdir(), 'memorix-setup-test-'));
+  return fsSync.mkdtempSync(path.join(os.tmpdir(), 'baton-setup-test-'));
 }
 
 const OFFICIAL_SKILL_NAMES = [
-  'memorix-memory',
-  'memorix-reasoning',
-  'memorix-sessions',
-  'memorix-git-memory',
-  'memorix-troubleshooting',
+  'baton-memory',
+  'baton-reasoning',
+  'baton-sessions',
+  'baton-git-memory',
+  'baton-troubleshooting',
 ];
 
 async function cleanup(dir: string): Promise<void> {
@@ -84,7 +84,7 @@ describe('setup command planning', () => {
         cmd: setupCommand,
       } as any);
 
-      expect(fsSync.existsSync(path.join(homeDir, 'plugins', 'memorix'))).toBe(false);
+      expect(fsSync.existsSync(path.join(homeDir, 'plugins', 'baton'))).toBe(false);
       expect(fsSync.existsSync(path.join(homeDir, '.agents', 'plugins', 'marketplace.json'))).toBe(false);
       expect(fsSync.existsSync(path.join(homeDir, '.codex', 'config.toml'))).toBe(false);
     } finally {
@@ -148,7 +148,7 @@ describe('setup command planning', () => {
       await installAgentSetup('claude', plan, false);
 
       await expect(fs.readFile(path.join(tmpDir, 'CLAUDE.md'), 'utf-8'))
-        .resolves.toContain('Memorix');
+        .resolves.toContain('Baton');
       await expect(fs.access(path.join(tmpDir, '.claude', 'settings.local.json')))
         .rejects.toThrow();
     } finally {
@@ -268,32 +268,32 @@ describe('plugin package installer', () => {
         homeDir: tmpDir,
       });
 
-      const pluginManifest = path.join(tmpDir, 'plugins', 'memorix', '.codex-plugin', 'plugin.json');
-      const hooksConfig = path.join(tmpDir, 'plugins', 'memorix', 'hooks', 'hooks.json');
+      const pluginManifest = path.join(tmpDir, 'plugins', 'baton', '.codex-plugin', 'plugin.json');
+      const hooksConfig = path.join(tmpDir, 'plugins', 'baton', 'hooks', 'hooks.json');
       const marketplace = path.join(tmpDir, '.agents', 'plugins', 'marketplace.json');
-      const skillsRoot = path.join(tmpDir, 'plugins', 'memorix', 'skills');
+      const skillsRoot = path.join(tmpDir, 'plugins', 'baton', 'skills');
 
-      expect(result.pluginPath).toBe(path.join(tmpDir, 'plugins', 'memorix'));
+      expect(result.pluginPath).toBe(path.join(tmpDir, 'plugins', 'baton'));
       expect(result.marketplacePath).toBe(marketplace);
       const manifest = JSON.parse(await fs.readFile(pluginManifest, 'utf-8'));
       const hooks = JSON.parse(await fs.readFile(hooksConfig, 'utf-8'));
-      expect(manifest.name).toBe('memorix');
+      expect(manifest.name).toBe('baton');
       expect(manifest.version).toBe(getCliVersion());
       expect(manifest.hooks).toBe('./hooks/hooks.json');
       expect(hooks.hooks.SessionStart[0].hooks[0]).toMatchObject({
-        command: 'memorix hook --agent codex',
-        commandWindows: 'memorix.cmd hook --agent codex',
+        command: 'baton hook --agent codex',
+        commandWindows: 'baton.cmd hook --agent codex',
       });
       expect(hooks.hooks).toHaveProperty('PreCompact');
       expect(hooks.hooks).toHaveProperty('Stop');
       await expectOfficialSkills(skillsRoot);
-      expect(await fs.readFile(path.join(skillsRoot, 'memorix-git-memory', 'SKILL.md'), 'utf-8')).toContain('Git Memory');
+      expect(await fs.readFile(path.join(skillsRoot, 'baton-git-memory', 'SKILL.md'), 'utf-8')).toContain('Git Memory');
 
       const catalog = JSON.parse(await fs.readFile(marketplace, 'utf-8'));
       expect(catalog.name).toBe('personal');
       expect(catalog.plugins[0]).toMatchObject({
-        name: 'memorix',
-        source: { source: 'local', path: './plugins/memorix' },
+        name: 'baton',
+        source: { source: 'local', path: './plugins/baton' },
         policy: { installation: 'AVAILABLE', authentication: 'ON_INSTALL' },
         category: 'Developer Tools',
       });
@@ -310,30 +310,30 @@ describe('plugin package installer', () => {
         homeDir: tmpDir,
       });
 
-      const marketplaceRoot = path.join(tmpDir, '.claude', 'plugins', 'marketplaces', 'memorix-local');
+      const marketplaceRoot = path.join(tmpDir, '.claude', 'plugins', 'marketplaces', 'baton-local');
       const marketplace = path.join(marketplaceRoot, '.claude-plugin', 'marketplace.json');
-      const manifest = path.join(marketplaceRoot, 'plugins', 'memorix', '.claude-plugin', 'plugin.json');
-      const mcpConfig = path.join(marketplaceRoot, 'plugins', 'memorix', '.mcp.json');
-      const skillsRoot = path.join(marketplaceRoot, 'plugins', 'memorix', 'skills');
+      const manifest = path.join(marketplaceRoot, 'plugins', 'baton', '.claude-plugin', 'plugin.json');
+      const mcpConfig = path.join(marketplaceRoot, 'plugins', 'baton', '.mcp.json');
+      const skillsRoot = path.join(marketplaceRoot, 'plugins', 'baton', 'skills');
 
-      expect(result.pluginPath).toBe(path.join(marketplaceRoot, 'plugins', 'memorix'));
+      expect(result.pluginPath).toBe(path.join(marketplaceRoot, 'plugins', 'baton'));
       expect(result.marketplacePath).toBe(marketplace);
       expect(result.marketplaceRoot).toBe(marketplaceRoot);
       const pluginManifest = JSON.parse(await fs.readFile(manifest, 'utf-8'));
-      expect(pluginManifest.name).toBe('memorix');
-      expect(pluginManifest.skills).toContain('./skills/memorix-troubleshooting');
-      expect(JSON.parse(await fs.readFile(mcpConfig, 'utf-8')).mcpServers.memorix).toMatchObject({
-        command: 'memorix',
+      expect(pluginManifest.name).toBe('baton');
+      expect(pluginManifest.skills).toContain('./skills/baton-troubleshooting');
+      expect(JSON.parse(await fs.readFile(mcpConfig, 'utf-8')).mcpServers.baton).toMatchObject({
+        command: 'baton',
         args: ['serve', '--mode', 'lite'],
         alwaysLoad: true,
       });
       await expectOfficialSkills(skillsRoot);
 
       const catalog = JSON.parse(await fs.readFile(marketplace, 'utf-8'));
-      expect(catalog.name).toBe('memorix-local');
+      expect(catalog.name).toBe('baton-local');
       expect(catalog.plugins[0]).toMatchObject({
-        name: 'memorix',
-        source: './plugins/memorix',
+        name: 'baton',
+        source: './plugins/baton',
         category: 'development',
       });
     } finally {
@@ -345,21 +345,21 @@ describe('plugin package installer', () => {
     const tmpDir = makeTmpDir();
     try {
       const result = await installCodeBuddyPluginPackage({ homeDir: tmpDir });
-      const marketplaceRoot = path.join(tmpDir, '.codebuddy', 'memorix-local');
-      const manifestPath = path.join(marketplaceRoot, 'plugins', 'memorix', '.codebuddy-plugin', 'plugin.json');
-      const hooksPath = path.join(marketplaceRoot, 'plugins', 'memorix', 'hooks', 'hooks.json');
-      const mcpPath = path.join(marketplaceRoot, 'plugins', 'memorix', '.mcp.json');
+      const marketplaceRoot = path.join(tmpDir, '.codebuddy', 'baton-local');
+      const manifestPath = path.join(marketplaceRoot, 'plugins', 'baton', '.codebuddy-plugin', 'plugin.json');
+      const hooksPath = path.join(marketplaceRoot, 'plugins', 'baton', 'hooks', 'hooks.json');
+      const mcpPath = path.join(marketplaceRoot, 'plugins', 'baton', '.mcp.json');
 
-      expect(result.pluginPath).toBe(path.join(marketplaceRoot, 'plugins', 'memorix'));
+      expect(result.pluginPath).toBe(path.join(marketplaceRoot, 'plugins', 'baton'));
       expect(result.marketplacePath).toBe(path.join(marketplaceRoot, '.codebuddy-plugin', 'marketplace.json'));
       expect(JSON.parse(await fs.readFile(manifestPath, 'utf-8'))).toMatchObject({
-        name: 'memorix', hooks: './hooks/hooks.json', mcpServers: './.mcp.json', skills: './skills',
+        name: 'baton', hooks: './hooks/hooks.json', mcpServers: './.mcp.json', skills: './skills',
       });
-      expect(JSON.parse(await fs.readFile(mcpPath, 'utf-8')).mcpServers.memorix).toMatchObject({
-        type: 'stdio', command: 'memorix', args: ['serve', '--mode', 'lite'],
+      expect(JSON.parse(await fs.readFile(mcpPath, 'utf-8')).mcpServers.baton).toMatchObject({
+        type: 'stdio', command: 'baton', args: ['serve', '--mode', 'lite'],
       });
       expect(JSON.parse(await fs.readFile(hooksPath, 'utf-8')).hooks.SessionStart[0].hooks[0]).toMatchObject({
-        command: 'memorix hook --agent codebuddy', timeout: 10,
+        command: 'baton hook --agent codebuddy', timeout: 10,
       });
       await expectOfficialSkills(path.join(result.pluginPath, 'skills'));
       await expect(fs.access(path.join(tmpDir, '.codebuddy', 'settings.json'))).rejects.toThrow();
@@ -376,17 +376,17 @@ describe('plugin package installer', () => {
         homeDir: tmpDir,
       });
 
-      const pluginPath = path.join(tmpDir, '.copilot', 'plugins', 'local', 'memorix');
+      const pluginPath = path.join(tmpDir, '.copilot', 'plugins', 'local', 'baton');
       const manifest = path.join(pluginPath, 'plugin.json');
       const mcpConfig = path.join(pluginPath, '.mcp.json');
       const hooksConfig = path.join(pluginPath, 'hooks', 'hooks.json');
       const skillsRoot = path.join(pluginPath, 'skills');
 
       expect(result.pluginPath).toBe(pluginPath);
-      expect(JSON.parse(await fs.readFile(manifest, 'utf-8')).name).toBe('memorix');
+      expect(JSON.parse(await fs.readFile(manifest, 'utf-8')).name).toBe('baton');
       await expectOfficialSkills(skillsRoot);
-      expect(JSON.parse(await fs.readFile(mcpConfig, 'utf-8')).mcpServers.memorix).toMatchObject({
-        command: 'memorix',
+      expect(JSON.parse(await fs.readFile(mcpConfig, 'utf-8')).mcpServers.baton).toMatchObject({
+        command: 'baton',
         args: ['serve', '--mode', 'lite'],
       });
       expect(JSON.parse(await fs.readFile(hooksConfig, 'utf-8')).hooks.postToolUse[0]).toMatchObject({
@@ -412,8 +412,8 @@ describe('plugin package installer', () => {
       expect(manifest.hooks).toBeUndefined();
       await expect(fs.access(path.join(pluginPath, 'hooks', 'hooks.json'))).rejects.toThrow();
       await expectOfficialSkills(path.join(pluginPath, 'skills'));
-      expect(JSON.parse(await fs.readFile(path.join(pluginPath, '.mcp.json'), 'utf-8')).mcpServers.memorix).toMatchObject({
-        command: 'memorix',
+      expect(JSON.parse(await fs.readFile(path.join(pluginPath, '.mcp.json'), 'utf-8')).mcpServers.baton).toMatchObject({
+        command: 'baton',
         args: ['serve', '--mode', 'lite'],
       });
     } finally {
@@ -428,36 +428,36 @@ describe('plugin package installer', () => {
       const extensionPath = path.join(tmpDir, 'gemini-extension.json');
       await fs.writeFile(mcpPath, JSON.stringify({
         mcpServers: {
-          memorix: { command: 'memorix', args: ['serve', '--mode', 'lite'], alwaysLoad: true },
+          baton: { command: 'baton', args: ['serve', '--mode', 'lite'], alwaysLoad: true },
           other: { command: 'keep-me', args: [] },
         },
       }, null, 2), 'utf-8');
       await fs.writeFile(extensionPath, JSON.stringify({
-        name: 'memorix',
+        name: 'baton',
         mcpServers: {
-          memorix: { type: 'stdio', command: 'memorix', args: ['serve', '--mode', 'lite'] },
+          baton: { type: 'stdio', command: 'baton', args: ['serve', '--mode', 'lite'] },
         },
         contextFileName: 'GEMINI.md',
       }, null, 2), 'utf-8');
 
-      const rewritten = await rewriteBundledMemorixMcpToHttp(tmpDir);
+      const rewritten = await rewriteBundledBatonMcpToHttp(tmpDir);
       const mcp = JSON.parse(await fs.readFile(mcpPath, 'utf-8'));
       const extension = JSON.parse(await fs.readFile(extensionPath, 'utf-8'));
 
       expect(rewritten).toEqual(expect.arrayContaining([mcpPath, extensionPath]));
-      expect(mcp.mcpServers.memorix).toEqual({
+      expect(mcp.mcpServers.baton).toEqual({
         url: 'http://localhost:3211/mcp',
         alwaysLoad: true,
       });
       expect(mcp.mcpServers.other).toEqual({ command: 'keep-me', args: [] });
       expect(extension).toMatchObject({
-        name: 'memorix',
+        name: 'baton',
         contextFileName: 'GEMINI.md',
         mcpServers: {
-          memorix: { type: 'http', url: 'http://localhost:3211/mcp' },
+          baton: { type: 'http', url: 'http://localhost:3211/mcp' },
         },
       });
-      expect(extension.mcpServers.memorix.command).toBeUndefined();
+      expect(extension.mcpServers.baton.command).toBeUndefined();
     } finally {
       await cleanup(tmpDir);
     }
@@ -480,21 +480,21 @@ describe('plugin package installer', () => {
         '.claude',
         'plugins',
         'marketplaces',
-        'memorix-local',
+        'baton-local',
         'plugins',
-        'memorix',
+        'baton',
         '.mcp.json',
       );
       const mcp = JSON.parse(await fs.readFile(mcpPath, 'utf-8'));
-      expect(mcp.mcpServers.memorix).toEqual({
+      expect(mcp.mcpServers.baton).toEqual({
         url: 'http://localhost:3211/mcp',
         alwaysLoad: true,
       });
       // A real Claude CLI may create its own user config while registering the
-      // local marketplace. Memorix must not add a second standalone MCP entry.
+      // local marketplace. Baton must not add a second standalone MCP entry.
       const claudeConfig = await fs.readFile(path.join(tmpDir, '.claude.json'), 'utf8').catch(() => null);
       if (claudeConfig) {
-        expect(JSON.parse(claudeConfig)).not.toHaveProperty('mcpServers.memorix');
+        expect(JSON.parse(claudeConfig)).not.toHaveProperty('mcpServers.baton');
       }
     } finally {
       process.chdir(originalCwd);
@@ -511,29 +511,29 @@ describe('plugin package installer', () => {
 describe('Codex legacy integration migration', () => {
   it('requires the exact Personal marketplace plugin to be enabled before migration', () => {
     expect(parseCodexPluginState(JSON.stringify({
-      installed: [{ pluginId: 'memorix@personal', installed: true, enabled: true }],
+      installed: [{ pluginId: 'baton@personal', installed: true, enabled: true }],
     }))).toBe('ready');
     expect(parseCodexPluginState(JSON.stringify({
-      installed: [{ pluginId: 'memorix@personal', installed: true, enabled: false }],
+      installed: [{ pluginId: 'baton@personal', installed: true, enabled: false }],
     }))).toBe('disabled');
     expect(parseCodexPluginState(JSON.stringify({
-      installed: [{ pluginId: 'memorix@other', installed: true, enabled: true }],
+      installed: [{ pluginId: 'baton@other', installed: true, enabled: true }],
     }))).toBe('missing');
     expect(parseCodexPluginState(`warning from Codex\n${JSON.stringify({
-      installed: [{ pluginId: 'memorix@personal', installed: true, enabled: true }],
+      installed: [{ pluginId: 'baton@personal', installed: true, enabled: true }],
     })}`)).toBe('ready');
     expect(parseCodexPluginState('not json')).toBe('unknown');
   });
 
-  it('removes only Memorix-owned legacy MCP, hooks, and plugin files', async () => {
+  it('removes only Baton-owned legacy MCP, hooks, and plugin files', async () => {
     const tmpDir = makeTmpDir();
     const homeDir = path.join(tmpDir, 'home');
     const projectRoot = path.join(tmpDir, 'project');
     try {
       const configPath = path.join(homeDir, '.codex', 'config.toml');
       const hooksPath = path.join(projectRoot, '.codex', 'hooks.json');
-      const legacyPluginPath = path.join(homeDir, '.codex', 'plugins', 'memorix');
-      const canonicalPluginPath = path.join(homeDir, 'plugins', 'memorix');
+      const legacyPluginPath = path.join(homeDir, '.codex', 'plugins', 'baton');
+      const canonicalPluginPath = path.join(homeDir, 'plugins', 'baton');
       await fs.mkdir(path.dirname(configPath), { recursive: true });
       await fs.mkdir(path.dirname(hooksPath), { recursive: true });
       await fs.mkdir(path.join(legacyPluginPath, '.codex-plugin'), { recursive: true });
@@ -543,20 +543,20 @@ describe('Codex legacy integration migration', () => {
         'command = "other"',
         'args = []',
         '',
-        '[mcp_servers.memorix]',
+        '[mcp_servers.baton]',
         'command = "node"',
-        'args = ["e:/projects/memorix/dist/cli/index.js", "serve"]',
+        'args = ["e:/projects/baton/dist/cli/index.js", "serve"]',
         '',
       ].join('\n'), 'utf-8');
       await fs.writeFile(hooksPath, JSON.stringify({
         hooks: {
-          SessionStart: [{ type: 'command', command: 'memorix hook' }],
-          Stop: [{ type: 'command', command: 'memorix hook' }],
+          SessionStart: [{ type: 'command', command: 'baton hook' }],
+          Stop: [{ type: 'command', command: 'baton hook' }],
         },
       }), 'utf-8');
       await fs.writeFile(path.join(legacyPluginPath, '.codex-plugin', 'plugin.json'), JSON.stringify({
-        name: 'memorix',
-        repository: 'https://github.com/AVIDS2/memorix',
+        name: 'baton',
+        repository: 'https://github.com/caaatpro/pmi',
       }), 'utf-8');
 
       const result = await migrateLegacyCodexIntegration({ homeDir, projectRoot });
@@ -564,7 +564,7 @@ describe('Codex legacy integration migration', () => {
 
       expect(result).toEqual({ mcp: 'removed', projectHooks: 'removed', pluginFolder: 'removed' });
       expect(config).toContain('[mcp_servers.other]');
-      expect(config).not.toContain('[mcp_servers.memorix]');
+      expect(config).not.toContain('[mcp_servers.baton]');
       await expect(fs.access(hooksPath)).rejects.toThrow();
       await expect(fs.access(legacyPluginPath)).rejects.toThrow();
       await expect(fs.access(canonicalPluginPath)).resolves.toBeUndefined();
@@ -583,17 +583,17 @@ describe('Codex legacy integration migration', () => {
       await fs.mkdir(path.dirname(configPath), { recursive: true });
       await fs.mkdir(path.dirname(hooksPath), { recursive: true });
       await fs.writeFile(configPath, [
-        '[mcp_servers.memorix]',
-        'command = "memorix"',
+        '[mcp_servers.baton]',
+        'command = "baton"',
         'args = ["serve"]',
         '',
-        '[mcp_servers.memorix.env]',
-        'MEMORIX_MODE = "team"',
+        '[mcp_servers.baton.env]',
+        'BATON_MODE = "team"',
         '',
       ].join('\n'), 'utf-8');
       await fs.writeFile(hooksPath, JSON.stringify({
         hooks: {
-          SessionStart: [{ type: 'command', command: 'memorix hook' }],
+          SessionStart: [{ type: 'command', command: 'baton hook' }],
           Stop: [{ type: 'command', command: 'other-agent hook' }],
         },
       }), 'utf-8');
@@ -602,14 +602,14 @@ describe('Codex legacy integration migration', () => {
 
       expect(result.mcp).toBe('preserved');
       expect(result.projectHooks).toBe('preserved');
-      await expect(fs.readFile(configPath, 'utf-8')).resolves.toContain('MEMORIX_MODE');
+      await expect(fs.readFile(configPath, 'utf-8')).resolves.toContain('BATON_MODE');
       await expect(fs.readFile(hooksPath, 'utf-8')).resolves.toContain('other-agent hook');
     } finally {
       await cleanup(tmpDir);
     }
   });
 
-  it('preserves an all-Memorix legacy hooks file when the user added hook options', async () => {
+  it('preserves an all-Baton legacy hooks file when the user added hook options', async () => {
     const tmpDir = makeTmpDir();
     const homeDir = path.join(tmpDir, 'home');
     const projectRoot = path.join(tmpDir, 'project');
@@ -618,7 +618,7 @@ describe('Codex legacy integration migration', () => {
       await fs.mkdir(path.dirname(hooksPath), { recursive: true });
       await fs.writeFile(hooksPath, JSON.stringify({
         hooks: {
-          SessionStart: [{ type: 'command', command: 'memorix hook', timeout: 10 }],
+          SessionStart: [{ type: 'command', command: 'baton hook', timeout: 10 }],
         },
       }), 'utf-8');
 
@@ -640,23 +640,23 @@ describe('extension package installer', () => {
         homeDir: tmpDir,
         global: true,
       });
-      const pluginPath = path.join(tmpDir, '.gemini', 'config', 'plugins', 'memorix');
+      const pluginPath = path.join(tmpDir, '.gemini', 'config', 'plugins', 'baton');
       const hooks = JSON.parse(await fs.readFile(path.join(pluginPath, 'hooks.json'), 'utf-8'));
 
       expect(result.pluginPath).toBe(pluginPath);
       expect(JSON.parse(await fs.readFile(path.join(pluginPath, 'plugin.json'), 'utf-8'))).toMatchObject({
-        name: 'memorix',
+        name: 'baton',
       });
-      expect(JSON.parse(await fs.readFile(path.join(pluginPath, 'mcp_config.json'), 'utf-8')).mcpServers.memorix).toMatchObject({
-        command: 'memorix',
+      expect(JSON.parse(await fs.readFile(path.join(pluginPath, 'mcp_config.json'), 'utf-8')).mcpServers.baton).toMatchObject({
+        command: 'baton',
         args: ['serve', '--mode', 'lite'],
       });
-      expect(hooks.memorix.PreInvocation[0].command).toContain('--event PreInvocation');
-      expect(hooks.memorix.PreToolUse[0].hooks[0].command).toContain('--event PreToolUse');
-      const rules = await fs.readFile(path.join(pluginPath, 'rules', 'memorix.md'), 'utf-8');
-      expect(rules).toContain('memorix_search');
-      expect(rules).toContain('memorix_evidence');
-      expect(rules).toContain('memorix_feedback');
+      expect(hooks.baton.PreInvocation[0].command).toContain('--event PreInvocation');
+      expect(hooks.baton.PreToolUse[0].hooks[0].command).toContain('--event PreToolUse');
+      const rules = await fs.readFile(path.join(pluginPath, 'rules', 'baton.md'), 'utf-8');
+      expect(rules).toContain('baton_search');
+      expect(rules).toContain('baton_evidence');
+      expect(rules).toContain('baton_feedback');
       await expectOfficialSkills(path.join(pluginPath, 'skills'));
     } finally {
       await cleanup(tmpDir);
@@ -671,7 +671,7 @@ describe('extension package installer', () => {
         global: false,
         includeHooks: false,
       });
-      const pluginPath = path.join(tmpDir, '.agents', 'plugins', 'memorix');
+      const pluginPath = path.join(tmpDir, '.agents', 'plugins', 'baton');
 
       expect(result.pluginPath).toBe(pluginPath);
       await expect(fs.access(path.join(pluginPath, 'hooks.json'))).rejects.toThrow();
@@ -688,18 +688,18 @@ describe('extension package installer', () => {
         homeDir: tmpDir,
       });
 
-      const extensionPath = path.join(tmpDir, '.gemini', 'extensions', 'memorix');
+      const extensionPath = path.join(tmpDir, '.gemini', 'extensions', 'baton');
       const manifest = path.join(extensionPath, 'gemini-extension.json');
       const contextFile = path.join(extensionPath, 'GEMINI.md');
 
       expect(result.extensionPath).toBe(extensionPath);
       expect(JSON.parse(await fs.readFile(manifest, 'utf-8'))).toMatchObject({
-        name: 'memorix',
+        name: 'baton',
         contextFileName: 'GEMINI.md',
       });
-      expect(await fs.readFile(contextFile, 'utf-8')).toContain('Memorix');
-      expect(await fs.readFile(contextFile, 'utf-8')).toContain('memorix_evidence');
-      expect(await fs.readFile(contextFile, 'utf-8')).toContain('memorix_feedback');
+      expect(await fs.readFile(contextFile, 'utf-8')).toContain('Baton');
+      expect(await fs.readFile(contextFile, 'utf-8')).toContain('baton_evidence');
+      expect(await fs.readFile(contextFile, 'utf-8')).toContain('baton_feedback');
     } finally {
       await cleanup(tmpDir);
     }
@@ -708,24 +708,24 @@ describe('extension package installer', () => {
   it('installs the Pi coding-agent package template', async () => {
     const tmpDir = makeTmpDir();
     try {
-      const packageDir = path.join(tmpDir, 'memorix-pi-package');
+      const packageDir = path.join(tmpDir, 'baton-pi-package');
       const result = await installPiPackage({ packageDir });
 
       const manifest = path.join(packageDir, 'package.json');
-      const extension = path.join(packageDir, 'extensions', 'memorix.js');
-      const skill = path.join(packageDir, 'skills', 'memorix-memory', 'SKILL.md');
+      const extension = path.join(packageDir, 'extensions', 'baton.js');
+      const skill = path.join(packageDir, 'skills', 'baton-memory', 'SKILL.md');
       const skillsRoot = path.join(packageDir, 'skills');
 
       expect(result.packagePath).toBe(packageDir);
       expect(JSON.parse(await fs.readFile(manifest, 'utf-8'))).toMatchObject({
-        name: 'memorix-pi-package',
+        name: 'baton-pi-package',
         pi: {
           extensions: ['./extensions'],
           skills: ['./skills'],
         },
       });
       expect(await fs.readFile(extension, 'utf-8')).toContain("hook_event_name: 'pi.tool_result'");
-      expect(await fs.readFile(skill, 'utf-8')).toContain('name: memorix-memory');
+      expect(await fs.readFile(skill, 'utf-8')).toContain('name: baton-memory');
       await expectOfficialSkills(skillsRoot);
     } finally {
       await cleanup(tmpDir);
@@ -736,20 +736,20 @@ describe('extension package installer', () => {
     const tmpDir = makeTmpDir();
     try {
       const result = await installOpenClawBundlePackage({ homeDir: tmpDir });
-      const bundlePath = path.join(tmpDir, '.openclaw', 'extensions', 'memorix');
+      const bundlePath = path.join(tmpDir, '.openclaw', 'extensions', 'baton');
       const manifest = JSON.parse(await fs.readFile(path.join(bundlePath, '.codex-plugin', 'plugin.json'), 'utf-8'));
-      const hookMetadata = await fs.readFile(path.join(bundlePath, 'hooks', 'memorix', 'HOOK.md'), 'utf-8');
-      const hookHandler = await fs.readFile(path.join(bundlePath, 'hooks', 'memorix', 'handler.ts'), 'utf-8');
+      const hookMetadata = await fs.readFile(path.join(bundlePath, 'hooks', 'baton', 'HOOK.md'), 'utf-8');
+      const hookHandler = await fs.readFile(path.join(bundlePath, 'hooks', 'baton', 'handler.ts'), 'utf-8');
 
       expect(result.bundlePath).toBe(bundlePath);
-      expect(manifest.name).toBe('memorix');
+      expect(manifest.name).toBe('baton');
       expect(manifest.interface.capabilities).toContain('Hooks');
-      expect(hookMetadata).toContain('name: memorix');
+      expect(hookMetadata).toContain('name: baton');
       expect(hookMetadata).toContain('agent:bootstrap');
-      expect(hookHandler).toContain("memorix hook --agent openclaw");
+      expect(hookHandler).toContain("baton hook --agent openclaw");
       await expectOfficialSkills(path.join(bundlePath, 'skills'));
-      expect(JSON.parse(await fs.readFile(path.join(bundlePath, '.mcp.json'), 'utf-8')).mcpServers.memorix).toMatchObject({
-        command: 'memorix',
+      expect(JSON.parse(await fs.readFile(path.join(bundlePath, '.mcp.json'), 'utf-8')).mcpServers.baton).toMatchObject({
+        command: 'baton',
         args: ['serve', '--mode', 'lite'],
       });
     } finally {
@@ -775,22 +775,22 @@ describe('extension package installer', () => {
     const tmpDir = makeTmpDir();
     try {
       const result = await installHermesPluginPackage({ homeDir: tmpDir });
-      const pluginPath = path.join(tmpDir, '.hermes', 'plugins', 'memorix');
+      const pluginPath = path.join(tmpDir, '.hermes', 'plugins', 'baton');
       const manifest = await fs.readFile(path.join(pluginPath, 'plugin.yaml'), 'utf-8');
       const pluginCode = await fs.readFile(path.join(pluginPath, '__init__.py'), 'utf-8');
       const config = await fs.readFile(path.join(tmpDir, '.hermes', 'config.yaml'), 'utf-8');
 
       expect(result.pluginPath).toBe(pluginPath);
-      expect(manifest).toContain('name: memorix');
+      expect(manifest).toContain('name: baton');
       expect(manifest).toContain('provides_hooks:');
       expect(pluginCode).toContain('ctx.register_hook("pre_llm_call"');
-      expect(pluginCode).toContain('ctx.register_command("memorix"');
-      expect(pluginCode).toContain('ctx.register_cli_command("memorix"');
+      expect(pluginCode).toContain('ctx.register_command("baton"');
+      expect(pluginCode).toContain('ctx.register_cli_command("baton"');
       expect(pluginCode).toContain('ctx.register_skill(child.name, str(skill_path))');
       expect(pluginCode).not.toContain('skill_path.read_text');
-      expect(manifest).toContain('  - memorix-troubleshooting');
+      expect(manifest).toContain('  - baton-troubleshooting');
       expect(config).toContain('enabled:');
-      expect(config).toContain('- memorix');
+      expect(config).toContain('- baton');
       await expectOfficialSkills(path.join(pluginPath, 'skills'));
     } finally {
       await cleanup(tmpDir);
@@ -800,20 +800,20 @@ describe('extension package installer', () => {
   it('installs the Oh-my-Pi extension package template with omp manifest fields', async () => {
     const tmpDir = makeTmpDir();
     try {
-      const packageDir = path.join(tmpDir, 'memorix-omp-package');
+      const packageDir = path.join(tmpDir, 'baton-omp-package');
       const result = await installOmpPackage({ packageDir });
       const manifest = JSON.parse(await fs.readFile(path.join(packageDir, 'package.json'), 'utf-8'));
-      const extension = await fs.readFile(path.join(packageDir, 'extensions', 'memorix.js'), 'utf-8');
+      const extension = await fs.readFile(path.join(packageDir, 'extensions', 'baton.js'), 'utf-8');
 
       expect(result.packagePath).toBe(packageDir);
       expect(manifest).toMatchObject({
-        name: 'memorix-omp-package',
+        name: 'baton-omp-package',
         omp: {
-          extensions: ['./extensions/memorix.js'],
+          extensions: ['./extensions/baton.js'],
         },
       });
       expect(extension).toContain("hook_event_name: 'omp.tool_result'");
-      expect(extension).toContain("pi.registerCommand('memorix'");
+      expect(extension).toContain("pi.registerCommand('baton'");
       await expectOfficialSkills(path.join(packageDir, 'skills'));
     } finally {
       await cleanup(tmpDir);
@@ -824,12 +824,12 @@ describe('extension package installer', () => {
     const tmpDir = makeTmpDir();
     try {
       const result = await installPiPackage({ homeDir: tmpDir, global: true });
-      const packageDir = path.join(tmpDir, '.pi', 'agent', 'packages', 'memorix');
+      const packageDir = path.join(tmpDir, '.pi', 'agent', 'packages', 'baton');
 
       expect(result.packagePath).toBe(packageDir);
       expect(result.installHint).toContain('pi install');
       expect(result.installHint).not.toContain(' -l ');
-      expect(JSON.parse(await fs.readFile(path.join(packageDir, 'package.json'), 'utf-8')).name).toBe('memorix-pi-package');
+      expect(JSON.parse(await fs.readFile(path.join(packageDir, 'package.json'), 'utf-8')).name).toBe('baton-pi-package');
       await expectOfficialSkills(path.join(packageDir, 'skills'));
     } finally {
       await cleanup(tmpDir);
@@ -846,8 +846,8 @@ describe('setup MCP config installer', () => {
 
       // Claude Code reads project MCP servers from .mcp.json, not .claude/settings.json.
       expect(result.configPath).toBe(path.join(tmpDir, '.mcp.json'));
-      expect(config.mcpServers.memorix).toMatchObject({
-        command: 'memorix',
+      expect(config.mcpServers.baton).toMatchObject({
+        command: 'baton',
         args: ['serve', '--mode', 'lite'],
         alwaysLoad: true,
       });
@@ -863,17 +863,17 @@ describe('setup MCP config installer', () => {
       await fs.mkdir(path.dirname(legacyPath), { recursive: true });
       await fs.writeFile(legacyPath, JSON.stringify({
         permissions: { allow: ['Bash(npm test)'] },
-        mcpServers: { memorix: { command: 'node', args: ['old/dist/cli/index.js', 'serve'] }, other: { command: 'other' } },
+        mcpServers: { baton: { command: 'node', args: ['old/dist/cli/index.js', 'serve'] }, other: { command: 'other' } },
       }), 'utf-8');
 
       await installMcpConfig({ agent: 'claude', projectRoot: tmpDir, mcp: 'stdio' });
       const legacy = JSON.parse(await fs.readFile(legacyPath, 'utf-8'));
       expect(legacy).toEqual({ permissions: { allow: ['Bash(npm test)'] }, mcpServers: { other: { command: 'other' } } });
       const config = JSON.parse(await fs.readFile(path.join(tmpDir, '.mcp.json'), 'utf-8'));
-      expect(config.mcpServers.memorix.command).toBe('memorix');
+      expect(config.mcpServers.baton.command).toBe('baton');
 
       // Our entry alone: the now empty mcpServers key goes as well.
-      await fs.writeFile(legacyPath, JSON.stringify({ mcpServers: { memorix: { command: 'memorix' } } }), 'utf-8');
+      await fs.writeFile(legacyPath, JSON.stringify({ mcpServers: { baton: { command: 'baton' } } }), 'utf-8');
       await installMcpConfig({ agent: 'claude', projectRoot: tmpDir, mcp: 'stdio' });
       expect(JSON.parse(await fs.readFile(legacyPath, 'utf-8'))).toEqual({});
     } finally {
@@ -897,7 +897,7 @@ describe('setup MCP config installer', () => {
 
       expect(result.configPath).toBe(configPath);
       expect(config.mcpServers.context7.command).toBe('context7');
-      expect(config.mcpServers.memorix).toMatchObject({ command: 'memorix', args: ['serve', '--mode', 'lite'] });
+      expect(config.mcpServers.baton).toMatchObject({ command: 'baton', args: ['serve', '--mode', 'lite'] });
     } finally {
       await cleanup(tmpDir);
     }
@@ -910,16 +910,16 @@ describe('setup MCP config installer', () => {
       const config = JSON.parse(await fs.readFile(result.configPath, 'utf-8'));
 
       expect(result.configPath).toBe(path.join(tmpDir, 'opencode.json'));
-      expect(config.mcp.memorix).toMatchObject({
+      expect(config.mcp.baton).toMatchObject({
         type: 'local',
-        command: ['memorix', 'serve', '--mode', 'lite'],
+        command: ['baton', 'serve', '--mode', 'lite'],
       });
     } finally {
       await cleanup(tmpDir);
     }
   });
 
-  it('replaces only the Codex memorix TOML block', async () => {
+  it('replaces only the Codex baton TOML block', async () => {
     const tmpDir = makeTmpDir();
     try {
       const configPath = path.join(tmpDir, '.codex', 'config.toml');
@@ -931,7 +931,7 @@ describe('setup MCP config installer', () => {
           'command = "other"',
           'args = []',
           '',
-          '[mcp_servers.memorix]',
+          '[mcp_servers.baton]',
           'command = "old"',
           'args = ["old"]',
           '',
@@ -945,8 +945,8 @@ describe('setup MCP config installer', () => {
       expect(result.configPath).toBe(configPath);
       expect(content).toContain('[mcp_servers.other]');
       expect(content).toContain('command = "other"');
-      expect(content).toContain('[mcp_servers.memorix]');
-      expect(content).toContain('command = "memorix"');
+      expect(content).toContain('[mcp_servers.baton]');
+      expect(content).toContain('command = "baton"');
       expect(content).toContain('args = ["serve", "--mode", "lite"]');
       expect(content).not.toContain('command = "old"');
     } finally {
@@ -968,9 +968,9 @@ describe('setup MCP config installer', () => {
       const content = await fs.readFile(result.configPath, 'utf-8');
 
       expect(result.configPath).toBe(path.join(tmpDir, '.grok', 'config.toml'));
-      expect(content).toContain('[mcp_servers.memorix]');
+      expect(content).toContain('[mcp_servers.baton]');
       expect(content).toContain('url = "http://localhost:3211/mcp"');
-      expect(content).not.toContain('command = "memorix"');
+      expect(content).not.toContain('command = "baton"');
     } finally {
       if (originalHome === undefined) delete process.env.HOME;
       else process.env.HOME = originalHome;
@@ -1042,41 +1042,41 @@ describe('setup MCP config installer', () => {
           'command = "other"',
           'args = []',
           '',
-          '[mcp_servers.memorix]',
+          '[mcp_servers.baton]',
           'command = "node"',
-          'args = ["E:/work/memorix/dist/cli/index.js", "serve"]',
+          'args = ["E:/work/baton/dist/cli/index.js", "serve"]',
           '',
         ].join('\n'),
         'utf-8',
       );
 
-      const result = await removeLegacyCodexMemorixMcpConfig(configPath);
+      const result = await removeLegacyCodexBatonMcpConfig(configPath);
       const content = await fs.readFile(configPath, 'utf-8');
 
       expect(result).toMatchObject({ configPath, removed: true });
       expect(content).toContain('[mcp_servers.other]');
-      expect(content).not.toContain('[mcp_servers.memorix]');
+      expect(content).not.toContain('[mcp_servers.baton]');
     } finally {
       await cleanup(tmpDir);
     }
   });
 
-  it('does not remove a user-managed Codex memorix MCP server', async () => {
+  it('does not remove a user-managed Codex baton MCP server', async () => {
     const tmpDir = makeTmpDir();
     try {
       const configPath = path.join(tmpDir, 'config.toml');
       const customConfig = [
-        '[mcp_servers.memorix]',
+        '[mcp_servers.baton]',
         'command = "node"',
-        'args = ["C:/tools/custom-memorix-server.js", "serve"]',
+        'args = ["C:/tools/custom-baton-server.js", "serve"]',
         '',
-        '[mcp_servers.memorix.env]',
-        'MEMORIX_MODE = "team"',
+        '[mcp_servers.baton.env]',
+        'BATON_MODE = "team"',
         '',
       ].join('\n');
       await fs.writeFile(configPath, customConfig, 'utf-8');
 
-      const result = await removeLegacyCodexMemorixMcpConfig(configPath);
+      const result = await removeLegacyCodexBatonMcpConfig(configPath);
 
       expect(result).toMatchObject({ configPath, removed: false });
       expect(await fs.readFile(configPath, 'utf-8')).toBe(customConfig);

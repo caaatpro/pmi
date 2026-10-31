@@ -66,12 +66,12 @@ describe('Hook Normalizer', () => {
       expect(input.toolName).toBe('write_file');
     });
 
-    it('should detect Gemini CLI from _memorix_agent override', () => {
+    it('should detect Gemini CLI from _baton_agent override', () => {
       const input = normalizeHookInput({
         hook_event_name: 'AfterTool',
         cwd: '/project',
         tool_name: 'edit_file',
-        _memorix_agent: 'gemini-cli',
+        _baton_agent: 'gemini-cli',
       });
       expect(input.agent).toBe('gemini-cli');
       expect(input.event).toBe('post_tool');
@@ -80,7 +80,7 @@ describe('Hook Normalizer', () => {
 
     it('normalizes the documented CodeBuddy hook payload through its explicit plugin identity', () => {
       const input = normalizeHookInput({
-        _memorix_agent: 'codebuddy',
+        _baton_agent: 'codebuddy',
         hook_event_name: 'PostToolUse',
         session_id: 'codebuddy-1',
         cwd: '/project',
@@ -93,17 +93,17 @@ describe('Hook Normalizer', () => {
       expect(input.toolName).toBe('Edit');
     });
 
-    it('_memorix_agent takes priority over all other detection heuristics', () => {
-      // Even with gemini_session_id (which normally → antigravity), _memorix_agent wins
+    it('_baton_agent takes priority over all other detection heuristics', () => {
+      // Even with gemini_session_id (which normally → antigravity), _baton_agent wins
       const input = normalizeHookInput({
         hook_event_name: 'SessionStart',
         gemini_session_id: 'gem-999',
-        _memorix_agent: 'gemini-cli',
+        _baton_agent: 'gemini-cli',
       });
       expect(input.agent).toBe('gemini-cli');
     });
 
-    it('should still detect Antigravity when _memorix_agent is not present', () => {
+    it('should still detect Antigravity when _baton_agent is not present', () => {
       const input = normalizeHookInput({
         hook_event_name: 'SessionStart',
         gemini_session_id: 'gem-999',
@@ -113,8 +113,8 @@ describe('Hook Normalizer', () => {
 
     it('should detect Antigravity from generated plugin override and official payload fields', () => {
       const input = normalizeHookInput({
-        _memorix_agent: 'antigravity',
-        _memorix_event: 'PreToolUse',
+        _baton_agent: 'antigravity',
+        _baton_event: 'PreToolUse',
         conversationId: 'ag-123',
         workspacePaths: ['/project'],
         transcriptPath: '/tmp/transcript.jsonl',
@@ -209,8 +209,8 @@ describe('Hook Normalizer', () => {
 
     it('should normalize Antigravity PreInvocation → session_start', () => {
       const input = normalizeHookInput({
-        _memorix_agent: 'antigravity',
-        _memorix_event: 'PreInvocation',
+        _baton_agent: 'antigravity',
+        _baton_event: 'PreInvocation',
         conversationId: 'ag-2',
         workspacePaths: ['/project'],
       });
@@ -305,14 +305,14 @@ describe('Hook Normalizer', () => {
         payload: {
           kwargs: {
             cwd: '/project',
-            prompt: 'load relevant memorix context',
+            prompt: 'load relevant baton context',
           },
         },
       });
       expect(prompt.agent).toBe('hermes');
       expect(prompt.event).toBe('user_prompt');
       expect(prompt.cwd).toBe('/project');
-      expect(prompt.userPrompt).toBe('load relevant memorix context');
+      expect(prompt.userPrompt).toBe('load relevant baton context');
 
       const response = normalizeHookInput({
         agent: 'hermes',

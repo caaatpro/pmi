@@ -145,7 +145,7 @@ export async function runContextEvaluation(
     runtime: {
       node: process.version,
       platform: `${process.platform}-${process.arch}`,
-      embeddings: process.env.MEMORIX_EMBEDDING === 'off' ? 'disabled' : 'unknown',
+      embeddings: process.env.BATON_EMBEDDING === 'off' ? 'disabled' : 'unknown',
     },
     cases,
     summary: {

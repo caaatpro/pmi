@@ -25,22 +25,22 @@ function makeInput(overrides: Partial<FormationInput> = {}): FormationInput {
 
 // Live LLM quality tests are intentionally opt-in because upstream model
 // behavior can drift and should not make the default test suite flaky.
-const runLiveLLMTests = process.env.MEMORIX_RUN_LIVE_LLM_TESTS === '1';
+const runLiveLLMTests = process.env.BATON_RUN_LIVE_LLM_TESTS === '1';
 
-// Load LLM config from ~/.memorix/config.json and set env vars
+// Load LLM config from ~/.baton/config.json and set env vars
 // so initLLM() works in vitest source mode (where require('../config.js') fails)
 let llmAvailable = false;
 try {
   const { readFileSync } = await import('node:fs');
   const { join } = await import('node:path');
   const { homedir } = await import('node:os');
-  const configPath = join(homedir(), '.memorix', 'config.json');
+  const configPath = join(homedir(), '.baton', 'config.json');
   const config = JSON.parse(readFileSync(configPath, 'utf-8'));
   if (config.llm?.apiKey) {
-    process.env.MEMORIX_LLM_API_KEY = config.llm.apiKey;
-    if (config.llm.provider) process.env.MEMORIX_LLM_PROVIDER = config.llm.provider;
-    if (config.llm.model) process.env.MEMORIX_LLM_MODEL = config.llm.model;
-    if (config.llm.baseUrl) process.env.MEMORIX_LLM_BASE_URL = config.llm.baseUrl;
+    process.env.BATON_LLM_API_KEY = config.llm.apiKey;
+    if (config.llm.provider) process.env.BATON_LLM_PROVIDER = config.llm.provider;
+    if (config.llm.model) process.env.BATON_LLM_MODEL = config.llm.model;
+    if (config.llm.baseUrl) process.env.BATON_LLM_BASE_URL = config.llm.baseUrl;
 
     // Set LLM config directly (bypasses initLLM's require('../config.js') which fails in vitest)
     const { setLLMConfig, isLLMEnabled } = await import('../../src/llm/provider.js');

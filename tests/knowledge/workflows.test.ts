@@ -21,14 +21,14 @@ import { OutcomeStore } from '../../src/knowledge/outcome-store.js';
 let root: string | null = null;
 
 function tempRoot(): string {
-  root = mkdtempSync(path.join(tmpdir(), 'memorix-workflows-'));
+  root = mkdtempSync(path.join(tmpdir(), 'baton-workflows-'));
   return root;
 }
 
 function initGitRepository(dir: string): void {
   execFileSync('git', ['init'], { cwd: dir, stdio: 'ignore' });
-  execFileSync('git', ['config', 'user.email', 'tests@memorix.local'], { cwd: dir, stdio: 'ignore' });
-  execFileSync('git', ['config', 'user.name', 'Memorix Tests'], { cwd: dir, stdio: 'ignore' });
+  execFileSync('git', ['config', 'user.email', 'tests@baton.local'], { cwd: dir, stdio: 'ignore' });
+  execFileSync('git', ['config', 'user.name', 'Baton Tests'], { cwd: dir, stdio: 'ignore' });
   writeFileSync(path.join(dir, 'README.md'), '# fixture\n', 'utf8');
   execFileSync('git', ['add', '.'], { cwd: dir, stdio: 'ignore' });
   execFileSync('git', ['commit', '-m', 'initial fixture'], { cwd: dir, stdio: 'ignore' });
@@ -78,14 +78,14 @@ afterEach(() => {
 
 describe('Workflow Inheritance', () => {
   it('parses a release workflow fixture and keeps its approval gate', () => {
-    const sourcePath = path.join(process.cwd(), 'tests', 'fixtures', 'workflows', 'memorix-release.md');
+    const sourcePath = path.join(process.cwd(), 'tests', 'fixtures', 'workflows', 'baton-release.md');
     const workflow = parseWorkflowMarkdown(readFileSync(sourcePath, 'utf8'), {
-      workspaceId: 'workspace:memorix',
-      sourcePath: 'workflows/memorix-release.md',
+      workspaceId: 'workspace:baton',
+      sourcePath: 'workflows/baton-release.md',
     });
 
     expect(workflow).toMatchObject({
-      id: 'memorix-release',
+      id: 'baton-release',
       status: 'active',
       taskLenses: ['release'],
       verificationGates: expect.arrayContaining([
@@ -288,7 +288,7 @@ describe('Workflow Inheritance', () => {
     });
   });
 
-  it('previews and applies only Memorix-owned adapters, preserving user project files', async () => {
+  it('previews and applies only Baton-owned adapters, preserving user project files', async () => {
     const sandbox = tempRoot();
     const projectRoot = path.join(sandbox, 'repo');
     const dataDir = path.join(sandbox, 'data');
@@ -313,12 +313,12 @@ describe('Workflow Inheritance', () => {
     expect(firstPreview.targetPath).toContain(path.join('.agents', 'skills'));
     const applied = await applyWorkflowAdapter({ workflow: release, projectRoot, agent: 'codex' });
     expect(applied.status).toBe('create');
-    expect(readFileSync(applied.targetPath!, 'utf8')).toContain('memorix:workflow-adapter');
+    expect(readFileSync(applied.targetPath!, 'utf8')).toContain('baton:workflow-adapter');
 
     const ownedPreview = await previewWorkflowAdapter({ workflow: release, projectRoot, agent: 'codex' });
     expect(ownedPreview.status).toBe('unchanged');
 
-    const userPath = path.join(projectRoot, '.cursor', 'rules', 'memorix-workflow-release.mdc');
+    const userPath = path.join(projectRoot, '.cursor', 'rules', 'baton-workflow-release.mdc');
     mkdirSync(path.dirname(userPath), { recursive: true });
     writeFileSync(userPath, '# user owned rule\n', 'utf8');
     const conflict = await applyWorkflowAdapter({ workflow: release, projectRoot, agent: 'cursor' });

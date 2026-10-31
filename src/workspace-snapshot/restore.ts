@@ -7,7 +7,7 @@
  * is a new git worktree, which cannot collide with anyone's work. In place
  * is allowed only on a clean working copy at the snapshot's HEAD, and even
  * then a file that differs from the snapshot's base is never overwritten:
- * the snapshot version is written next to it as `<file>.pmi-<snapshot>`.
+ * the snapshot version is written next to it as `<file>.baton-<snapshot>`.
  */
 import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -29,7 +29,7 @@ export interface RestoreOptions {
   repoRoot: string;
   mode: 'worktree' | 'in-place';
   worktreePath?: string;
-  /** Branch for the new worktree; defaults to the snapshot's branch, or pmi/<session> when that exists. */
+  /** Branch for the new worktree; defaults to the snapshot's branch, or baton/<session> when that exists. */
   branchName?: string;
   dryRun?: boolean;
   expectedManifestSha256?: string;
@@ -147,7 +147,7 @@ function writeEntry(root: string, relPath: string, mode: string, content: Buffer
     fs.symlinkSync(content.toString('utf8'), full);
     return;
   }
-  const tmp = `${full}.pmi-tmp-${randomBytes(4).toString('hex')}`;
+  const tmp = `${full}.baton-tmp-${randomBytes(4).toString('hex')}`;
   fs.writeFileSync(tmp, content, { mode: mode === '100755' ? 0o755 : 0o644 });
   fs.renameSync(tmp, full);
   fs.chmodSync(full, mode === '100755' ? 0o755 : 0o644);
@@ -173,7 +173,7 @@ function ensureBase(repoRoot: string, manifest: SnapshotManifest, getBlob: (sha:
     if (hasHead()) return 0;
     throw new RestoreRefused('base_missing', `commit ${manifest.git.head.slice(0, 12)} is not available here or in the remotes; push it or snapshot with the bundle`);
   }
-  const tmp = path.join(os.tmpdir(), `pmi-restore-${randomBytes(6).toString('hex')}.bundle`);
+  const tmp = path.join(os.tmpdir(), `baton-restore-${randomBytes(6).toString('hex')}.bundle`);
   try {
     fs.writeFileSync(tmp, getBlob(manifest.git.bundle.sha256));
     if (!gitOk(repoRoot, ['bundle', 'verify', '-q', tmp])) {
@@ -184,7 +184,7 @@ function ensureBase(repoRoot: string, manifest: SnapshotManifest, getBlob: (sha:
       }
     }
     if (dryRun) return manifest.git.bundle.commits.length;
-    git(repoRoot, ['fetch', '-q', tmp, `HEAD:refs/pmi/snapshots/${manifest.id}`]);
+    git(repoRoot, ['fetch', '-q', tmp, `HEAD:refs/baton/snapshots/${manifest.id}`]);
   } finally {
     fs.rmSync(tmp, { force: true });
   }
@@ -199,7 +199,7 @@ function chooseBranch(repoRoot: string, manifest: SnapshotManifest, requested?: 
     return requested;
   }
   if (manifest.git.branch && !exists(manifest.git.branch)) return manifest.git.branch;
-  const base = `pmi/${(manifest.sessionId ?? manifest.id).replace(/[^A-Za-z0-9._-]/g, '-')}`;
+  const base = `baton/${(manifest.sessionId ?? manifest.id).replace(/[^A-Za-z0-9._-]/g, '-')}`;
   let name = base;
   for (let n = 2; exists(name); n++) name = `${base}-${n}`;
   return name;
@@ -268,7 +268,7 @@ export function restoreSnapshot(manifest: SnapshotManifest, options: RestoreOpti
     }
   } else {
     const repoTop = git(options.repoRoot, ['rev-parse', '--show-toplevel']).toString('utf8').trim();
-    target = path.resolve(options.worktreePath ?? `${repoTop}-pmi-${manifest.id.slice(-8)}`);
+    target = path.resolve(options.worktreePath ?? `${repoTop}-baton-${manifest.id.slice(-8)}`);
     if (fs.existsSync(target)) throw new RestoreRefused('target_exists', `${target} already exists; pass --worktree <new path>`);
     branch = chooseBranch(options.repoRoot, manifest, options.branchName);
     if (!options.dryRun) git(options.repoRoot, ['worktree', 'add', '-q', '-b', branch, target, manifest.git.head]);
@@ -292,7 +292,7 @@ export function restoreSnapshot(manifest: SnapshotManifest, options: RestoreOpti
       conflicted.add(file.path);
       let savedAs: string | null = null;
       if (content && !options.dryRun) {
-        savedAs = `${file.path}.pmi-${manifest.id.slice(-8)}`;
+        savedAs = `${file.path}.baton-${manifest.id.slice(-8)}`;
         writeEntry(target, savedAs, file.mode ?? '100644', content);
       }
       report.conflicts.push({ path: file.path, savedAs, reason: reason ?? `rename source ${file.oldPath}: ${oldReason}` });

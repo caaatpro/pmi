@@ -1,7 +1,7 @@
 /**
  * Load test (ROADMAP Phase 10): 100k memories, 20 concurrent clients doing a
  * realistic mix of context builds, searches, pushes and feed reads against
- * pmi-server on real Postgres. Opt-in: PMI_LOAD_TEST=1 (minutes, not seconds).
+ * baton-server on real Postgres. Opt-in: BATON_LOAD_TEST=1 (minutes, not seconds).
  * Prints latency percentiles; fails on any error or when p95 exceeds the
  * budgets below.
  */
@@ -18,10 +18,10 @@ import { syncNamespace } from '../../src/sync/namespace.js';
 import type { Observation } from '../../src/types.js';
 import { pgAvailable, startPostgres, type TestPostgres } from '../central/pg-helper.js';
 
-const ENABLED = process.env.PMI_LOAD_TEST === '1' && pgAvailable;
-const MEMORIES = Number(process.env.PMI_LOAD_MEMORIES ?? 100_000);
-const CLIENTS = Number(process.env.PMI_LOAD_CLIENTS ?? 20);
-const DURATION_MS = Number(process.env.PMI_LOAD_SECONDS ?? 30) * 1000;
+const ENABLED = process.env.BATON_LOAD_TEST === '1' && pgAvailable;
+const MEMORIES = Number(process.env.BATON_LOAD_MEMORIES ?? 100_000);
+const CLIENTS = Number(process.env.BATON_LOAD_CLIENTS ?? 20);
+const DURATION_MS = Number(process.env.BATON_LOAD_SECONDS ?? 30) * 1000;
 const LEGACY = 'acme/load';
 const BUDGET_P95_MS: Record<string, number> = { context: 1500, search: 500, push: 1000, feed: 500 };
 
@@ -150,5 +150,5 @@ describe.skipIf(!ENABLED)('load: 100k memories, 20 clients', () => {
 });
 
 describe.skipIf(ENABLED)('load test', () => {
-  it.skip('set PMI_LOAD_TEST=1 (and have Docker) to run the 100k-memory, 20-client load test', () => undefined);
+  it.skip('set BATON_LOAD_TEST=1 (and have Docker) to run the 100k-memory, 20-client load test', () => undefined);
 });

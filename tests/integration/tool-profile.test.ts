@@ -24,7 +24,7 @@ vi.mock('../../src/config.js', () => ({
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { createMemorixServer } from '../../src/server.js';
+import { createBatonServer } from '../../src/server.js';
 import { CodeGraphStore } from '../../src/codegraph/store.js';
 import { resetResolvedConfigCache } from '../../src/config/resolved-config.js';
 import { resetTomlConfigCache } from '../../src/config/toml-loader.js';
@@ -38,13 +38,13 @@ import { resetSessionStore } from '../../src/store/session-store.js';
 import { closeAllDatabases } from '../../src/store/sqlite-db.js';
 import { CompactionCheckpointStore } from '../../src/store/compaction-checkpoint-store.js';
 
-const originalDataDir = process.env.MEMORIX_DATA_DIR;
+const originalDataDir = process.env.BATON_DATA_DIR;
 const temporaryProjectDirs: string[] = [];
 let testDataDir = '';
 
 beforeEach(async () => {
-  testDataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-profile-data-'));
-  process.env.MEMORIX_DATA_DIR = testDataDir;
+  testDataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-profile-data-'));
+  process.env.BATON_DATA_DIR = testDataDir;
   resetObservationStore();
   resetSessionStore();
   resetTomlConfigCache();
@@ -59,8 +59,8 @@ afterEach(async () => {
   resetTomlConfigCache();
   resetResolvedConfigCache();
   await resetDb();
-  if (originalDataDir === undefined) delete process.env.MEMORIX_DATA_DIR;
-  else process.env.MEMORIX_DATA_DIR = originalDataDir;
+  if (originalDataDir === undefined) delete process.env.BATON_DATA_DIR;
+  else process.env.BATON_DATA_DIR = originalDataDir;
   await Promise.all([
     fs.rm(testDataDir, { recursive: true, force: true }),
     ...temporaryProjectDirs.splice(0).map((dir) => fs.rm(dir, { recursive: true, force: true })),
@@ -99,12 +99,12 @@ async function createGitProjectDir(prefix: string): Promise<string> {
 
 describe('Tool profile registration', () => {
   it('should register built-in tools according to the selected profile', async () => {
-    const microDir = await createGitProjectDir('memorix-profile-micro-');
-    const liteDir = await createGitProjectDir('memorix-profile-lite-');
-    const teamDir = await createGitProjectDir('memorix-profile-team-');
-    const fullDir = await createGitProjectDir('memorix-profile-full-');
+    const microDir = await createGitProjectDir('baton-profile-micro-');
+    const liteDir = await createGitProjectDir('baton-profile-lite-');
+    const teamDir = await createGitProjectDir('baton-profile-team-');
+    const fullDir = await createGitProjectDir('baton-profile-full-');
 
-    const { server: microServer } = await createMemorixServer(
+    const { server: microServer } = await createBatonServer(
       microDir,
       undefined,
       undefined,
@@ -112,34 +112,34 @@ describe('Tool profile registration', () => {
     );
     const microTools = getToolNames(microServer as any);
     expect(microTools).toEqual([
-      'memorix_codegraph_status',
-      'memorix_context_pack',
-      'memorix_detail',
-      'memorix_project_context',
-      'memorix_resolve',
-      'memorix_search',
-      'memorix_session_start',
-      'memorix_store',
+      'baton_codegraph_status',
+      'baton_context_pack',
+      'baton_detail',
+      'baton_project_context',
+      'baton_resolve',
+      'baton_search',
+      'baton_session_start',
+      'baton_store',
     ]);
 
-    const { server: liteServer } = await createMemorixServer(
+    const { server: liteServer } = await createBatonServer(
       liteDir,
       undefined,
       undefined,
       { toolProfile: 'lite' } as any,
     );
     const liteTools = getToolNames(liteServer as any);
-    expect(liteTools).toContain('memorix_store');
-    expect(liteTools).toContain('memorix_session_start');
-    expect(liteTools).toContain('memorix_graph_context');
-    expect(liteTools).toContain('memorix_continuity');
-    expect(liteTools).not.toContain('memorix_knowledge');
+    expect(liteTools).toContain('baton_store');
+    expect(liteTools).toContain('baton_session_start');
+    expect(liteTools).toContain('baton_graph_context');
+    expect(liteTools).toContain('baton_continuity');
+    expect(liteTools).not.toContain('baton_knowledge');
     expect(liteTools).not.toContain('team_manage');
-    expect(liteTools).not.toContain('memorix_rules_sync');
-    expect(liteTools).not.toContain('memorix_compaction_checkpoint');
+    expect(liteTools).not.toContain('baton_rules_sync');
+    expect(liteTools).not.toContain('baton_compaction_checkpoint');
     expect(liteTools).not.toContain('create_entities');
 
-    const { server: teamServer } = await createMemorixServer(
+    const { server: teamServer } = await createBatonServer(
       teamDir,
       undefined,
       undefined,
@@ -147,12 +147,12 @@ describe('Tool profile registration', () => {
     );
     const teamTools = getToolNames(teamServer as any);
     expect(teamTools).toContain('team_manage');
-    expect(teamTools).toContain('memorix_knowledge');
-    expect(teamTools).toContain('memorix_graph_context');
-    expect(teamTools).not.toContain('memorix_rules_sync');
+    expect(teamTools).toContain('baton_knowledge');
+    expect(teamTools).toContain('baton_graph_context');
+    expect(teamTools).not.toContain('baton_rules_sync');
     expect(teamTools).not.toContain('create_entities');
 
-    const { server: fullServer } = await createMemorixServer(
+    const { server: fullServer } = await createBatonServer(
       fullDir,
       undefined,
       undefined,
@@ -160,22 +160,22 @@ describe('Tool profile registration', () => {
     );
     const fullTools = getToolNames(fullServer as any);
     expect(fullTools).toContain('team_manage');
-    expect(fullTools).toContain('memorix_rules_sync');
+    expect(fullTools).toContain('baton_rules_sync');
     expect(fullTools).not.toContain('create_entities');
-    expect(fullTools).toContain('memorix_graph_context');
-    expect(fullTools).toContain('memorix_knowledge');
-    expect(fullTools).toContain('memorix_compaction_checkpoint');
+    expect(fullTools).toContain('baton_graph_context');
+    expect(fullTools).toContain('baton_knowledge');
+    expect(fullTools).toContain('baton_compaction_checkpoint');
   }, 30000);
 
   it('records continuity through the lite MCP profile and injects it into project context', async () => {
-    const dir = await createGitProjectDir('memorix-profile-continuity-');
-    const { server } = await createMemorixServer(
+    const dir = await createGitProjectDir('baton-profile-continuity-');
+    const { server } = await createBatonServer(
       dir,
       undefined,
       undefined,
       { toolProfile: 'lite' } as any,
     );
-    const continuity = getHandler(server as any, 'memorix_continuity');
+    const continuity = getHandler(server as any, 'baton_continuity');
     const started = JSON.parse(getText(await continuity({
       action: 'start',
       task: 'Harden the release path',
@@ -194,7 +194,7 @@ describe('Tool profile registration', () => {
     expect(shown.ledger.requirements).toContain('Keep the package on 1.9.x.');
     expect(shown.ledger.verification[0]).toMatchObject({ status: 'pending' });
 
-    const context = getHandler(server as any, 'memorix_project_context');
+    const context = getHandler(server as any, 'baton_project_context');
     const brief = getText(await context({ task: 'continue the release path', taskId, format: 'prompt' }));
     expect(brief).toContain('Task continuity');
     expect(brief).toContain('Keep the package on 1.9.x.');
@@ -207,14 +207,14 @@ describe('Tool profile registration', () => {
   }, 30000);
 
   it('keeps compact checkpoint inspection full-profile only and supports preview plus archive', async () => {
-    const isolatedDataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-profile-checkpoint-data-'));
-    const previousDataDir = process.env.MEMORIX_DATA_DIR;
-    process.env.MEMORIX_DATA_DIR = isolatedDataDir;
+    const isolatedDataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-profile-checkpoint-data-'));
+    const previousDataDir = process.env.BATON_DATA_DIR;
+    process.env.BATON_DATA_DIR = isolatedDataDir;
     resetObservationStore();
     await resetDb();
     try {
-      const dir = await createGitProjectDir('memorix-profile-checkpoint-');
-      const { server, projectId } = await createMemorixServer(
+      const dir = await createGitProjectDir('baton-profile-checkpoint-');
+      const { server, projectId } = await createBatonServer(
         dir,
         undefined,
         undefined,
@@ -230,7 +230,7 @@ describe('Tool profile registration', () => {
         sourceKey: 'profile-test-checkpoint',
         summary: 'Run the focused release test before publishing the package.',
       });
-      const handler = getHandler(server as any, 'memorix_compaction_checkpoint');
+      const handler = getHandler(server as any, 'baton_compaction_checkpoint');
 
       const preview = getText(await handler({
         action: 'context',
@@ -248,31 +248,31 @@ describe('Tool profile registration', () => {
       resetObservationStore();
       await resetDb();
       if (previousDataDir === undefined) {
-        delete process.env.MEMORIX_DATA_DIR;
+        delete process.env.BATON_DATA_DIR;
       } else {
-        process.env.MEMORIX_DATA_DIR = previousDataDir;
+        process.env.BATON_DATA_DIR = previousDataDir;
       }
       await fs.rm(isolatedDataDir, { recursive: true, force: true });
     }
   }, 30000);
 
   it('keeps reviewable Knowledge Workspace operations behind one advanced MCP tool', async () => {
-    const isolatedDataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-profile-knowledge-data-'));
-    const previousDataDir = process.env.MEMORIX_DATA_DIR;
-    process.env.MEMORIX_DATA_DIR = isolatedDataDir;
+    const isolatedDataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-profile-knowledge-data-'));
+    const previousDataDir = process.env.BATON_DATA_DIR;
+    process.env.BATON_DATA_DIR = isolatedDataDir;
     resetTomlConfigCache();
     resetResolvedConfigCache();
     resetObservationStore();
     await resetDb();
     try {
-      const dir = await createGitProjectDir('memorix-profile-knowledge-');
-      const { server, projectId } = await createMemorixServer(
+      const dir = await createGitProjectDir('baton-profile-knowledge-');
+      const { server, projectId } = await createBatonServer(
         dir,
         undefined,
         undefined,
         { toolProfile: 'team' } as any,
       );
-      const knowledge = getHandler(server as any, 'memorix_knowledge');
+      const knowledge = getHandler(server as any, 'baton_knowledge');
 
       const initialized = JSON.parse(getText(await knowledge({ action: 'workspace_init', mode: 'local' })));
       expect(initialized.workspace).toMatchObject({ mode: 'local', status: 'ready' });
@@ -319,9 +319,9 @@ describe('Tool profile registration', () => {
       resetObservationStore();
       await resetDb();
       if (previousDataDir === undefined) {
-        delete process.env.MEMORIX_DATA_DIR;
+        delete process.env.BATON_DATA_DIR;
       } else {
-        process.env.MEMORIX_DATA_DIR = previousDataDir;
+        process.env.BATON_DATA_DIR = previousDataDir;
       }
       resetTomlConfigCache();
       resetResolvedConfigCache();
@@ -330,22 +330,22 @@ describe('Tool profile registration', () => {
   }, 30000);
 
   it('persists explicit relatedEntities links into the project knowledge graph', async () => {
-    const isolatedDataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-profile-graph-data-'));
-    const previousDataDir = process.env.MEMORIX_DATA_DIR;
-    process.env.MEMORIX_DATA_DIR = isolatedDataDir;
+    const isolatedDataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-profile-graph-data-'));
+    const previousDataDir = process.env.BATON_DATA_DIR;
+    process.env.BATON_DATA_DIR = isolatedDataDir;
     resetTomlConfigCache();
     resetResolvedConfigCache();
     resetObservationStore();
     await resetDb();
     try {
-      const dir = await createGitProjectDir('memorix-profile-graph-');
-      const { server, projectId } = await createMemorixServer(
+      const dir = await createGitProjectDir('baton-profile-graph-');
+      const { server, projectId } = await createBatonServer(
         dir,
         undefined,
         undefined,
         { toolProfile: 'full' } as any,
       );
-      const store = getHandler(server as any, 'memorix_store');
+      const store = getHandler(server as any, 'baton_store');
       await store({
         entityName: 'release-process',
         type: 'decision',
@@ -365,9 +365,9 @@ describe('Tool profile registration', () => {
       resetObservationStore();
       await resetDb();
       if (previousDataDir === undefined) {
-        delete process.env.MEMORIX_DATA_DIR;
+        delete process.env.BATON_DATA_DIR;
       } else {
-        process.env.MEMORIX_DATA_DIR = previousDataDir;
+        process.env.BATON_DATA_DIR = previousDataDir;
       }
       resetTomlConfigCache();
       resetResolvedConfigCache();
@@ -376,29 +376,29 @@ describe('Tool profile registration', () => {
   }, 30000);
 
   it('should keep session_start lightweight by default and require explicit joinTeam for coordination identity', async () => {
-    const liteDir = await createGitProjectDir('memorix-profile-lite-session-');
-    const teamDir = await createGitProjectDir('memorix-profile-team-session-');
+    const liteDir = await createGitProjectDir('baton-profile-lite-session-');
+    const teamDir = await createGitProjectDir('baton-profile-team-session-');
 
-    const { server: liteServer } = await createMemorixServer(
+    const { server: liteServer } = await createBatonServer(
       liteDir,
       undefined,
       undefined,
       { toolProfile: 'lite' } as any,
     );
-    const liteStart = getHandler(liteServer as any, 'memorix_session_start');
+    const liteStart = getHandler(liteServer as any, 'baton_session_start');
     const liteText = getText(await liteStart({ agent: 'solo-user', agentType: 'windsurf' }));
     expect(liteText).not.toContain('Agent ID:');
     const liteJoinText = getText(await liteStart({ agent: 'solo-user', agentType: 'windsurf', joinTeam: true }));
     expect(liteJoinText).not.toContain('Agent ID:');
     expect(liteJoinText).toContain('Coordination join skipped');
 
-    const { server: teamServer } = await createMemorixServer(
+    const { server: teamServer } = await createBatonServer(
       teamDir,
       undefined,
       undefined,
       { toolProfile: 'team' } as any,
     );
-    const teamStart = getHandler(teamServer as any, 'memorix_session_start');
+    const teamStart = getHandler(teamServer as any, 'baton_session_start');
     const teamStatus = getHandler(teamServer as any, 'team_manage');
 
     const firstText = getText(await teamStart({ agent: 'windsurf-main', agentType: 'windsurf' }));
@@ -424,8 +424,8 @@ describe('Tool profile registration', () => {
   }, 30000);
 
   it('should register tools before deferred stdio runtime initialization', async () => {
-    const fastDir = await createGitProjectDir('memorix-profile-fast-start-');
-    const { server } = await createMemorixServer(
+    const fastDir = await createGitProjectDir('baton-profile-fast-start-');
+    const { server } = await createBatonServer(
       fastDir,
       undefined,
       undefined,
@@ -433,48 +433,48 @@ describe('Tool profile registration', () => {
     );
 
     const tools = getToolNames(server as any);
-    expect(tools).toContain('memorix_codegraph_status');
-    expect(tools).toContain('memorix_project_context');
+    expect(tools).toContain('baton_codegraph_status');
+    expect(tools).toContain('baton_project_context');
 
-    const status = await getHandler(server as any, 'memorix_codegraph_status')({});
+    const status = await getHandler(server as any, 'baton_codegraph_status')({});
     expect(getText(status)).toContain('"provider"');
   }, 30000);
 
   it('should return task-lensed project context through the MCP handler', async () => {
-    const dir = await createGitProjectDir('memorix-profile-project-context-');
+    const dir = await createGitProjectDir('baton-profile-project-context-');
     await fs.writeFile(path.join(dir, 'README.md'), '# Test project\n', 'utf8');
-    const { server } = await createMemorixServer(
+    const { server } = await createBatonServer(
       dir,
       undefined,
       undefined,
       { toolProfile: 'micro' } as any,
     );
 
-    const projectContext = getHandler(server as any, 'memorix_project_context');
+    const projectContext = getHandler(server as any, 'baton_project_context');
     const text = getText(await projectContext({ task: 'fix failing startup smoke', refresh: 'never' }));
 
-    expect(text).toContain('Memorix Autopilot Brief');
+    expect(text).toContain('Baton Autopilot Brief');
     expect(text).toContain('Task lens: bugfix');
     expect(text).toContain('run the smallest failing test or repro first');
   }, 30000);
 
   it('returns a bounded receipt through MCP without exposing the detailed project context', async () => {
-    const dir = await createGitProjectDir('memorix-profile-project-context-receipt-');
-    const { server } = await createMemorixServer(
+    const dir = await createGitProjectDir('baton-profile-project-context-receipt-');
+    const { server } = await createBatonServer(
       dir,
       undefined,
       undefined,
       { toolProfile: 'micro' } as any,
     );
 
-    const projectContext = getHandler(server as any, 'memorix_project_context');
+    const projectContext = getHandler(server as any, 'baton_project_context');
     const parsed = JSON.parse(getText(await projectContext({
       task: 'fix failing startup smoke', refresh: 'never', format: 'receipt', agent: 'codex',
     })));
 
     expect(parsed).toMatchObject({
       schemaVersion: '1',
-      brief: expect.stringContaining('Memorix Autopilot Brief'),
+      brief: expect.stringContaining('Baton Autopilot Brief'),
       receipt: expect.objectContaining({ target: 'project-context' }),
       code: expect.objectContaining({ selected: expect.any(String) }),
       loadout: expect.objectContaining({ agent: 'codex' }),
@@ -484,10 +484,10 @@ describe('Tool profile registration', () => {
   }, 30000);
 
   it('keeps bounded prior-work evidence when MCP clients request summary format', async () => {
-    const dir = await createGitProjectDir('memorix-profile-summary-continuation-');
-    const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-profile-summary-data-'));
-    const previousDataDir = process.env.MEMORIX_DATA_DIR;
-    process.env.MEMORIX_DATA_DIR = dataDir;
+    const dir = await createGitProjectDir('baton-profile-summary-continuation-');
+    const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-profile-summary-data-'));
+    const previousDataDir = process.env.BATON_DATA_DIR;
+    process.env.BATON_DATA_DIR = dataDir;
     resetTomlConfigCache();
     resetResolvedConfigCache();
     resetObservationStore();
@@ -495,7 +495,7 @@ describe('Tool profile registration', () => {
     await resetDb();
 
     try {
-      const { server, projectId } = await createMemorixServer(
+      const { server, projectId } = await createBatonServer(
         dir,
         undefined,
         undefined,
@@ -518,7 +518,7 @@ describe('Tool profile registration', () => {
         'The refresh gate remains disabled; run the focused migration test before enabling it.',
       );
 
-      const projectContext = getHandler(server as any, 'memorix_project_context');
+      const projectContext = getHandler(server as any, 'baton_project_context');
       const text = getText(await projectContext({
         task: 'Continue JWT refresh rollout. Determine the current state and safest next step.',
         refresh: 'never',
@@ -530,9 +530,9 @@ describe('Tool profile registration', () => {
       expect(text).toContain('Keep JWT refresh behind AUTH_REFRESH_V2');
     } finally {
       if (previousDataDir === undefined) {
-        delete process.env.MEMORIX_DATA_DIR;
+        delete process.env.BATON_DATA_DIR;
       } else {
-        process.env.MEMORIX_DATA_DIR = previousDataDir;
+        process.env.BATON_DATA_DIR = previousDataDir;
       }
       resetTomlConfigCache();
       resetResolvedConfigCache();
@@ -545,17 +545,17 @@ describe('Tool profile registration', () => {
   }, 30000);
 
   it('keeps a completed Autopilot brief as the default MCP retrieval boundary', async () => {
-    const dir = await createGitProjectDir('memorix-profile-autopilot-boundary-');
-    const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-profile-autopilot-boundary-data-'));
-    const previousDataDir = process.env.MEMORIX_DATA_DIR;
-    process.env.MEMORIX_DATA_DIR = dataDir;
+    const dir = await createGitProjectDir('baton-profile-autopilot-boundary-');
+    const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-profile-autopilot-boundary-data-'));
+    const previousDataDir = process.env.BATON_DATA_DIR;
+    process.env.BATON_DATA_DIR = dataDir;
     resetTomlConfigCache();
     resetResolvedConfigCache();
     resetObservationStore();
     await resetDb();
 
     try {
-      const { server, projectId } = await createMemorixServer(
+      const { server, projectId } = await createBatonServer(
         dir,
         undefined,
         undefined,
@@ -568,11 +568,11 @@ describe('Tool profile registration', () => {
         narrative: 'Do not enable refresh until the focused migration test is green.',
         projectId,
       });
-      const projectContext = getHandler(server as any, 'memorix_project_context');
-      const search = getHandler(server as any, 'memorix_search');
-      const detail = getHandler(server as any, 'memorix_detail');
-      const contextPack = getHandler(server as any, 'memorix_context_pack');
-      const store = getHandler(server as any, 'memorix_store');
+      const projectContext = getHandler(server as any, 'baton_project_context');
+      const search = getHandler(server as any, 'baton_search');
+      const detail = getHandler(server as any, 'baton_detail');
+      const contextPack = getHandler(server as any, 'baton_context_pack');
+      const store = getHandler(server as any, 'baton_store');
 
       await projectContext({ task: 'Continue the JWT refresh rollout safely. Do not modify any files.', refresh: 'never' });
 
@@ -608,7 +608,7 @@ describe('Tool profile registration', () => {
         type: 'discovery',
         title: 'Read-only assessment',
         narrative: 'This should not persist without explicit user approval.',
-      }))).toContain('Memorix write boundary');
+      }))).toContain('Baton write boundary');
 
       expect(getText(expandedSearch)).toContain('already represented');
       expect(getText(await detail({
@@ -623,9 +623,9 @@ describe('Tool profile registration', () => {
       }))).toContain('AUTH_REFRESH_V2');
     } finally {
       if (previousDataDir === undefined) {
-        delete process.env.MEMORIX_DATA_DIR;
+        delete process.env.BATON_DATA_DIR;
       } else {
-        process.env.MEMORIX_DATA_DIR = previousDataDir;
+        process.env.BATON_DATA_DIR = previousDataDir;
       }
       resetTomlConfigCache();
       resetResolvedConfigCache();
@@ -637,20 +637,20 @@ describe('Tool profile registration', () => {
   }, 30000);
 
   it('should apply CodeGraph exclude patterns to the MCP context pack handler', async () => {
-    const dir = await createGitProjectDir('memorix-profile-context-pack-exclude-');
-    const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-profile-context-pack-data-'));
-    const previousDataDir = process.env.MEMORIX_DATA_DIR;
-    process.env.MEMORIX_DATA_DIR = dataDir;
+    const dir = await createGitProjectDir('baton-profile-context-pack-exclude-');
+    const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-profile-context-pack-data-'));
+    const previousDataDir = process.env.BATON_DATA_DIR;
+    process.env.BATON_DATA_DIR = dataDir;
     resetTomlConfigCache();
     resetResolvedConfigCache();
 
     try {
-      await fs.writeFile(path.join(dir, 'memorix.toml'), [
+      await fs.writeFile(path.join(dir, 'baton.toml'), [
         '[codegraph]',
         'exclude_patterns = ["vendor/**"]',
       ].join('\n'), 'utf8');
 
-      const { server, projectId } = await createMemorixServer(
+      const { server, projectId } = await createBatonServer(
         dir,
         undefined,
         undefined,
@@ -694,7 +694,7 @@ describe('Tool profile registration', () => {
         projectId,
       });
 
-      const contextPack = getHandler(server as any, 'memorix_context_pack');
+      const contextPack = getHandler(server as any, 'baton_context_pack');
       const text = getText(await contextPack({ task: 'continue auth cache bug' }));
 
       expect(text).toContain('Auth source decision');
@@ -703,9 +703,9 @@ describe('Tool profile registration', () => {
       expect(text).not.toContain('vendor/cache/tool.ts');
     } finally {
       if (previousDataDir === undefined) {
-        delete process.env.MEMORIX_DATA_DIR;
+        delete process.env.BATON_DATA_DIR;
       } else {
-        process.env.MEMORIX_DATA_DIR = previousDataDir;
+        process.env.BATON_DATA_DIR = previousDataDir;
       }
       resetTomlConfigCache();
       resetResolvedConfigCache();

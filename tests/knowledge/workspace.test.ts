@@ -12,7 +12,7 @@ import { closeAllDatabases } from '../../src/store/sqlite-db.js';
 let root: string | null = null;
 
 function tempRoot(): string {
-  root = mkdtempSync(path.join(tmpdir(), 'memorix-knowledge-workspace-'));
+  root = mkdtempSync(path.join(tmpdir(), 'baton-knowledge-workspace-'));
   return root;
 }
 
@@ -45,8 +45,8 @@ function addClaim(store: ClaimStore, subject: string, predicate: string, objectV
 
 function initGitRepository(dir: string): void {
   execFileSync('git', ['init'], { cwd: dir, stdio: 'ignore' });
-  execFileSync('git', ['config', 'user.email', 'tests@memorix.local'], { cwd: dir, stdio: 'ignore' });
-  execFileSync('git', ['config', 'user.name', 'Memorix Tests'], { cwd: dir, stdio: 'ignore' });
+  execFileSync('git', ['config', 'user.email', 'tests@baton.local'], { cwd: dir, stdio: 'ignore' });
+  execFileSync('git', ['config', 'user.name', 'Baton Tests'], { cwd: dir, stdio: 'ignore' });
   writeFileSync(path.join(dir, 'README.md'), '# fixture\n', 'utf8');
   execFileSync('git', ['add', '.'], { cwd: dir, stdio: 'ignore' });
   execFileSync('git', ['commit', '-m', 'initial fixture'], { cwd: dir, stdio: 'ignore' });

@@ -42,35 +42,35 @@ async function runCommand(command: any, args: Record<string, unknown>) {
 
 describe('CLI operator surface', () => {
   const originalCwd = process.cwd();
-  const originalDataDir = process.env.MEMORIX_DATA_DIR;
-  const originalEmbedding = process.env.MEMORIX_EMBEDDING;
+  const originalDataDir = process.env.BATON_DATA_DIR;
+  const originalEmbedding = process.env.BATON_EMBEDDING;
   let sandboxRoot = '';
   let repoDir = '';
   let dataDir = '';
 
   beforeEach(() => {
-    sandboxRoot = mkdtempSync(path.join(tmpdir(), 'memorix-cli-'));
+    sandboxRoot = mkdtempSync(path.join(tmpdir(), 'baton-cli-'));
     repoDir = path.join(sandboxRoot, 'repo');
     dataDir = path.join(sandboxRoot, 'data');
     mkdirSync(repoDir, { recursive: true });
     writeFileSync(path.join(repoDir, 'README.md'), '# test\n', 'utf8');
     execSync('git init', { cwd: repoDir, stdio: 'ignore' });
     process.chdir(repoDir);
-    process.env.MEMORIX_DATA_DIR = dataDir;
-    process.env.MEMORIX_EMBEDDING = 'off';
+    process.env.BATON_DATA_DIR = dataDir;
+    process.env.BATON_EMBEDDING = 'off';
   });
 
   afterEach(async () => {
     process.chdir(originalCwd);
     if (originalDataDir === undefined) {
-      delete process.env.MEMORIX_DATA_DIR;
+      delete process.env.BATON_DATA_DIR;
     } else {
-      process.env.MEMORIX_DATA_DIR = originalDataDir;
+      process.env.BATON_DATA_DIR = originalDataDir;
     }
     if (originalEmbedding === undefined) {
-      delete process.env.MEMORIX_EMBEDDING;
+      delete process.env.BATON_EMBEDDING;
     } else {
-      process.env.MEMORIX_EMBEDDING = originalEmbedding;
+      process.env.BATON_EMBEDDING = originalEmbedding;
     }
     resetObservationStore();
     resetSessionStore();
@@ -266,8 +266,8 @@ describe('CLI operator surface', () => {
       query: 'progressive disclosure',
     });
     expect(search.exitCode).toBe(0);
-    expect(search.stdout).toContain('memorix memory detail');
-    expect(search.stdout).not.toContain('memorix_detail');
+    expect(search.stdout).toContain('baton memory detail');
+    expect(search.stdout).not.toContain('baton_detail');
   });
 
   it('accepts positional arguments for common memory commands', async () => {

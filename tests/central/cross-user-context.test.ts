@@ -2,13 +2,13 @@
  * Acceptance TEST 1 — knowledge moves between people, agents and machines.
  *
  * Alice works with Claude Code on machine A and Bob with Codex on machine B;
- * they are different PMI users. Alice's agent records an architecture
- * decision over MCP; after `pmi sync` on both machines, Bob's agent asks for
+ * they are different Baton users. Alice's agent records an architecture
+ * decision over MCP; after `baton sync` on both machines, Bob's agent asks for
  * project context for a related task and receives the decision without
  * reading or searching any project file.
  *
- * Phase 5 uses today's MCP tools (`memorix_store`, `memorix_project_context`);
- * the PMI names `decision_log` / `context_build` arrive with Phase 8.
+ * Phase 5 uses today's MCP tools (`baton_store`, `baton_project_context`);
+ * the Baton names `decision_log` / `context_build` arrive with Phase 8.
  */
 import { mkdtempSync, rmSync } from 'node:fs';
 import type http from 'node:http';
@@ -21,7 +21,7 @@ import { openDatabase, type Database } from '../../src/server/central/db.js';
 import { createCentralServer } from '../../src/server/central/http.js';
 import { createOrganization, createUser, issueToken } from '../../src/server/central/identity.js';
 import { migrate } from '../../src/server/central/migrations.js';
-import { cliBuilt, connectAgent, createRepoPair, machine, pmi, toolText, type Machine, stopDaemons } from './cli-helper.js';
+import { cliBuilt, connectAgent, createRepoPair, machine, baton, toolText, type Machine, stopDaemons } from './cli-helper.js';
 import { pgAvailable, pgSkipReason, startPostgres, type TestPostgres } from './pg-helper.js';
 
 const DECISION_TITLE = 'Payment webhooks are verified with HMAC-SHA256 before parsing';
@@ -37,7 +37,7 @@ const users: Record<string, { id: string; token: string }> = {};
 
 describe.skipIf(!pgAvailable || !cliBuilt)('TEST 1: a decision recorded by one user\'s agent reaches another user\'s agent', () => {
   beforeAll(async () => {
-    root = mkdtempSync(path.join(tmpdir(), 'pmi-test1-'));
+    root = mkdtempSync(path.join(tmpdir(), 'baton-test1-'));
     pg = await startPostgres();
     db = await openDatabase(pg.url);
     await migrate(db);
@@ -51,7 +51,7 @@ describe.skipIf(!pgAvailable || !cliBuilt)('TEST 1: a decision recorded by one u
     serverUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 
     const [repoA, repoB] = createRepoPair(root, 'https://github.com/acme/payments.git');
-    const fastDaemon = { PMI_DAEMON_TICK_MS: '250', PMI_MEMORY_SYNC_MS: '500' };
+    const fastDaemon = { BATON_DAEMON_TICK_MS: '250', BATON_MEMORY_SYNC_MS: '500' };
     alice = machine(root, 'alice', repoA, fastDaemon);
     bob = machine(root, 'bob', repoB, fastDaemon);
   }, 180_000);
@@ -65,12 +65,12 @@ describe.skipIf(!pgAvailable || !cliBuilt)('TEST 1: a decision recorded by one u
   }, 60_000);
 
   it('connects both users to one project, Bob through an explicit grant', async () => {
-    expect((await pmi(alice, 'login', serverUrl, '--token', users.alice.token)).code).toBe(0);
-    expect((await pmi(bob, 'login', serverUrl, '--token', users.bob.token)).code).toBe(0);
-    const created = await pmi(alice, 'project', 'link', '--create', '--org', 'acme', '--slug', 'payments', '--json');
+    expect((await baton(alice, 'login', serverUrl, '--token', users.alice.token)).code).toBe(0);
+    expect((await baton(bob, 'login', serverUrl, '--token', users.bob.token)).code).toBe(0);
+    const created = await baton(alice, 'project', 'link', '--create', '--org', 'acme', '--slug', 'payments', '--json');
     expect(created.code, created.stderr).toBe(0);
 
-    const before = await pmi(bob, 'project', 'link', '--json');
+    const before = await baton(bob, 'project', 'link', '--json');
     expect(before.code).toBe(1);
     expect(before.stderr).toContain('no project on the server matches');
 
@@ -80,7 +80,7 @@ describe.skipIf(!pgAvailable || !cliBuilt)('TEST 1: a decision recorded by one u
       body: JSON.stringify({ user: 'bob@acme.test', role: 'developer' }),
     });
     expect(grant.status).toBe(200);
-    const linked = await pmi(bob, 'project', 'link', '--json');
+    const linked = await baton(bob, 'project', 'link', '--json');
     expect(linked.code, linked.stderr).toBe(0);
     expect(linked.json.projectId).toBe(created.json.projectId);
   }, 120_000);
@@ -88,9 +88,9 @@ describe.skipIf(!pgAvailable || !cliBuilt)('TEST 1: a decision recorded by one u
   it('Bob\'s Codex receives Alice\'s Claude Code decision as project context', async () => {
     const claude = await connectAgent(alice, 'claude-code');
     try {
-      await claude.callTool({ name: 'memorix_session_start', arguments: { agent: 'claude-code' } });
+      await claude.callTool({ name: 'baton_session_start', arguments: { agent: 'claude-code' } });
       const stored = await claude.callTool({
-        name: 'memorix_store',
+        name: 'baton_store',
         arguments: {
           entityName: 'payment-webhooks',
           type: 'decision',
@@ -105,7 +105,7 @@ describe.skipIf(!pgAvailable || !cliBuilt)('TEST 1: a decision recorded by one u
       await claude.close();
     }
 
-    const pushed = await pmi(alice, 'sync', '--json');
+    const pushed = await baton(alice, 'sync', '--json');
     expect(pushed.code, pushed.stderr).toBe(0);
     expect(pushed.json.pushed).toBeGreaterThanOrEqual(1);
 
@@ -115,15 +115,15 @@ describe.skipIf(!pgAvailable || !cliBuilt)('TEST 1: a decision recorded by one u
     );
     expect(row).toEqual({ author_user_id: users.alice.id, category: 'architecture_decision', confidence: 'proposed' });
 
-    const pulled = await pmi(bob, 'sync', '--json');
+    const pulled = await baton(bob, 'sync', '--json');
     expect(pulled.code, pulled.stderr).toBe(0);
     expect(pulled.json.applied).toBeGreaterThanOrEqual(1);
 
     const codex = await connectAgent(bob, 'codex');
     try {
-      await codex.callTool({ name: 'memorix_session_start', arguments: { agent: 'codex' } });
+      await codex.callTool({ name: 'baton_session_start', arguments: { agent: 'codex' } });
       const context = await codex.callTool({
-        name: 'memorix_project_context',
+        name: 'baton_project_context',
         arguments: { task: 'add a webhook endpoint for the new payment provider', agent: 'codex' },
       });
       expect(context.isError, toolText(context)).toBeFalsy();
@@ -142,18 +142,18 @@ describe.skipIf(!pgAvailable || !cliBuilt)('TEST 1: a decision recorded by one u
     });
     expect(confirmed.status).toBe(200);
 
-    const pulled = await pmi(alice, 'sync', '--json');
+    const pulled = await baton(alice, 'sync', '--json');
     expect(pulled.code, pulled.stderr).toBe(0);
     expect(pulled.json.applied).toBe(1);
-    const again = await pmi(alice, 'sync', '--json');
+    const again = await baton(alice, 'sync', '--json');
     expect(again.json).toMatchObject({ pushed: 0, applied: 0 });
   }, 120_000);
 
-  it('TEST 1 with the PMI tools: decision_log on one machine, context_build on another, no manual sync', async () => {
+  it('TEST 1 with the Baton tools: decision_log on one machine, context_build on another, no manual sync', async () => {
     const title = 'Refund amounts are computed server-side only';
     const claude = await connectAgent(alice, 'claude-code');
     try {
-      await claude.callTool({ name: 'memorix_session_start', arguments: { agent: 'claude-code', task: 'Refund API' } });
+      await claude.callTool({ name: 'baton_session_start', arguments: { agent: 'claude-code', task: 'Refund API' } });
       const logged = await claude.callTool({
         name: 'decision_log',
         arguments: {
@@ -184,7 +184,7 @@ describe.skipIf(!pgAvailable || !cliBuilt)('TEST 1: a decision recorded by one u
 
     const codex = await connectAgent(bob, 'codex');
     try {
-      await codex.callTool({ name: 'memorix_session_start', arguments: { agent: 'codex', task: 'Partial refunds endpoint' } });
+      await codex.callTool({ name: 'baton_session_start', arguments: { agent: 'codex', task: 'Partial refunds endpoint' } });
       const context = await codex.callTool({ name: 'context_build', arguments: { task: 'add partial refunds to the refund endpoint', components: ['payments'] } });
       expect(context.isError, toolText(context)).toBeFalsy();
       expect(toolText(context)).toContain(title);

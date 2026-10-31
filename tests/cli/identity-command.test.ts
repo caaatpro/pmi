@@ -36,38 +36,38 @@ async function runCommand(command: any, args: Record<string, unknown>) {
 
 describe('CLI identity control plane', () => {
   const originalCwd = process.cwd();
-  const originalDataDir = process.env.MEMORIX_DATA_DIR;
-  const originalEmbedding = process.env.MEMORIX_EMBEDDING;
-  const originalProjectRoot = process.env.MEMORIX_CLI_PROJECT_ROOT;
-  const originalActorId = process.env.MEMORIX_CLI_ACTOR_ID;
+  const originalDataDir = process.env.BATON_DATA_DIR;
+  const originalEmbedding = process.env.BATON_EMBEDDING;
+  const originalProjectRoot = process.env.BATON_CLI_PROJECT_ROOT;
+  const originalActorId = process.env.BATON_CLI_ACTOR_ID;
   let sandboxRoot = '';
   let repoDir = '';
   let dataDir = '';
 
   beforeEach(() => {
-    sandboxRoot = mkdtempSync(path.join(tmpdir(), 'memorix-cli-identity-'));
+    sandboxRoot = mkdtempSync(path.join(tmpdir(), 'baton-cli-identity-'));
     repoDir = path.join(sandboxRoot, 'repo');
     dataDir = path.join(sandboxRoot, 'data');
     mkdirSync(repoDir, { recursive: true });
     writeFileSync(path.join(repoDir, 'README.md'), '# identity test\n', 'utf8');
     execSync('git init', { cwd: repoDir, stdio: 'ignore' });
     process.chdir(repoDir);
-    process.env.MEMORIX_DATA_DIR = dataDir;
-    process.env.MEMORIX_EMBEDDING = 'off';
-    delete process.env.MEMORIX_CLI_PROJECT_ROOT;
-    delete process.env.MEMORIX_CLI_ACTOR_ID;
+    process.env.BATON_DATA_DIR = dataDir;
+    process.env.BATON_EMBEDDING = 'off';
+    delete process.env.BATON_CLI_PROJECT_ROOT;
+    delete process.env.BATON_CLI_ACTOR_ID;
   });
 
   afterEach(async () => {
     process.chdir(originalCwd);
-    if (originalDataDir === undefined) delete process.env.MEMORIX_DATA_DIR;
-    else process.env.MEMORIX_DATA_DIR = originalDataDir;
-    if (originalEmbedding === undefined) delete process.env.MEMORIX_EMBEDDING;
-    else process.env.MEMORIX_EMBEDDING = originalEmbedding;
-    if (originalProjectRoot === undefined) delete process.env.MEMORIX_CLI_PROJECT_ROOT;
-    else process.env.MEMORIX_CLI_PROJECT_ROOT = originalProjectRoot;
-    if (originalActorId === undefined) delete process.env.MEMORIX_CLI_ACTOR_ID;
-    else process.env.MEMORIX_CLI_ACTOR_ID = originalActorId;
+    if (originalDataDir === undefined) delete process.env.BATON_DATA_DIR;
+    else process.env.BATON_DATA_DIR = originalDataDir;
+    if (originalEmbedding === undefined) delete process.env.BATON_EMBEDDING;
+    else process.env.BATON_EMBEDDING = originalEmbedding;
+    if (originalProjectRoot === undefined) delete process.env.BATON_CLI_PROJECT_ROOT;
+    else process.env.BATON_CLI_PROJECT_ROOT = originalProjectRoot;
+    if (originalActorId === undefined) delete process.env.BATON_CLI_ACTOR_ID;
+    else process.env.BATON_CLI_ACTOR_ID = originalActorId;
     resetObservationStore();
     resetSessionStore();
     resetTeamStore();

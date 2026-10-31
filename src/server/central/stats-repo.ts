@@ -1,5 +1,5 @@
 /**
- * Read models for the web UI (docs/PMI/WEB_UI.md): per-project counts of
+ * Read models for the web UI (docs/baton/WEB_UI.md): per-project counts of
  * knowledge, sessions, conflicts and git analysis, and the project audit log.
  * Counts run inside `db.asUser()`, so row-level security decides what is
  * counted; the audit log is read by the owner after `authorize()`, since the

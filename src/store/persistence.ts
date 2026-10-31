@@ -2,7 +2,7 @@
  * Persistence Layer — Runtime + Migration
  *
  * Runtime responsibilities:
- *   - Data directory resolution (flat global ~/.memorix/data/)
+ *   - Data directory resolution (flat global ~/.baton/data/)
  *   - Orama DB file path helpers
  *   - Legacy per-project subdirectory migration
  *
@@ -31,9 +31,9 @@ export {
   loadSessionsJson,
 } from './persistence-json.js';
 
-/** Default base data directory — overridable via MEMORIX_DATA_DIR env var */
+/** Default base data directory — overridable via BATON_DATA_DIR env var */
 function resolveDefaultDataDir(): string {
-  return process.env.MEMORIX_DATA_DIR || path.join(os.homedir(), '.memorix', 'data');
+  return process.env.BATON_DATA_DIR || path.join(os.homedir(), '.baton', 'data');
 }
 
 /**
@@ -45,9 +45,9 @@ function sanitizeProjectId(projectId: string): string {
 }
 
 /**
- * Get the data directory for Memorix storage.
+ * Get the data directory for Baton storage.
  *
- * Returns the FLAT global directory (~/.memorix/data/) regardless of projectId.
+ * Returns the FLAT global directory (~/.baton/data/) regardless of projectId.
  * projectId is stored as metadata inside observations, not used for directory partitioning.
  * This ensures all IDEs share the same data directory even if they detect different projectIds.
  *
@@ -87,11 +87,11 @@ export async function listProjectDirs(baseDir?: string): Promise<string[]> {
  * Migrate legacy per-project subdirectories into the flat base directory.
  *
  * Before v0.9.6, data was stored in per-project subdirectories:
- *   ~/.memorix/data/AVIDS2--memorix/observations.json
- *   ~/.memorix/data/local--myproject/observations.json
+ *   ~/.baton/data/AVIDS2--baton/observations.json
+ *   ~/.baton/data/local--myproject/observations.json
  *
  * This caused data fragmentation when different IDEs detected different projectIds.
- * Now all data lives in ~/.memorix/data/ directly.
+ * Now all data lives in ~/.baton/data/ directly.
  *
  * Migration:
  *   1. Scan all subdirectories under base dir
@@ -276,7 +276,7 @@ async function migrateSubdirsToFlatUnlocked(baseDir?: string): Promise<boolean> 
  * Get the file path for the Orama database file.
  */
 export function getDbFilePath(projectDir: string): string {
-  return path.join(projectDir, 'memorix.msp');
+  return path.join(projectDir, 'baton.msp');
 }
 
 /**

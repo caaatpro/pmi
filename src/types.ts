@@ -1,10 +1,10 @@
 /**
- * Memorix Core Types
+ * Baton Core Types
  *
  * Data model sources:
  * - Entity/Relation/KnowledgeGraph: MCP Official Memory Server (v0.6.3)
  * - Observation/ObservationType: claude-mem Progressive Disclosure
- * - UnifiedRule/RuleSource: Memorix original (rules sync)
+ * - UnifiedRule/RuleSource: Baton original (rules sync)
  *
  * Designed for extensibility: new agent formats (Kiro, Copilot, Antigravity)
  * can be added by extending RuleSource and adding format adapters.
@@ -184,13 +184,13 @@ export interface Observation {
   createdByAgentId?: string;
   /** Phase 4a: Monotonic write generation — snapshot of storage_generation at write time (watermark coherence) */
   writeGeneration?: number;
-  /** PMI category override; absent means the default for `type` (src/domain/memory.ts). */
+  /** Baton category override; absent means the default for `type` (src/domain/memory.ts). */
   category?: MemoryCategory;
-  /** PMI confidence override; absent means the default for `type`. Agents never set `confirmed`. */
+  /** Baton confidence override; absent means the default for `type`. Agents never set `confirmed`. */
   confidence?: MemoryConfidence;
   /**
    * Set when a commit (or a full reconcile) may have outdated this knowledge:
-   * PMI status `needs_review`. Kept apart from `status` so Memorix filters on
+   * Baton status `needs_review`. Kept apart from `status` so Baton filters on
    * active records keep working. Cleared when the memory is rewritten.
    */
   review?: { reason: string; since: string; commit?: string };
@@ -200,7 +200,7 @@ export interface Observation {
 // Session Lifecycle (inspired by Engram's session management)
 // ============================================================
 
-/** A coding session tracked by Memorix */
+/** A coding session tracked by Baton */
 export interface Session {
   id: string;
   projectId: string;
@@ -363,7 +363,7 @@ export const TOPIC_KEY_FAMILIES: Record<string, string[]> = {
 // ============================================================
 
 /** The document shape stored in Orama */
-export interface MemorixDocument {
+export interface BatonDocument {
   id: string;
   observationId: number;
   entityName: string;
@@ -413,7 +413,7 @@ export interface MemorixDocument {
 }
 
 // ============================================================
-// Rules System (Memorix original — extensible for new agents)
+// Rules System (Baton original — extensible for new agents)
 // ============================================================
 
 /**
@@ -430,7 +430,7 @@ export type RuleSource =
   | 'copilot'
   | 'kiro'
   | 'trae'
-  | 'memorix';
+  | 'baton';
 
 /** A parsed rule in the unified intermediate representation */
 export interface UnifiedRule {
@@ -498,10 +498,10 @@ export interface DetectionResult {
 }
 
 // ============================================================
-// Memorix Server Configuration
+// Baton Server Configuration
 // ============================================================
 
-export interface MemorixConfig {
+export interface BatonConfig {
   dataDir: string;
   projectId: string;
   projectName: string;
@@ -510,7 +510,7 @@ export interface MemorixConfig {
   watchRuleFiles: boolean;
 }
 
-export const DEFAULT_CONFIG: Partial<MemorixConfig> = {
+export const DEFAULT_CONFIG: Partial<BatonConfig> = {
   enableEmbeddings: false,
   enableRulesSync: false,
   watchRuleFiles: false,
@@ -608,7 +608,7 @@ export interface WorkspaceSyncResult {
 /** Classification of knowledge for layer-aware ranking */
 export type KnowledgeLayer = 'project-truth' | 'evidence';
 
-/** Document type discriminator for Orama index (mini-skills became observations in PMI migration pmi-5) */
+/** Document type discriminator for Orama index (mini-skills became observations in Baton migration baton-5) */
 export type DocumentType = 'observation';
 
 // ============================================================

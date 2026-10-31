@@ -7,7 +7,7 @@ export type HookCaptureCategory =
   | 'file_read'
   | 'command'
   | 'search'
-  | 'memorix_internal'
+  | 'baton_internal'
   | 'unknown';
 
 export type HookAdmissionDecision =

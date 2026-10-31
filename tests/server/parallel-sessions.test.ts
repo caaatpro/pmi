@@ -3,7 +3,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { createMemorixServer } from '../../src/server.js';
+import { createBatonServer } from '../../src/server.js';
 import { resetResolvedConfigCache } from '../../src/config/resolved-config.js';
 import { resetTomlConfigCache } from '../../src/config/toml-loader.js';
 import { getObservation } from '../../src/memory/observations.js';
@@ -12,15 +12,15 @@ import { resetObservationStore } from '../../src/store/obs-store.js';
 import { getSessionStore, resetSessionStore } from '../../src/store/session-store.js';
 import { closeAllDatabases } from '../../src/store/sqlite-db.js';
 
-const originalDataDir = process.env.MEMORIX_DATA_DIR;
+const originalDataDir = process.env.BATON_DATA_DIR;
 let dataDir = '';
 let projectDir = '';
 
 beforeEach(async () => {
-  dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'pmi-parallel-data-'));
-  projectDir = await fs.mkdtemp(path.join(os.tmpdir(), 'pmi-parallel-project-'));
+  dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-parallel-data-'));
+  projectDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-parallel-project-'));
   await fs.mkdir(path.join(projectDir, '.git'));
-  process.env.MEMORIX_DATA_DIR = dataDir;
+  process.env.BATON_DATA_DIR = dataDir;
   resetObservationStore();
   resetSessionStore();
   resetTomlConfigCache();
@@ -35,8 +35,8 @@ afterEach(async () => {
   resetTomlConfigCache();
   resetResolvedConfigCache();
   await resetDb();
-  if (originalDataDir === undefined) delete process.env.MEMORIX_DATA_DIR;
-  else process.env.MEMORIX_DATA_DIR = originalDataDir;
+  if (originalDataDir === undefined) delete process.env.BATON_DATA_DIR;
+  else process.env.BATON_DATA_DIR = originalDataDir;
   await fs.rm(dataDir, { recursive: true, force: true });
   await fs.rm(projectDir, { recursive: true, force: true });
 });
@@ -53,13 +53,13 @@ function text(result: any): string {
 
 describe('parallel agent sessions in one project', () => {
   it('keeps both sessions active and attributes memory to the connection that opened the session', async () => {
-    const claude = await createMemorixServer(projectDir, undefined, undefined, { toolProfile: 'lite' } as any);
-    const codex = await createMemorixServer(projectDir, undefined, undefined, { toolProfile: 'lite' } as any);
+    const claude = await createBatonServer(projectDir, undefined, undefined, { toolProfile: 'lite' } as any);
+    const codex = await createBatonServer(projectDir, undefined, undefined, { toolProfile: 'lite' } as any);
     expect(codex.projectId).toBe(claude.projectId);
 
-    const claudeStart = text(await handler(claude.server, 'memorix_session_start')({ agent: 'claude-code' }));
+    const claudeStart = text(await handler(claude.server, 'baton_session_start')({ agent: 'claude-code' }));
     const claudeSessionId = claudeStart.match(/Session started: (\S+)/)?.[1];
-    const codexStart = text(await handler(codex.server, 'memorix_session_start')({ agent: 'codex' }));
+    const codexStart = text(await handler(codex.server, 'baton_session_start')({ agent: 'codex' }));
     const codexSessionId = codexStart.match(/Session started: (\S+)/)?.[1];
     expect(claudeSessionId).toBeTruthy();
     expect(codexSessionId).toBeTruthy();
@@ -68,7 +68,7 @@ describe('parallel agent sessions in one project', () => {
     expect(active.map((session) => session.id).sort()).toEqual([claudeSessionId, codexSessionId].sort());
 
     // Codex started last, so "most recent active session" would be wrong here.
-    const stored = text(await handler(claude.server, 'memorix_store')({
+    const stored = text(await handler(claude.server, 'baton_store')({
       entityName: 'session-routing',
       type: 'decision',
       title: 'Claude keeps its own session attribution',

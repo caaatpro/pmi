@@ -26,7 +26,7 @@ let projectRoot = '';
 let dataDir = '';
 
 beforeEach(async () => {
-  sandbox = await fs.mkdtemp(path.join(tmpdir(), 'memorix-claim-lifecycle-'));
+  sandbox = await fs.mkdtemp(path.join(tmpdir(), 'baton-claim-lifecycle-'));
   projectRoot = path.join(sandbox, 'repo');
   dataDir = path.join(sandbox, 'data');
   await fs.mkdir(path.join(projectRoot, 'src'), { recursive: true });

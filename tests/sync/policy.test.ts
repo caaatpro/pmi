@@ -56,7 +56,7 @@ describe('sync eligibility', () => {
 describe('user sync namespace', () => {
   it('requires a namespace and prefixes a safe value', () => {
     expect(() => userSyncNamespace({})).toThrow(/required for --scope user/);
-    expect(userSyncNamespace({ MEMORIX_SYNC_USER_NAMESPACE: 'team-a' })).toBe('user-team-a');
-    expect(() => userSyncNamespace({ MEMORIX_SYNC_USER_NAMESPACE: '../escape' })).toThrow(/MEMORIX_SYNC_USER_NAMESPACE/);
+    expect(userSyncNamespace({ BATON_SYNC_USER_NAMESPACE: 'team-a' })).toBe('user-team-a');
+    expect(() => userSyncNamespace({ BATON_SYNC_USER_NAMESPACE: '../escape' })).toThrow(/BATON_SYNC_USER_NAMESPACE/);
   });
 });

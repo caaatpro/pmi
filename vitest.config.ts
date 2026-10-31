@@ -30,7 +30,7 @@ export default defineConfig({
             'tests/integration/serve-http.test.ts',
             'tests/integration/http-embedding-fallback.test.ts',
             'tests/tui/interaction.test.tsx',
-            // Hooks tests share global ~/.memorix/audit.json — must run sequentially
+            // Hooks tests share global ~/.baton/audit.json — must run sequentially
             'tests/hooks/install-uninstall.test.ts',
             'tests/hooks/opencode-compaction.test.ts',
             'tests/hooks/copilot-paths.test.ts',
@@ -57,7 +57,7 @@ export default defineConfig({
             'tests/integration/serve-http.test.ts',
             'tests/integration/http-embedding-fallback.test.ts',
             'tests/tui/interaction.test.tsx',
-            // Hooks tests share global ~/.memorix/audit.json
+            // Hooks tests share global ~/.baton/audit.json
             'tests/hooks/install-uninstall.test.ts',
             'tests/hooks/opencode-compaction.test.ts',
             'tests/hooks/copilot-paths.test.ts',

@@ -13,7 +13,7 @@ afterEach(() => {
 });
 
 function makeFixture(): string {
-  root = join(tmpdir(), `memorix-semantic-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  root = join(tmpdir(), `baton-semantic-${Date.now()}-${Math.random().toString(16).slice(2)}`);
   mkdirSync(join(root, 'src'), { recursive: true });
   mkdirSync(join(root, 'tests'), { recursive: true });
   writeFileSync(join(root, 'src', 'base.ts'), [

@@ -7,26 +7,26 @@ import { getEmbeddingProvider, resetProvider } from '../../src/embedding/provide
 /**
  * Live embedding stress exam: the configured remote embedding lane must
  * survive a 100-text batch, re-init as a singleton, and round-trip its own
- * disk cache. Gated on MEMORIX_RUN_LIVE_EMBEDDING_TESTS=1 — it never runs in
+ * disk cache. Gated on BATON_RUN_LIVE_EMBEDDING_TESTS=1 — it never runs in
  * CI or without an operator-supplied API key.
  */
 
-const runLive = process.env.MEMORIX_RUN_LIVE_EMBEDDING_TESTS === '1';
+const runLive = process.env.BATON_RUN_LIVE_EMBEDDING_TESTS === '1';
 const BATCH_SIZE = 100;
 
 describe.skipIf(!runLive)('live embedding stress exam', () => {
-  const originalDataDir = process.env.MEMORIX_DATA_DIR;
+  const originalDataDir = process.env.BATON_DATA_DIR;
   let sandbox = '';
 
   beforeEach(() => {
-    sandbox = mkdtempSync(path.join(tmpdir(), 'memorix-live-stress-'));
-    process.env.MEMORIX_DATA_DIR = path.join(sandbox, 'data');
+    sandbox = mkdtempSync(path.join(tmpdir(), 'baton-live-stress-'));
+    process.env.BATON_DATA_DIR = path.join(sandbox, 'data');
     resetProvider();
   });
 
   afterEach(() => {
-    if (originalDataDir === undefined) delete process.env.MEMORIX_DATA_DIR;
-    else process.env.MEMORIX_DATA_DIR = originalDataDir;
+    if (originalDataDir === undefined) delete process.env.BATON_DATA_DIR;
+    else process.env.BATON_DATA_DIR = originalDataDir;
     resetProvider();
     if (sandbox) rmSync(sandbox, { recursive: true, force: true });
     sandbox = '';
@@ -37,7 +37,7 @@ describe.skipIf(!runLive)('live embedding stress exam', () => {
     expect(provider).not.toBeNull();
 
     const texts = Array.from({ length: BATCH_SIZE }, (_, i) =>
-      `memorix live stress document ${i} about sessions, search, and durable memory`,
+      `baton live stress document ${i} about sessions, search, and durable memory`,
     );
     const startedAt = Date.now();
     const vectors = await provider!.embedBatch(texts, { timeoutMs: 60_000 });

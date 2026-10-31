@@ -38,25 +38,25 @@ describe('parseRerankTimeoutMs', () => {
 });
 
 describe('resolveRerankTimeoutMs', () => {
-  const previous = process.env.MEMORIX_RERANK_TIMEOUT_MS;
+  const previous = process.env.BATON_RERANK_TIMEOUT_MS;
 
   afterEach(() => {
-    if (previous === undefined) delete process.env.MEMORIX_RERANK_TIMEOUT_MS;
-    else process.env.MEMORIX_RERANK_TIMEOUT_MS = previous;
+    if (previous === undefined) delete process.env.BATON_RERANK_TIMEOUT_MS;
+    else process.env.BATON_RERANK_TIMEOUT_MS = previous;
   });
 
   it('prefers an explicit positive timeout over the environment', () => {
-    process.env.MEMORIX_RERANK_TIMEOUT_MS = '12000';
+    process.env.BATON_RERANK_TIMEOUT_MS = '12000';
     expect(resolveRerankTimeoutMs(8_000)).toBe(8_000);
   });
 
-  it('honors MEMORIX_RERANK_TIMEOUT_MS when no explicit timeout is passed', () => {
-    process.env.MEMORIX_RERANK_TIMEOUT_MS = '12000';
+  it('honors BATON_RERANK_TIMEOUT_MS when no explicit timeout is passed', () => {
+    process.env.BATON_RERANK_TIMEOUT_MS = '12000';
     expect(resolveRerankTimeoutMs()).toBe(12_000);
   });
 
   it('defaults to 30s when neither override nor env is set', () => {
-    delete process.env.MEMORIX_RERANK_TIMEOUT_MS;
+    delete process.env.BATON_RERANK_TIMEOUT_MS;
     expect(resolveRerankTimeoutMs()).toBe(DEFAULT_RERANK_TIMEOUT_MS);
   });
 });

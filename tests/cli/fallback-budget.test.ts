@@ -15,7 +15,7 @@ afterEach(async () => {
 
 describe('CLI fallback budget', () => {
   it('allows one request per task and blocks repeated probes', async () => {
-    tempDir = await mkdtemp(path.join(os.tmpdir(), 'memorix-fallback-'));
+    tempDir = await mkdtemp(path.join(os.tmpdir(), 'baton-fallback-'));
     const budget = new CliFallbackBudget();
     await budget.init(tempDir);
     const first = budget.claim('org/project', 'fix the session bug', 1000);
@@ -27,7 +27,7 @@ describe('CLI fallback budget', () => {
   });
 
   it('reopens with the same budget state', async () => {
-    tempDir = await mkdtemp(path.join(os.tmpdir(), 'memorix-fallback-reopen-'));
+    tempDir = await mkdtemp(path.join(os.tmpdir(), 'baton-fallback-reopen-'));
     const first = new CliFallbackBudget();
     await first.init(tempDir);
     first.claim('org/project', 'same task', 1000);

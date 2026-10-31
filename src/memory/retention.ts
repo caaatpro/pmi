@@ -15,7 +15,7 @@
  * retention period but are no longer permanently immune — they decay normally.
  */
 
-import type { MemorixDocument, Observation, ObservationReader, ObservationStatus } from '../types.js';
+import type { BatonDocument, Observation, ObservationReader, ObservationStatus } from '../types.js';
 import { getObservationStore } from '../store/obs-store.js';
 import { canManageObservation } from './visibility.js';
 import { feedbackWeightMultiplier } from './feedback-model.js';
@@ -72,7 +72,7 @@ const MIN_RETENTION_DAYS = 7;
  * Get retention period multiplier based on sourceDetail.
  * Neutral (1.0) for unknown/undefined sourceDetail — backward-compatible.
  */
-function getSourceRetentionMultiplier(doc: MemorixDocument): number {
+function getSourceRetentionMultiplier(doc: BatonDocument): number {
   if (doc.sourceDetail === 'hook') return 0.5;        // hook auto-captures: half the retention period
   if (doc.sourceDetail === 'git-ingest') return 1.5;  // git-backed truth: extend retention
   return 1.0;                                         // explicit/undefined: neutral
@@ -82,7 +82,7 @@ function getSourceRetentionMultiplier(doc: MemorixDocument): number {
  * Get retention period multiplier based on valueCategory.
  * Neutral (1.0) for undefined/contextual — backward-compatible.
  */
-function getValueCategoryMultiplier(doc: MemorixDocument): number {
+function getValueCategoryMultiplier(doc: BatonDocument): number {
   if (doc.valueCategory === 'ephemeral') return 0.5;  // short-lived context: decay faster
   if (doc.valueCategory === 'core')      return 2.0;  // durable knowledge: extend retention
   return 1.0;                                         // contextual/undefined: neutral
@@ -92,7 +92,7 @@ function getValueCategoryMultiplier(doc: MemorixDocument): number {
  * Compute the effective retention period in days, with floor applied.
  * Combines base retention (from importance/type) with source and valueCategory multipliers.
  */
-export function getEffectiveRetentionDays(doc: MemorixDocument): number {
+export function getEffectiveRetentionDays(doc: BatonDocument): number {
   const typeOverride = TYPE_RETENTION_OVERRIDE[doc.type];
   if (typeOverride !== undefined) {
     // Type-specific override: use the override directly, ignoring importance-based base retention.
@@ -111,7 +111,7 @@ export function getEffectiveRetentionDays(doc: MemorixDocument): number {
  * Check if an observation is immune from archiving/decay.
  * Immune observations maintain a minimum relevance score.
  */
-export function isImmune(doc: MemorixDocument): boolean {
+export function isImmune(doc: BatonDocument): boolean {
   // Probe observations are operational heartbeats -- never immune, regardless of valueCategory or access.
   if (doc.type === 'probe') return false;
   if (doc.feedbackStatus === 'archived') return false;
@@ -138,7 +138,7 @@ export function isImmune(doc: MemorixDocument): boolean {
 /**
  * Return a human-readable reason for why an observation is immune, or null if not immune.
  */
-export function getImmunityReason(doc: MemorixDocument): string | null {
+export function getImmunityReason(doc: BatonDocument): string | null {
   // Probe observations are never immune
   if (doc.type === 'probe') return null;
 
@@ -172,7 +172,7 @@ export interface RelevanceScore {
 /**
  * Get the importance level for an observation based on its type.
  */
-export function getImportanceLevel(doc: MemorixDocument): ImportanceLevel {
+export function getImportanceLevel(doc: BatonDocument): ImportanceLevel {
   return TYPE_IMPORTANCE[doc.type] ?? 'medium';
 }
 
@@ -186,7 +186,7 @@ export function getImportanceLevel(doc: MemorixDocument): ImportanceLevel {
  *   1 + 0.1 × accessCount (10% boost per access, capped at 2.0)
  */
 export function calculateRelevance(
-  doc: MemorixDocument,
+  doc: BatonDocument,
   referenceTime?: Date,
 ): RelevanceScore {
   const now = referenceTime ?? new Date();
@@ -235,7 +235,7 @@ export function calculateRelevance(
  * Returns sorted (highest relevance first) with scores.
  */
 export function rankByRelevance(
-  docs: MemorixDocument[],
+  docs: BatonDocument[],
   referenceTime?: Date,
 ): RelevanceScore[] {
   return docs
@@ -255,7 +255,7 @@ export type RetentionZone = 'active' | 'stale' | 'archive-candidate';
  *   Stale: not accessed, beyond 50% of retention period
  *   Archive-candidate: not accessed, beyond 100% of retention period, not immune
  */
-export function getRetentionZone(doc: MemorixDocument, referenceTime?: Date): RetentionZone {
+export function getRetentionZone(doc: BatonDocument, referenceTime?: Date): RetentionZone {
   const now = referenceTime ?? new Date();
   if (doc.feedbackStatus === 'archived') return 'archive-candidate';
   const importance = getImportanceLevel(doc);
@@ -282,9 +282,9 @@ export function getRetentionZone(doc: MemorixDocument, referenceTime?: Date): Re
  * Returns observations that are beyond their retention period and not immune.
  */
 export function getArchiveCandidates(
-  docs: MemorixDocument[],
+  docs: BatonDocument[],
   referenceTime?: Date,
-): MemorixDocument[] {
+): BatonDocument[] {
   return docs.filter((doc) => getRetentionZone(doc, referenceTime) === 'archive-candidate');
 }
 
@@ -292,7 +292,7 @@ export function getArchiveCandidates(
  * Get retention summary statistics.
  */
 export function getRetentionSummary(
-  docs: MemorixDocument[],
+  docs: BatonDocument[],
   referenceTime?: Date,
 ): { active: number; stale: number; archiveCandidates: number; immune: number } {
   let active = 0;
@@ -369,7 +369,7 @@ export interface RetentionProjectionSummary {
  * retention posture.  Designed for operator-facing reporting.
  */
 export function explainRetention(
-  doc: MemorixDocument,
+  doc: BatonDocument,
   referenceTime?: Date,
 ): RetentionExplanation {
   const importance = getImportanceLevel(doc);
@@ -410,7 +410,7 @@ export function explainRetention(
     immune: immuneFlag,
     immunityReason,
     ageDays: Math.round(ageDays),
-    // Summary is rendered inside markdown table cells in memorix_retention output,
+    // Summary is rendered inside markdown table cells in baton_retention output,
     // so avoid pipe separators that would split the row into extra columns.
     summary: parts.join(' ; '),
   };
@@ -427,7 +427,7 @@ export function toRetentionDocument(
   obs: Observation,
   accessMap?: ObservationAccessMap,
   feedback?: { weight: number; status: ObservationStatus },
-): MemorixDocument {
+): BatonDocument {
   const access = accessMap?.get(obs.id);
   return {
     id: `obs-${obs.id}`,

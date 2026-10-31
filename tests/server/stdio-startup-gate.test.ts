@@ -64,7 +64,7 @@ describe('stdio startup gate', () => {
         ttlMs: 0,
         cacheScope: 'private',
         _meta: {
-          'io.modelcontextprotocol/serverInfo': { name: 'memorix' },
+          'io.modelcontextprotocol/serverInfo': { name: 'baton' },
         },
       },
     });
@@ -103,7 +103,7 @@ describe('stdio startup gate', () => {
       jsonrpc: '2.0',
       id: 'call',
       method: 'tools/call',
-      params: { name: 'memorix_codegraph_status', arguments: {} },
+      params: { name: 'baton_codegraph_status', arguments: {} },
     }) + '\n');
 
     gate.markReady();
@@ -126,7 +126,7 @@ describe('stdio startup gate', () => {
         jsonrpc: '2.0',
         id: 'call',
         method: 'tools/call',
-        params: { name: 'memorix_codegraph_status', arguments: {} },
+        params: { name: 'baton_codegraph_status', arguments: {} },
       }),
     ].map((line) => line + '\n').join(''));
 

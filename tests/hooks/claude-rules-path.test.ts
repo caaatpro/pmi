@@ -10,15 +10,15 @@ const originalUserProfile = process.env.USERPROFILE;
 const originalHome = process.env.HOME;
 
 function makeTmpDir(): string {
-  return fsSync.mkdtempSync(path.join(os.tmpdir(), 'memorix-claude-rules-test-'));
+  return fsSync.mkdtempSync(path.join(os.tmpdir(), 'baton-claude-rules-test-'));
 }
 
 const OFFICIAL_SKILL_NAMES = [
-  'memorix-memory',
-  'memorix-reasoning',
-  'memorix-sessions',
-  'memorix-git-memory',
-  'memorix-troubleshooting',
+  'baton-memory',
+  'baton-reasoning',
+  'baton-sessions',
+  'baton-git-memory',
+  'baton-troubleshooting',
 ];
 
 afterEach(() => {
@@ -38,14 +38,14 @@ describe('Claude integration guidance path', () => {
       const copilotInstructions = path.join(tmpDir, '.github', 'copilot-instructions.md');
 
       const content = await fs.readFile(claudeMd, 'utf-8');
-      expect(content).toContain('# Memorix');
-      expect(content).toContain('memorix_project_context');
+      expect(content).toContain('# Baton');
+      expect(content).toContain('baton_project_context');
       expect(content).toContain('task-lensed brief');
-      expect(content).toContain('memorix context "<task>" --fallback --brief-json');
-      expect(content).toContain('memorix resume "<task>" --fallback --brief-json');
+      expect(content).toContain('baton context "<task>" --fallback --brief-json');
+      expect(content).toContain('baton resume "<task>" --fallback --brief-json');
       expect(content).toContain('Continuation fallback is mandatory');
-      expect(content).toContain('Do not call more Memorix retrieval tools');
-      expect(content).toContain('The absence of `.memorix` or visible memory files never proves project memory is empty.');
+      expect(content).toContain('Do not call more Baton retrieval tools');
+      expect(content).toContain('The absence of `.baton` or visible memory files never proves project memory is empty.');
       await expect(fs.access(copilotInstructions)).rejects.toThrow();
     } finally {
       await fs.rm(tmpDir, { recursive: true, force: true });
@@ -63,26 +63,26 @@ describe('Claude integration guidance path', () => {
       const content = await fs.readFile(claudeMd, 'utf-8');
       expect(content).toContain('# Existing Rules');
       expect(content).toContain('Keep replies concise.');
-      expect(content).toContain('# Memorix');
-      expect(content).toContain('memorix_search');
-      expect(content).toContain('memorix_project_context');
+      expect(content).toContain('# Baton');
+      expect(content).toContain('baton_search');
+      expect(content).toContain('baton_project_context');
     } finally {
       await fs.rm(tmpDir, { recursive: true, force: true });
     }
   });
 
-  it('upgrades older Claude guidance that only mentions memorix_search', async () => {
+  it('upgrades older Claude guidance that only mentions baton_search', async () => {
     const tmpDir = makeTmpDir();
     try {
       const claudeMd = path.join(tmpDir, 'CLAUDE.md');
       await fs.writeFile(claudeMd, [
-        '# Memorix - Agent Instructions for Claude Code',
+        '# Baton - Agent Instructions for Claude Code',
         '',
-        'You have access to Memorix, an open-source cross-agent memory layer for coding agents via MCP.',
+        'You have access to Baton, an open-source cross-agent memory layer for coding agents via MCP.',
         '',
-        '## Using Memorix Memory Tools',
+        '## Using Baton Memory Tools',
         '',
-        'Use `memorix_search` when prior project context would help.',
+        'Use `baton_search` when prior project context would help.',
         '',
         '## Dev Log (memcode Development)',
         '',
@@ -94,12 +94,12 @@ describe('Claude integration guidance path', () => {
       await installHooks('claude', tmpDir);
 
       const content = await fs.readFile(claudeMd, 'utf-8');
-      expect(content).toContain('# Memorix — Project Memory Tools');
+      expect(content).toContain('# Baton — Project Memory Tools');
       expect(content).toContain('Default first step for non-trivial coding work');
-      expect(content).toContain('memorix_project_context');
+      expect(content).toContain('baton_project_context');
       expect(content).toContain('before progress files, dev-log reads, ad-hoc file reads, or git archaeology');
       expect(content).toContain('tool discovery or dynamic loading');
-      expect(content).not.toContain('Using Memorix Memory Tools');
+      expect(content).not.toContain('Using Baton Memory Tools');
       expect(content).not.toContain('read this first in every new session');
       expect(content).not.toContain('feat/memcode-agent');
     } finally {
@@ -123,16 +123,16 @@ describe('global guidance scope', () => {
 
       expect(result.configPath).toBe(agentsMd);
       const content = await fs.readFile(agentsMd, 'utf-8');
-      expect(content).toContain('# Memorix — Memory Tools for Active Workspaces');
+      expect(content).toContain('# Baton — Memory Tools for Active Workspaces');
       expect(content).toContain('active workspace');
-      expect(content).toContain('memorix_project_context');
+      expect(content).toContain('baton_project_context');
       expect(content).toContain('task-lensed brief');
-      expect(content).toContain('memorix context "<task>" --fallback --brief-json');
-      expect(content).toContain('memorix resume "<task>" --fallback --brief-json');
+      expect(content).toContain('baton context "<task>" --fallback --brief-json');
+      expect(content).toContain('baton resume "<task>" --fallback --brief-json');
       expect(content).toContain('Continuation fallback is mandatory');
-      expect(content).toContain('Do not call more Memorix retrieval tools');
-      expect(content).toContain('The absence of `.memorix` or visible memory files never proves project memory is empty.');
-      expect(content).not.toContain('This project uses Memorix');
+      expect(content).toContain('Do not call more Baton retrieval tools');
+      expect(content).toContain('The absence of `.baton` or visible memory files never proves project memory is empty.');
+      expect(content).not.toContain('This project uses Baton');
       await expect(fs.access(path.join(projectDir, '.codex', 'AGENTS.md'))).rejects.toThrow();
     } finally {
       await fs.rm(tmpDir, { recursive: true, force: true });
@@ -146,22 +146,22 @@ describe('OpenCode integration files', () => {
     try {
       const result = await installHooks('opencode', tmpDir);
 
-      const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'memorix.js');
+      const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'baton.js');
       const agentsMd = path.join(tmpDir, 'AGENTS.md');
-      const skillPath = path.join(tmpDir, '.opencode', 'skills', 'memorix-memory', 'SKILL.md');
+      const skillPath = path.join(tmpDir, '.opencode', 'skills', 'baton-memory', 'SKILL.md');
 
       expect(result.configPath).toBe(pluginPath);
       const plugin = await fs.readFile(pluginPath, 'utf-8');
-      expect(plugin).toContain('export const MemorixPlugin');
+      expect(plugin).toContain('export const BatonPlugin');
       expect(plugin).toContain("shell: process.platform === 'win32'");
-      expect(await fs.readFile(agentsMd, 'utf-8')).toContain('memorix_search');
-      expect(await fs.readFile(agentsMd, 'utf-8')).toContain('memorix_project_context');
+      expect(await fs.readFile(agentsMd, 'utf-8')).toContain('baton_search');
+      expect(await fs.readFile(agentsMd, 'utf-8')).toContain('baton_project_context');
       const skill = await fs.readFile(skillPath, 'utf-8');
-      expect(skill).toContain('name: memorix-memory');
+      expect(skill).toContain('name: baton-memory');
       expect(skill).toContain('active workspace');
       expect(skill).toContain('CLI fallback');
-      expect(skill).toContain('memorix_evidence');
-      expect(skill).toContain('memorix_feedback');
+      expect(skill).toContain('baton_evidence');
+      expect(skill).toContain('baton_feedback');
       expect(skill).not.toContain("project's shared memory layer");
       expect(result.generated.skillPath).toBe(skillPath);
       expect(result.generated.skillPaths).toHaveLength(OFFICIAL_SKILL_NAMES.length);
@@ -176,9 +176,9 @@ describe('OpenCode integration files', () => {
 
   it('uses workspace-safe wording in plugin package skills', async () => {
     const pluginRoots = [
-      path.resolve('plugins/claude/memorix/skills'),
-      path.resolve('plugins/codex/memorix/skills'),
-      path.resolve('plugins/copilot/memorix/skills'),
+      path.resolve('plugins/claude/baton/skills'),
+      path.resolve('plugins/codex/baton/skills'),
+      path.resolve('plugins/copilot/baton/skills'),
     ];
 
     for (const root of pluginRoots) {
@@ -187,7 +187,7 @@ describe('OpenCode integration files', () => {
         expect(skill).toContain(`name: ${name}`);
         expect(skill).toContain('CLI fallback');
         expect(skill).not.toContain("project's shared memory layer");
-        expect(skill).not.toContain('This project uses Memorix');
+        expect(skill).not.toContain('This project uses Baton');
       }
     }
   });
@@ -199,14 +199,14 @@ describe('rules plus skills integration files', () => {
     try {
       const result = await installHooks('cursor', tmpDir);
 
-      const rulesPath = path.join(tmpDir, '.cursor', 'rules', 'memorix.mdc');
-      expect(await fs.readFile(rulesPath, 'utf-8')).toContain('Memorix');
+      const rulesPath = path.join(tmpDir, '.cursor', 'rules', 'baton.mdc');
+      expect(await fs.readFile(rulesPath, 'utf-8')).toContain('Baton');
       expect(result.generated.skillPaths).toHaveLength(OFFICIAL_SKILL_NAMES.length);
 
-      const troubleshooting = path.join(tmpDir, '.cursor', 'skills', 'memorix-troubleshooting', 'SKILL.md');
+      const troubleshooting = path.join(tmpDir, '.cursor', 'skills', 'baton-troubleshooting', 'SKILL.md');
       const content = await fs.readFile(troubleshooting, 'utf-8');
       expect(content).toContain('MCP is an integration surface');
-      expect(content).toContain('memorix setup --agent <agent>');
+      expect(content).toContain('baton setup --agent <agent>');
     } finally {
       await fs.rm(tmpDir, { recursive: true, force: true });
     }
@@ -218,11 +218,11 @@ describe('Pi package hook boundary', () => {
     const tmpDir = makeTmpDir();
     try {
       const result = await installHooks('pi', tmpDir);
-      const extensionPath = path.join(tmpDir, '.pi', 'packages', 'memorix', 'extensions', 'memorix.js');
+      const extensionPath = path.join(tmpDir, '.pi', 'packages', 'baton', 'extensions', 'baton.js');
 
       expect(result.configPath).toBe(extensionPath);
       expect(result.events).toContain('user_prompt');
-      expect(result.generated.note).toContain('memorix setup --agent pi');
+      expect(result.generated.note).toContain('baton setup --agent pi');
       await expect(fs.access(extensionPath)).rejects.toThrow();
     } finally {
       await fs.rm(tmpDir, { recursive: true, force: true });
@@ -232,7 +232,7 @@ describe('Pi package hook boundary', () => {
   it('reports a Pi package extension when setup has installed it', async () => {
     const tmpDir = makeTmpDir();
     try {
-      const extensionPath = path.join(tmpDir, '.pi', 'packages', 'memorix', 'extensions', 'memorix.js');
+      const extensionPath = path.join(tmpDir, '.pi', 'packages', 'baton', 'extensions', 'baton.js');
       await fs.mkdir(path.dirname(extensionPath), { recursive: true });
       await fs.writeFile(extensionPath, 'export default {};\n', 'utf-8');
 

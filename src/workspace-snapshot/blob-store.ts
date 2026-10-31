@@ -25,7 +25,7 @@ export class BlobStore {
   }
 
   private pathFor(sha: string): string {
-    if (!isSha256(sha)) throw new Error(`[pmi] invalid blob id ${sha}`);
+    if (!isSha256(sha)) throw new Error(`[baton] invalid blob id ${sha}`);
     return path.join(this.root, sha.slice(0, 2), sha.slice(2, 4), sha);
   }
 
@@ -48,13 +48,13 @@ export class BlobStore {
   /** Store content that must hash to `sha` (downloads); refuses anything else. */
   putVerified(sha: string, data: Buffer): void {
     const actual = sha256Hex(data);
-    if (actual !== sha) throw new Error(`[pmi] blob ${sha} failed verification (got ${actual})`);
+    if (actual !== sha) throw new Error(`[baton] blob ${sha} failed verification (got ${actual})`);
     this.put(data);
   }
 
   get(sha: string): Buffer {
     const data = gunzipSync(fs.readFileSync(this.pathFor(sha)));
-    if (sha256Hex(data) !== sha) throw new Error(`[pmi] local blob ${sha} is corrupted`);
+    if (sha256Hex(data) !== sha) throw new Error(`[baton] local blob ${sha} is corrupted`);
     return data;
   }
 

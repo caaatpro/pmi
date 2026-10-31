@@ -32,30 +32,30 @@ async function runCommand(command: any, args: Record<string, unknown>) {
 
 describe('CLI transfer file I/O', () => {
   const originalCwd = process.cwd();
-  const originalDataDir = process.env.MEMORIX_DATA_DIR;
-  const originalEmbedding = process.env.MEMORIX_EMBEDDING;
+  const originalDataDir = process.env.BATON_DATA_DIR;
+  const originalEmbedding = process.env.BATON_EMBEDDING;
   let sandboxRoot = '';
   let repoDir = '';
   let dataDir = '';
 
   beforeEach(() => {
-    sandboxRoot = mkdtempSync(path.join(tmpdir(), 'memorix-cli-transfer-'));
+    sandboxRoot = mkdtempSync(path.join(tmpdir(), 'baton-cli-transfer-'));
     repoDir = path.join(sandboxRoot, 'repo');
     dataDir = path.join(sandboxRoot, 'data');
     mkdirSync(repoDir, { recursive: true });
     writeFileSync(path.join(repoDir, 'README.md'), '# transfer test\n', 'utf8');
     execSync('git init', { cwd: repoDir, stdio: 'ignore' });
     process.chdir(repoDir);
-    process.env.MEMORIX_DATA_DIR = dataDir;
-    process.env.MEMORIX_EMBEDDING = 'off';
+    process.env.BATON_DATA_DIR = dataDir;
+    process.env.BATON_EMBEDDING = 'off';
   });
 
   afterEach(async () => {
     process.chdir(originalCwd);
-    if (originalDataDir === undefined) delete process.env.MEMORIX_DATA_DIR;
-    else process.env.MEMORIX_DATA_DIR = originalDataDir;
-    if (originalEmbedding === undefined) delete process.env.MEMORIX_EMBEDDING;
-    else process.env.MEMORIX_EMBEDDING = originalEmbedding;
+    if (originalDataDir === undefined) delete process.env.BATON_DATA_DIR;
+    else process.env.BATON_DATA_DIR = originalDataDir;
+    if (originalEmbedding === undefined) delete process.env.BATON_EMBEDDING;
+    else process.env.BATON_EMBEDDING = originalEmbedding;
     resetObservationStore();
     resetSessionStore();
     resetTeamStore();
@@ -83,7 +83,7 @@ describe('CLI transfer file I/O', () => {
       createdByAgentId: 'another-agent',
     });
 
-    const output = '.memorix-test/export.json';
+    const output = '.baton-test/export.json';
     const exported = await runCommand(transferCommand, {
       _: ['export'],
       format: 'json',

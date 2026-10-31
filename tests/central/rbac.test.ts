@@ -81,7 +81,7 @@ function toolText(result: any): string {
   return (result?.content ?? []).map((item: any) => item.text ?? '').join('\n');
 }
 
-/** Run SQL the way the server does for a request: as pmi_app with app.user_id set. */
+/** Run SQL the way the server does for a request: as baton_app with app.user_id set. */
 async function asUserSql<T>(userId: string, sql: string, params: unknown[] = []): Promise<T[]> {
   return db.asUser(userId, (tx) => tx.query<T>(sql, params));
 }
@@ -262,7 +262,7 @@ describe.skipIf(!pgAvailable)('RBAC and row-level security (real Postgres)', () 
 
       const feed = await call(`/v1/projects/${projectId}/changes?after=0&legacy=${encodeURIComponent(LEGACY)}`, { as: 'viewer' });
       const change = feed.body.changes.find((c: { entry: { syncKey: string } }) => c.entry.syncKey === key);
-      expect(change.entry.version).toEqual({ revision: 2, writer: 'pmi-server' });
+      expect(change.entry.version).toEqual({ revision: 2, writer: 'baton-server' });
       expect(change.entry.row.confidence).toBe('confirmed');
       expect(change.entry.contentHash).toBe(contentHash(change.entry.row));
 

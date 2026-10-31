@@ -1,15 +1,15 @@
 /**
- * memorix background — Manage the Memorix Control Plane as a background service
+ * baton background — Manage the Baton Control Plane as a background service
  *
  * Subcommands:
- *   memorix background start    — Launch control plane in background (HTTP 3211)
- *   memorix background stop     — Stop the background control plane
- *   memorix background status   — Show running state, PID, port, health
- *   memorix background restart  — Stop + start
- *   memorix background logs     — Tail the background service log
+ *   baton background start    — Launch control plane in background (HTTP 3211)
+ *   baton background stop     — Stop the background control plane
+ *   baton background status   — Show running state, PID, port, health
+ *   baton background restart  — Stop + start
+ *   baton background logs     — Tail the background service log
  *
- * State is persisted in ~/.memorix/background.json so status survives shell restarts.
- * Logs are written to ~/.memorix/background.log.
+ * State is persisted in ~/.baton/background.json so status survives shell restarts.
+ * Logs are written to ~/.baton/background.log.
  *
  * Mode distinction:
  *   Quick Mode       = stdio / single project / zero friction
@@ -50,16 +50,16 @@ export function resolveBackgroundCwd(cwd: string, homeDir: string = os.homedir()
   if (!isHomeDirectory(cwd, homeDir)) return cwd;
   const inherited = inheritProjectRootFromHome({
     homeDir,
-    envProjectRoot: process.env.MEMORIX_PROJECT_ROOT,
+    envProjectRoot: process.env.BATON_PROJECT_ROOT,
   });
   if (inherited) return inherited;
   throw new Error(homeProjectRootError(cwd));
 }
 
-function getMemorixDir(): string {
+function getBatonDir(): string {
   const home = process.env.HOME || process.env.USERPROFILE || '';
   // Use join-style path to ensure native separators on Windows
-  return home.replace(/\\/g, '/') + '/.memorix';
+  return home.replace(/\\/g, '/') + '/.baton';
 }
 
 function normalizePath(p: string): string {
@@ -68,15 +68,15 @@ function normalizePath(p: string): string {
 }
 
 function getStateFilePath(): string {
-  return getMemorixDir() + '/background.json';
+  return getBatonDir() + '/background.json';
 }
 
 function getLogFilePath(): string {
-  return getMemorixDir() + '/background.log';
+  return getBatonDir() + '/background.log';
 }
 
 function getBackgroundLockPath(): string {
-  return getMemorixDir() + '/background.lock';
+  return getBatonDir() + '/background.lock';
 }
 
 function parseBoundedPositiveInteger(value: string | undefined, fallback: number, label: string, maximum: number): number {
@@ -98,7 +98,7 @@ function parseBackgroundPort(value: string | undefined): number {
 /**
  * Resolve the CLI file that `background start` should spawn.
  * `process.argv[1]` follows the launcher shim and can point at a different
- * install (for example `$HOME/node_modules/memorix` after `bun add` in $HOME).
+ * install (for example `$HOME/node_modules/baton` after `bun add` in $HOME).
  * When this module is bundled into `dist/cli/index.js`, `../index.js` is the
  * library stdio entry (`dist/index.js`) — never spawn that.
  */
@@ -126,9 +126,9 @@ function parseLogLines(value: string | undefined): number {
   return parseBoundedPositiveInteger(value, 50, 'Log line count', 10_000);
 }
 
-function formatBackgroundCommandError(error: unknown, includeStack = process.env.MEMORIX_DEBUG === '1'): string {
+function formatBackgroundCommandError(error: unknown, includeStack = process.env.BATON_DEBUG === '1'): string {
   const message = error instanceof Error ? error.message : String(error);
-  const base = `[memorix background] Error: ${message}\n`;
+  const base = `[baton background] Error: ${message}\n`;
   if (!includeStack || !(error instanceof Error) || !error.stack) return base;
   return `${base}${error.stack}\n`;
 }
@@ -147,7 +147,7 @@ function loadState(): BackgroundState | null {
 }
 
 function saveState(state: BackgroundState): void {
-  const dir = getMemorixDir();
+  const dir = getBatonDir();
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(getStateFilePath(), JSON.stringify(state, null, 2));
 }
@@ -378,7 +378,7 @@ async function acquireBackgroundLock(
   }
 
   throw new Error(
-    `Another Memorix background start is still in progress (${lockPath}). `
+    `Another Baton background start is still in progress (${lockPath}). `
     + 'Wait a few seconds and retry; no second control plane was started.',
   );
 }
@@ -420,7 +420,7 @@ async function doStartUnlocked(port: number): Promise<void> {
       // A live PID without a matching health response may have been reused by an
       // unrelated process. Never kill it based on stale local state alone.
       console.log(`[WARN] Registered process ${state.pid} is alive but port ${state.port} is not responding.`);
-      console.log('  Cleared stale Memorix state without stopping that process.');
+      console.log('  Cleared stale Baton state without stopping that process.');
       clearState();
       // Fall through to auto-restart below
     } else {
@@ -432,7 +432,7 @@ async function doStartUnlocked(port: number): Promise<void> {
   } else {
     // No background.json — check heartbeat for crash evidence
     try {
-      const heartbeatPath = getMemorixDir() + '/background.heartbeat';
+      const heartbeatPath = getBatonDir() + '/background.heartbeat';
       const hbData = fs.readFileSync(heartbeatPath, 'utf-8');
       const hb = JSON.parse(hbData);
       const age = Date.now() - hb.heartbeatAt;
@@ -448,12 +448,12 @@ async function doStartUnlocked(port: number): Promise<void> {
   if (await isPortInUse(port)) {
     // Port is occupied but no background.json — this is an unmanaged foreground process
     console.log('');
-    console.log(`[WARN] Port ${port} is already serving a Memorix control plane, but it is NOT managed by background mode.`);
+    console.log(`[WARN] Port ${port} is already serving a Baton control plane, but it is NOT managed by background mode.`);
     console.log('');
-    console.log('  This is likely a foreground "memorix serve-http" instance.');
+    console.log('  This is likely a foreground "baton serve-http" instance.');
     console.log('  To switch to background mode:');
     console.log('    1. Stop the foreground instance (Ctrl+C in its terminal)');
-    console.log('    2. Run "memorix background start"');
+    console.log('    2. Run "baton background start"');
     console.log('');
     console.log(`  Dashboard:  http://127.0.0.1:${port}/`);
     console.log(`  MCP:        http://127.0.0.1:${port}/mcp`);
@@ -462,13 +462,13 @@ async function doStartUnlocked(port: number): Promise<void> {
 
   // 3. Clean up stale readiness file from previous run
   try {
-    const readyFile = getMemorixDir() + '/background.ready';
+    const readyFile = getBatonDir() + '/background.ready';
     if (fs.existsSync(readyFile)) fs.unlinkSync(readyFile);
   } catch { /* ignore */ }
 
   // 4. Prepare log file
   const logFile = getLogFilePath();
-  const dir = getMemorixDir();
+  const dir = getBatonDir();
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
   // Rotate log: keep last run's log as .log.prev
@@ -476,10 +476,10 @@ async function doStartUnlocked(port: number): Promise<void> {
     try { fs.renameSync(logFile, logFile + '.prev'); } catch { /* ok */ }
   }
 
-  // 5. Find the memorix CLI entry point
+  // 5. Find the baton CLI entry point
   // We need to spawn `node <cli-entry> serve-http --port <port>`
   // Prefer this package's compiled CLI so a bun/npm shim cannot spawn a
-  // different (often unpatched) memorix from ~/node_modules.
+  // different (often unpatched) baton from ~/node_modules.
   const cliEntry = resolveBackgroundCliEntry();
 
   // 6. Start the service without a visible console. A regular non-detached child
@@ -533,7 +533,7 @@ async function doStartUnlocked(port: number): Promise<void> {
   // even when stdout is a pipe or in a non-TTY environment.
   const startMsg = [
     '',
-    'Starting Memorix Control Plane in background...',
+    'Starting Baton Control Plane in background...',
     '',
     `  PID:        ${pid}`,
     `  Port:       ${port}`,
@@ -578,7 +578,7 @@ async function doStartUnlocked(port: number): Promise<void> {
       }
     }
     clearState();
-    try { fs.unlinkSync(getMemorixDir() + '/background.ready'); } catch { /* best effort */ }
+    try { fs.unlinkSync(getBatonDir() + '/background.ready'); } catch { /* best effort */ }
     process.exitCode = 1;
     return;
   }
@@ -589,7 +589,7 @@ async function doStartUnlocked(port: number): Promise<void> {
     '  Control Plane    = HTTP / shared MCP / multi-session / live dashboard',
     '  Background       = Control Plane running as a local service',
     '',
-    '  Stop with:       memorix background stop',
+    '  Stop with:       baton background stop',
   ].join('\n');
   process.stderr.write(footer + '\n');
 }
@@ -615,29 +615,29 @@ export async function doStop(): Promise<void> {
     console.log(`Background process (PID ${state.pid}) is not running. Cleaning up state.`);
     clearState();
     // Also clean up readiness file
-    try { fs.unlinkSync(getMemorixDir() + '/background.ready'); } catch { /* ignore */ }
+    try { fs.unlinkSync(getBatonDir() + '/background.ready'); } catch { /* ignore */ }
     return;
   }
 
-  // Validate that the PID is actually our Memorix process — check /health
+  // Validate that the PID is actually our Baton process — check /health
   const health = await healthCheck(state.port, 2000);
   if (!health.ok) {
     // PID alive but port not responding — likely PID-reused or process stuck
     console.log(`[WARN] PID ${state.pid} is alive but port ${state.port} is not responding.`);
-    console.log('  It may be a PID-reused unrelated process, so Memorix will not kill it.');
+    console.log('  It may be a PID-reused unrelated process, so Baton will not kill it.');
     clearState();
-    try { fs.unlinkSync(getMemorixDir() + '/background.ready'); } catch { /* ignore */ }
+    try { fs.unlinkSync(getBatonDir() + '/background.ready'); } catch { /* ignore */ }
     return;
   }
 
   // Verify PID matches — if /health returns a different PID, it's a different process
   if (health.data?.pid && health.data.pid !== state.pid) {
     console.log(`[WARN] PID mismatch: background.json has ${state.pid}, but /health reports ${health.data.pid}.`);
-    console.log('  The Memorix process was likely restarted. Updating state...');
-    // Don't kill — this is a valid Memorix, just with a different PID than we expected
+    console.log('  The Baton process was likely restarted. Updating state...');
+    // Don't kill — this is a valid Baton, just with a different PID than we expected
     // (e.g., process was restarted manually)
     clearState();
-    console.log('  Run "memorix background start" to register the current instance.');
+    console.log('  Run "baton background start" to register the current instance.');
     return;
   }
 
@@ -659,7 +659,7 @@ export async function doStop(): Promise<void> {
   } catch { /* process may already be gone */ }
 
   if (!graceful && isProcessRunning(state.pid)) {
-    // Health previously proved this PID belongs to the registered Memorix service.
+    // Health previously proved this PID belongs to the registered Baton service.
     try {
       forceTerminateProcess(state.pid);
     } catch { /* best effort */ }
@@ -667,7 +667,7 @@ export async function doStop(): Promise<void> {
 
   clearState();
   // Clean up readiness file
-  try { fs.unlinkSync(getMemorixDir() + '/background.ready'); } catch { /* ignore */ }
+  try { fs.unlinkSync(getBatonDir() + '/background.ready'); } catch { /* ignore */ }
   console.log('[OK] Control plane stopped.');
 }
 
@@ -691,7 +691,7 @@ async function doStatus(asJson = false): Promise<void> {
       }
       console.log('');
       console.log('No background control plane is registered,');
-      console.log('but a Memorix instance IS running on port 3211 (likely a foreground "memorix serve-http").');
+      console.log('but a Baton instance IS running on port 3211 (likely a foreground "baton serve-http").');
       console.log('');
       console.log(`  Dashboard:  http://127.0.0.1:3211/`);
       console.log(`  MCP:        http://127.0.0.1:3211/mcp`);
@@ -705,7 +705,7 @@ async function doStatus(asJson = false): Promise<void> {
       console.log('');
       console.log('  To switch to background mode:');
       console.log('    1. Stop the foreground instance (Ctrl+C in its terminal)');
-      console.log('    2. Run "memorix background start"');
+      console.log('    2. Run "baton background start"');
       console.log('');
     } else {
       if (asJson) {
@@ -714,7 +714,7 @@ async function doStatus(asJson = false): Promise<void> {
       }
       console.log('No background control plane is registered.');
       console.log('');
-      console.log('Start one with:  memorix background start');
+      console.log('Start one with:  baton background start');
     }
     return;
   }
@@ -740,7 +740,7 @@ async function doStatus(asJson = false): Promise<void> {
   if (asJson) {
     if (pidMismatch || probablyReused || !running) {
       clearState();
-      try { fs.unlinkSync(getMemorixDir() + '/background.ready'); } catch { /* best effort */ }
+      try { fs.unlinkSync(getBatonDir() + '/background.ready'); } catch { /* best effort */ }
     }
     console.log(JSON.stringify({
       status,
@@ -759,12 +759,12 @@ async function doStatus(asJson = false): Promise<void> {
   }
 
   console.log('');
-  console.log('Memorix Background Control Plane');
+  console.log('Baton Background Control Plane');
   console.log('================================');
   const statusLabel = health.ok && !pidMismatch
     ? '[OK] Running & Healthy'
     : pidMismatch
-      ? '[WARN] PID mismatch — different Memorix instance'
+      ? '[WARN] PID mismatch — different Baton instance'
       : probablyReused
         ? '[WARN] PID reused by unrelated process'
         : running
@@ -794,21 +794,21 @@ async function doStatus(asJson = false): Promise<void> {
   if (pidMismatch) {
     console.log('');
     console.log(`  [WARN] background.json has PID ${state.pid}, but /health reports PID ${health.data?.pid}.`);
-    console.log('  The Memorix process was likely restarted. Updating state...');
+    console.log('  The Baton process was likely restarted. Updating state...');
     clearState();
-    console.log('  Run "memorix background start" to register the current instance.');
+    console.log('  Run "baton background start" to register the current instance.');
   } else if (probablyReused) {
     console.log('');
     console.log('  [WARN] The PID in background.json belongs to a different process.');
     console.log('  Cleaning up stale state...');
     clearState();
-    console.log('  Run "memorix background start" to restart.');
+    console.log('  Run "baton background start" to restart.');
   } else if (!running) {
     console.log('');
     console.log('  Process has exited. Cleaning up stale state...');
     // Diagnose: check heartbeat for crash evidence
     try {
-      const heartbeatPath = getMemorixDir() + '/background.heartbeat';
+      const heartbeatPath = getBatonDir() + '/background.heartbeat';
       const hbData = fs.readFileSync(heartbeatPath, 'utf-8');
       const hb = JSON.parse(hbData);
       const age = Date.now() - hb.heartbeatAt;
@@ -818,7 +818,7 @@ async function doStatus(asJson = false): Promise<void> {
       }
     } catch { /* no heartbeat */ }
     clearState();
-    console.log('  Run "memorix background start" to restart.');
+    console.log('  Run "baton background start" to restart.');
   }
 
   console.log('');
@@ -865,7 +865,7 @@ function doLogs(follow: boolean, lines: number): void {
 
   if (!fs.existsSync(logFile)) {
     console.log('No log file found. Start the background service first:');
-    console.log('  memorix background start');
+    console.log('  baton background start');
     return;
   }
 
@@ -910,7 +910,7 @@ function doLogs(follow: boolean, lines: number): void {
 export default defineCommand({
   meta: {
     name: 'background',
-    description: 'Manage the Memorix Control Plane as a background service',
+    description: 'Manage the Baton Control Plane as a background service',
   },
   args: {
     port: {
@@ -964,15 +964,15 @@ export default defineCommand({
           doLogs(!!args.follow, parseLogLines(args.lines));
           break;
         default:
-          console.log('Memorix Background Control Plane');
+          console.log('Baton Background Control Plane');
           console.log('');
           console.log('Usage:');
-          console.log('  memorix background start     Start control plane in background');
-          console.log('  memorix background stop      Stop the background control plane');
-          console.log('  memorix background status    Show running state and health');
-          console.log('  memorix background restart   Stop + start');
-          console.log('  memorix background ensure    Ensure control plane is running (auto-start if not)');
-          console.log('  memorix background logs      Show recent log output');
+          console.log('  baton background start     Start control plane in background');
+          console.log('  baton background stop      Stop the background control plane');
+          console.log('  baton background status    Show running state and health');
+          console.log('  baton background restart   Stop + start');
+          console.log('  baton background ensure    Ensure control plane is running (auto-start if not)');
+          console.log('  baton background logs      Show recent log output');
           console.log('');
           console.log('Options:');
           console.log('  --port <port>   HTTP port (default: 3211)');

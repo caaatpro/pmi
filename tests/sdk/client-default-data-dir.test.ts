@@ -25,16 +25,16 @@ import { resetDb } from '../../src/store/orama-store.js';
 import { closeAllDatabases } from '../../src/store/sqlite-db.js';
 
 describe('SDK default data-directory contract', () => {
-  const originalDataDir = process.env.MEMORIX_DATA_DIR;
-  const originalEmbedding = process.env.MEMORIX_EMBEDDING;
+  const originalDataDir = process.env.BATON_DATA_DIR;
+  const originalEmbedding = process.env.BATON_EMBEDDING;
   let sandbox = '';
   let client: Awaited<ReturnType<typeof createMemoryClient>> | undefined;
 
   beforeEach(() => {
-    sandbox = mkdtempSync(path.join(tmpdir(), 'memorix-sdk-default-data-'));
+    sandbox = mkdtempSync(path.join(tmpdir(), 'baton-sdk-default-data-'));
     mockedOs.home = path.join(sandbox, 'home');
-    delete process.env.MEMORIX_DATA_DIR;
-    process.env.MEMORIX_EMBEDDING = 'off';
+    delete process.env.BATON_DATA_DIR;
+    process.env.BATON_EMBEDDING = 'off';
     resetConfigCache();
     resetProvider();
 
@@ -51,16 +51,16 @@ describe('SDK default data-directory contract', () => {
     closeAllDatabases();
     resetProvider();
     resetConfigCache();
-    if (originalDataDir === undefined) delete process.env.MEMORIX_DATA_DIR;
-    else process.env.MEMORIX_DATA_DIR = originalDataDir;
-    if (originalEmbedding === undefined) delete process.env.MEMORIX_EMBEDDING;
-    else process.env.MEMORIX_EMBEDDING = originalEmbedding;
+    if (originalDataDir === undefined) delete process.env.BATON_DATA_DIR;
+    else process.env.BATON_DATA_DIR = originalDataDir;
+    if (originalEmbedding === undefined) delete process.env.BATON_EMBEDDING;
+    else process.env.BATON_EMBEDDING = originalEmbedding;
     if (sandbox) rmSync(sandbox, { recursive: true, force: true });
   });
 
   it('uses the same flat default directory as CLI, hooks, and MCP', async () => {
     const projectRoot = path.join(sandbox, 'project');
-    const expected = path.join(mockedOs.home, '.memorix', 'data');
+    const expected = path.join(mockedOs.home, '.baton', 'data');
 
     client = await createMemoryClient({ projectRoot, silent: true });
 

@@ -1,6 +1,6 @@
 /**
- * `pmi workspace snapshot|restore|list|show|upload|gc` — Workspace Recovery
- * (docs/PMI/WORKSPACE_RECOVERY.md). Exit codes: 0 ok, 1 error, 2 refused or
+ * `baton workspace snapshot|restore|list|show|upload|gc` — Workspace Recovery
+ * (docs/baton/WORKSPACE_RECOVERY.md). Exit codes: 0 ok, 1 error, 2 refused or
  * conflicts (nothing overwritten), 3 server unreachable (kept locally).
  */
 import { defineCommand } from 'citty';
@@ -11,7 +11,7 @@ export default defineCommand({
   meta: { name: 'workspace', description: 'Snapshot uncommitted work and restore it on another machine' },
   args: {
     session: { type: 'string', description: 'Session id to attach the snapshot to / filter by' },
-    worktree: { type: 'string', description: 'restore: path of the new worktree (default <repo>-pmi-<id>)' },
+    worktree: { type: 'string', description: 'restore: path of the new worktree (default <repo>-baton-<id>)' },
     'in-place': { type: 'boolean', description: 'restore: into this working copy (must be clean and at the snapshot HEAD)' },
     'dry-run': { type: 'boolean', description: 'restore: check everything, change nothing' },
     'include-secrets': { type: 'boolean', description: 'snapshot: keep files that look like secrets (logged)' },
@@ -54,7 +54,7 @@ export default defineCommand({
             [
               `${reused ? 'Unchanged since' : 'Snapshot'} ${snapshot.id}: ${m.files.length} file(s), ${m.totals.bytes} bytes, ${m.git.bundle?.commits.length ?? 0} unpushed commit(s) on ${m.git.branch ?? 'detached HEAD'}`,
               ...m.excluded.map((item) => `  excluded ${item.path} (${item.reason})`),
-              upload ? `Uploaded ${upload.uploadedBlobs} new blob(s), ${upload.uploadedBytes} bytes.` : offline ? 'Server unreachable: kept locally; run `pmi workspace upload <id>` later.' : 'Local mode: stored on this machine only.',
+              upload ? `Uploaded ${upload.uploadedBlobs} new blob(s), ${upload.uploadedBytes} bytes.` : offline ? 'Server unreachable: kept locally; run `baton workspace upload <id>` later.' : 'Local mode: stored on this machine only.',
             ].join('\n'),
             asJson,
           );
@@ -63,15 +63,15 @@ export default defineCommand({
         }
 
         case 'upload': {
-          if (!target) throw new Error('usage: pmi workspace upload <snapshot-id>');
-          if (!connection) throw new Error('this working copy is not linked to a PMI server');
+          if (!target) throw new Error('usage: baton workspace upload <snapshot-id>');
+          if (!connection) throw new Error('this working copy is not linked to a Baton server');
           const upload = await remote.uploadSnapshot(connection.api, connection.link.projectId, snapshots, target);
           emitResult(upload, `Uploaded ${upload.uploadedBlobs} new blob(s) for ${target}.`, asJson);
           return;
         }
 
         case 'restore': {
-          if (!target) throw new Error('usage: pmi workspace restore <snapshot-id> [--worktree <path> | --in-place] [--dry-run]');
+          if (!target) throw new Error('usage: baton workspace restore <snapshot-id> [--worktree <path> | --in-place] [--dry-run]');
           const { restoreSnapshot, RestoreRefused } = await import('../../workspace-snapshot/restore.js');
           // Downloading also fills in blobs a locally known manifest is missing; every blob is verified.
           const snapshot = connection ? await remote.downloadSnapshot(connection.api, connection.link.projectId, snapshots, target) : snapshots.get(target);
@@ -120,7 +120,7 @@ export default defineCommand({
         }
 
         case 'show': {
-          if (!target) throw new Error('usage: pmi workspace show <snapshot-id> [--patch]');
+          if (!target) throw new Error('usage: baton workspace show <snapshot-id> [--patch]');
           const snapshot = snapshots.get(target) ?? (connection ? await remote.downloadSnapshot(connection.api, connection.link.projectId, snapshots, target) : undefined);
           if (!snapshot) throw new Error(`snapshot ${target} not found`);
           const m = snapshot.manifest;

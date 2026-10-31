@@ -1,7 +1,7 @@
 /**
  * End-to-end tests for Hook Handler with REAL Claude Code payloads.
  *
- * These tests simulate the exact JSON that Claude Code pipes to `memorix hook` via stdin,
+ * These tests simulate the exact JSON that Claude Code pipes to `baton hook` via stdin,
  * verifying that handleHookEvent produces non-null observations for all major tool events.
  *
  * This directly validates the fix for: "hooks never auto-store during development"
@@ -25,10 +25,10 @@ import { MaintenanceJobStore } from '../../src/runtime/maintenance-jobs.js';
 
 describe('Claude Code Hook Handler E2E', () => {
   const originalCwd = process.cwd();
-  const originalDataDir = process.env.MEMORIX_DATA_DIR;
-  const originalEmbedding = process.env.MEMORIX_EMBEDDING;
+  const originalDataDir = process.env.BATON_DATA_DIR;
+  const originalEmbedding = process.env.BATON_EMBEDDING;
 
-  // Each `memorix hook` call is a separate process in production,
+  // Each `baton hook` call is a separate process in production,
   // so cooldowns never persist. Reset between tests to simulate this.
   beforeEach(() => {
     resetCooldowns();
@@ -37,14 +37,14 @@ describe('Claude Code Hook Handler E2E', () => {
   afterEach(async () => {
     process.chdir(originalCwd);
     if (originalDataDir === undefined) {
-      delete process.env.MEMORIX_DATA_DIR;
+      delete process.env.BATON_DATA_DIR;
     } else {
-      process.env.MEMORIX_DATA_DIR = originalDataDir;
+      process.env.BATON_DATA_DIR = originalDataDir;
     }
     if (originalEmbedding === undefined) {
-      delete process.env.MEMORIX_EMBEDDING;
+      delete process.env.BATON_EMBEDDING;
     } else {
-      process.env.MEMORIX_EMBEDDING = originalEmbedding;
+      process.env.BATON_EMBEDDING = originalEmbedding;
     }
     vi.doUnmock('../../src/config/behavior.js');
     resetObservationStore();
@@ -87,14 +87,14 @@ export function verifyToken(token: string) {
   });
 
   it('queues one durable Code Memory refresh after repeated real file mutations', async () => {
-    const sandboxRoot = mkdtempSync(path.join(tmpdir(), 'memorix-hook-refresh-'));
+    const sandboxRoot = mkdtempSync(path.join(tmpdir(), 'baton-hook-refresh-'));
     const repoDir = path.join(sandboxRoot, 'repo');
     const dataDir = path.join(sandboxRoot, 'data');
     try {
       mkdirSync(path.join(repoDir, 'src'), { recursive: true });
       writeFileSync(path.join(repoDir, 'src', 'auth.ts'), 'export const auth = true;\n', 'utf8');
       execSync('git init', { cwd: repoDir, stdio: 'ignore' });
-      process.env.MEMORIX_DATA_DIR = dataDir;
+      process.env.BATON_DATA_DIR = dataDir;
 
       const input = {
         event: 'post_edit' as const,
@@ -122,14 +122,14 @@ export function verifyToken(token: string) {
   });
 
   it('allows the CLI hook path to defer a file-mutation refresh until capture is durable', async () => {
-    const sandboxRoot = mkdtempSync(path.join(tmpdir(), 'memorix-hook-deferred-'));
+    const sandboxRoot = mkdtempSync(path.join(tmpdir(), 'baton-hook-deferred-'));
     const repoDir = path.join(sandboxRoot, 'repo');
     const dataDir = path.join(sandboxRoot, 'data');
     try {
       mkdirSync(path.join(repoDir, 'src'), { recursive: true });
       writeFileSync(path.join(repoDir, 'src', 'auth.ts'), 'export const auth = true;\n', 'utf8');
       execSync('git init', { cwd: repoDir, stdio: 'ignore' });
-      process.env.MEMORIX_DATA_DIR = dataDir;
+      process.env.BATON_DATA_DIR = dataDir;
 
       await handleHookEvent({
         event: 'post_edit',
@@ -264,7 +264,7 @@ export function verifyToken(token: string) {
   });
 
   it('injects one bounded prior-work brief for an explicit Claude continuation prompt', async () => {
-    const sandboxRoot = mkdtempSync(path.join(tmpdir(), 'memorix-hook-continuation-'));
+    const sandboxRoot = mkdtempSync(path.join(tmpdir(), 'baton-hook-continuation-'));
     const repoDir = path.join(sandboxRoot, 'repo');
     const dataDir = path.join(sandboxRoot, 'data');
     const projectId = 'local/repo';
@@ -273,8 +273,8 @@ export function verifyToken(token: string) {
       writeFileSync(path.join(repoDir, 'src', 'auth.ts'), 'export const authFlag = "AUTH_REFRESH_V2";\n', 'utf8');
       execSync('git init', { cwd: repoDir, stdio: 'ignore' });
       process.chdir(repoDir);
-      process.env.MEMORIX_DATA_DIR = dataDir;
-      process.env.MEMORIX_EMBEDDING = 'off';
+      process.env.BATON_DATA_DIR = dataDir;
+      process.env.BATON_EMBEDDING = 'off';
       vi.doMock('../../src/config/behavior.js', () => ({
         getBehaviorConfig: () => ({
           sessionInject: 'minimal',
@@ -345,13 +345,13 @@ export function verifyToken(token: string) {
     });
 
     const { output } = await handleHookEvent(input);
-    expect(output.systemMessage).toContain('memorix_project_context');
+    expect(output.systemMessage).toContain('baton_project_context');
     expect(output.systemMessage).toContain('Before broad file or Git exploration');
-    expect(output.systemMessage).not.toContain('Memorix Autopilot Brief');
+    expect(output.systemMessage).not.toContain('Baton Autopilot Brief');
     expect(formatHookOutput('claude', 'UserPromptSubmit', output)).toMatchObject({
       hookSpecificOutput: {
         hookEventName: 'UserPromptSubmit',
-        additionalContext: expect.stringContaining('memorix_project_context'),
+        additionalContext: expect.stringContaining('baton_project_context'),
       },
     });
   });
@@ -391,11 +391,11 @@ export function verifyToken(token: string) {
     // SessionStart injects context, doesn't store
     expect(observation).toBeNull();
     expect(output.systemMessage).toContain('Previous session context may be available');
-    expect(output.systemMessage).toContain('Use memorix_search when prior project context would materially help');
+    expect(output.systemMessage).toContain('Use baton_search when prior project context would materially help');
   });
 
   it('should inject auto project context on SessionStart when full injection is enabled', async () => {
-    const sandboxRoot = mkdtempSync(path.join(tmpdir(), 'memorix-hook-auto-context-'));
+    const sandboxRoot = mkdtempSync(path.join(tmpdir(), 'baton-hook-auto-context-'));
     const repoDir = path.join(sandboxRoot, 'repo');
     const dataDir = path.join(sandboxRoot, 'data');
     try {
@@ -404,8 +404,8 @@ export function verifyToken(token: string) {
       writeFileSync(path.join(repoDir, 'src', 'worker.py'), 'def dispatch_job(name: str):\n    return name.upper()\n', 'utf8');
       execSync('git init', { cwd: repoDir, stdio: 'ignore' });
       process.chdir(repoDir);
-      process.env.MEMORIX_DATA_DIR = dataDir;
-      process.env.MEMORIX_EMBEDDING = 'off';
+      process.env.BATON_DATA_DIR = dataDir;
+      process.env.BATON_EMBEDDING = 'off';
       vi.doMock('../../src/config/behavior.js', () => ({
         getBehaviorConfig: () => ({
           sessionInject: 'full',
@@ -432,7 +432,7 @@ export function verifyToken(token: string) {
       const { observation, output } = await handleHookEvent(input);
 
       expect(observation).toBeNull();
-      expect(output.systemMessage).toContain('Memorix Autopilot Brief');
+      expect(output.systemMessage).toContain('Baton Autopilot Brief');
       expect(output.systemMessage).toContain('Start here');
       expect(output.systemMessage).toContain('src/auth.ts');
       expect(output.systemMessage).toContain('Code Memory refresh queued');
@@ -502,13 +502,13 @@ export function verifyToken(token: string) {
     expect(observation).not.toBeNull();
   });
 
-  // ─── Skip memorix's own tools ───
-  it('should skip memorix_store to avoid recursion', async () => {
+  // ─── Skip baton's own tools ───
+  it('should skip baton_store to avoid recursion', async () => {
     const payload = {
       hook_event_name: 'PostToolUse',
       session_id: 'sess-claude-10',
       cwd: '/home/user/project',
-      tool_name: 'memorix_store',
+      tool_name: 'baton_store',
       tool_input: { entityName: 'auth', type: 'decision', title: 'test', narrative: 'test' },
       tool_response: '{"observation":{"id":1}}',
     };
@@ -518,12 +518,12 @@ export function verifyToken(token: string) {
     expect(observation).toBeNull();
   });
 
-  it('should skip memorix_search to avoid recursion', async () => {
+  it('should skip baton_search to avoid recursion', async () => {
     const payload = {
       hook_event_name: 'PostToolUse',
       session_id: 'sess-claude-11',
       cwd: '/home/user/project',
-      tool_name: 'memorix_search',
+      tool_name: 'baton_search',
       tool_input: { query: 'auth' },
       tool_response: '{"results":[]}',
     };
@@ -593,13 +593,13 @@ export function sleep(ms: number) {
     expect(observation).toBeNull();
   });
 
-  it('should skip self-referential commands (inspecting memorix data)', async () => {
+  it('should skip self-referential commands (inspecting baton data)', async () => {
     const payload = {
       hook_event_name: 'PostToolUse',
       session_id: 'sess-claude-16',
       cwd: '/home/user/project',
       tool_name: 'Bash',
-      tool_input: { command: 'node -e "const fs=require(\'fs\');const d=JSON.parse(fs.readFileSync(os.homedir()+\'/.memorix/data/observations.json\'))"' },
+      tool_input: { command: 'node -e "const fs=require(\'fs\');const d=JSON.parse(fs.readFileSync(os.homedir()+\'/.baton/data/observations.json\'))"' },
       tool_response: 'Total: 235',
     };
 

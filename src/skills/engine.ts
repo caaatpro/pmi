@@ -1,7 +1,7 @@
 /**
  * Skills Engine — Memory-Driven Project Skills
  *
- * Memorix's unique take on agent skills:
+ * Baton's unique take on agent skills:
  *   - Discovers existing SKILL.md files across all 7 agents
  *   - Auto-generates project-specific skills from observation patterns
  *   - Injects skill content directly into agent context (no file reading needed)
@@ -368,7 +368,7 @@ export class SkillsEngine {
         // Title
         lines.push(`# ${entity}`);
         lines.push('');
-        lines.push(`> Auto-generated from ${observations.length} project observations by Memorix.`);
+        lines.push(`> Auto-generated from ${observations.length} project observations by Baton.`);
         lines.push('> Adapt to your actual project context before relying on this skill.');
         lines.push('');
 

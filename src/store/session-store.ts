@@ -111,7 +111,7 @@ export class SessionSqliteStore implements SessionStoreInterface {
       const sessions: Session[] = JSON.parse(raw);
       if (!Array.isArray(sessions) || sessions.length === 0) return;
 
-      console.error(`[memorix] Migrating ${sessions.length} sessions from JSON to SQLite...`);
+      console.error(`[baton] Migrating ${sessions.length} sessions from JSON to SQLite...`);
 
       const insertMany = this.db.transaction((list: Session[]) => {
         for (const s of list) {
@@ -120,9 +120,9 @@ export class SessionSqliteStore implements SessionStoreInterface {
       });
       insertMany(sessions);
 
-      console.error(`[memorix] Sessions migration complete. ${sessions.length} sessions now in SQLite.`);
+      console.error(`[baton] Sessions migration complete. ${sessions.length} sessions now in SQLite.`);
     } catch (err) {
-      console.error(`[memorix] Sessions JSON->SQLite migration failed (non-fatal): ${err}`);
+      console.error(`[baton] Sessions JSON->SQLite migration failed (non-fatal): ${err}`);
     }
   }
 
@@ -212,7 +212,7 @@ export class SessionGracefulDegrade implements SessionStoreInterface {
 
   private warn(): void {
     if (!this.warned) {
-      console.error('[memorix] SessionStore: SQLite unavailable — sessions cannot be read or written. Install a supported SQLite runtime.');
+      console.error('[baton] SessionStore: SQLite unavailable — sessions cannot be read or written. Install a supported SQLite runtime.');
       this.warned = true;
     }
   }
@@ -246,7 +246,7 @@ let _storeDataDir: string | null = null;
 
 export function getSessionStore(): SessionStoreInterface {
   if (!_store) {
-    throw new Error('[memorix] SessionStore not initialized — call initSessionStore() first');
+    throw new Error('[baton] SessionStore not initialized — call initSessionStore() first');
   }
   return _store;
 }
@@ -272,7 +272,7 @@ export async function initSessionStore(dataDir: string): Promise<SessionStoreInt
   } catch (err) {
     if (!isSqliteUnavailableError(err)) throw err;
     degradedReason = formatSqliteFailure(err);
-    console.error(`[memorix] SessionSqliteStore unavailable, running in degraded read-only mode: ${degradedReason}`);
+    console.error(`[baton] SessionSqliteStore unavailable, running in degraded read-only mode: ${degradedReason}`);
   }
 
   // Fallback: explicit read-only mode (no writable JSON backend per debt-zero rule)

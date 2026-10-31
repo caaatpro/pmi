@@ -36,8 +36,8 @@ describe('TraeMCPAdapter', () => {
         it('should parse object-keyed mcpServers', () => {
             const config = JSON.stringify({
                 mcpServers: {
-                    memorix: {
-                        command: 'memorix',
+                    baton: {
+                        command: 'baton',
                         args: ['serve'],
                     },
                     context7: {
@@ -50,10 +50,10 @@ describe('TraeMCPAdapter', () => {
             const servers = adapter.parse(config);
             expect(servers).toHaveLength(2);
 
-            const memorix = servers.find(s => s.name === 'memorix');
-            expect(memorix).toBeDefined();
-            expect(memorix!.command).toBe('memorix');
-            expect(memorix!.args).toEqual(['serve']);
+            const baton = servers.find(s => s.name === 'baton');
+            expect(baton).toBeDefined();
+            expect(baton!.command).toBe('baton');
+            expect(baton!.args).toEqual(['serve']);
 
             const context7 = servers.find(s => s.name === 'context7');
             expect(context7).toBeDefined();
@@ -142,8 +142,8 @@ describe('TraeMCPAdapter', () => {
         it('should parse real Trae config (from actual IDE)', () => {
             const config = JSON.stringify({
                 mcpServers: {
-                    memorix: {
-                        command: 'memorix',
+                    baton: {
+                        command: 'baton',
                         args: ['serve'],
                     },
                 },
@@ -151,8 +151,8 @@ describe('TraeMCPAdapter', () => {
 
             const servers = adapter.parse(config);
             expect(servers).toHaveLength(1);
-            expect(servers[0].name).toBe('memorix');
-            expect(servers[0].command).toBe('memorix');
+            expect(servers[0].name).toBe('baton');
+            expect(servers[0].command).toBe('baton');
             expect(servers[0].args).toEqual(['serve']);
         });
     });
@@ -164,7 +164,7 @@ describe('TraeMCPAdapter', () => {
     describe('generate()', () => {
         it('should generate object-keyed mcpServers for stdio', () => {
             const servers: MCPServerEntry[] = [
-                { name: 'memorix', command: 'memorix', args: ['serve'] },
+                { name: 'baton', command: 'baton', args: ['serve'] },
             ];
 
             const output = adapter.generate(servers);
@@ -172,9 +172,9 @@ describe('TraeMCPAdapter', () => {
 
             expect(typeof parsed.mcpServers).toBe('object');
             expect(Array.isArray(parsed.mcpServers)).toBe(false);
-            expect(parsed.mcpServers.memorix).toBeDefined();
-            expect(parsed.mcpServers.memorix.command).toBe('memorix');
-            expect(parsed.mcpServers.memorix.args).toEqual(['serve']);
+            expect(parsed.mcpServers.baton).toBeDefined();
+            expect(parsed.mcpServers.baton.command).toBe('baton');
+            expect(parsed.mcpServers.baton.args).toEqual(['serve']);
         });
 
         it('should generate SSE transport with url (no type field)', () => {
@@ -240,7 +240,7 @@ describe('TraeMCPAdapter', () => {
 
         it('should omit args when empty', () => {
             const servers: MCPServerEntry[] = [
-                { name: 'simple', command: 'memorix', args: [] },
+                { name: 'simple', command: 'baton', args: [] },
             ];
 
             const output = adapter.generate(servers);
@@ -276,8 +276,8 @@ describe('TraeMCPAdapter', () => {
         it('should survive parse → generate → parse round-trip', () => {
             const original = JSON.stringify({
                 mcpServers: {
-                    memorix: {
-                        command: 'memorix',
+                    baton: {
+                        command: 'baton',
                         args: ['serve'],
                         env: { DEBUG: 'true' },
                     },

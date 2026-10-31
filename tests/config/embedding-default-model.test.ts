@@ -5,7 +5,7 @@ import { defaultEmbeddingModelFor } from '../../src/config.js';
  * Embedding default-model exam: pointing the embedding lane at OpenRouter
  * without naming a model must select a model OpenRouter actually serves —
  * qwen3-embedding-8b — instead of the OpenAI-only default. An explicit
- * MEMORIX_EMBEDDING_MODEL always wins. Deterministic, offline.
+ * BATON_EMBEDDING_MODEL always wins. Deterministic, offline.
  */
 
 describe('embedding default model exam', () => {

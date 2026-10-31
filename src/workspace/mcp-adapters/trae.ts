@@ -13,8 +13,8 @@ import { homedir } from 'node:os';
  * Format (OBJECT-keyed, same as Cursor):
  *   {
  *     "mcpServers": {
- *       "memorix": {
- *         "command": "memorix",
+ *       "baton": {
+ *         "command": "baton",
  *         "args": ["serve"],
  *         "env": { "KEY": "value" }
  *       }

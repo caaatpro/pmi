@@ -13,9 +13,9 @@ import {
   summarizeRetentionProjections,
   toRetentionDocument,
 } from '../../src/memory/retention.js';
-import type { MemorixDocument, Observation } from '../../src/types.js';
+import type { BatonDocument, Observation } from '../../src/types.js';
 
-function makeDoc(overrides: Partial<MemorixDocument> = {}): MemorixDocument {
+function makeDoc(overrides: Partial<BatonDocument> = {}): BatonDocument {
   return {
     id: 'obs-1',
     observationId: 1,
@@ -78,7 +78,7 @@ describe('Retention immunity parity (Gap #7)', () => {
   });
 
   it('raw array concepts passed directly to isImmune throws', () => {
-    const raw = { ...makeDoc({ type: 'gotcha', accessCount: 0 }), concepts: ['foo', 'bar'] } as unknown as MemorixDocument;
+    const raw = { ...makeDoc({ type: 'gotcha', accessCount: 0 }), concepts: ['foo', 'bar'] } as unknown as BatonDocument;
     expect(() => isImmune(raw)).toThrow();
   });
 

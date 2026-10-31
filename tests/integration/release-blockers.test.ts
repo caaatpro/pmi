@@ -4,7 +4,7 @@
  * Tests for the 5 critical fixes:
  * B1: CORS wildcard leak in dashboard JSON API
  * B2: /api/config startup project YAML leak via global fallback
- * B3: memorix_detail bare numeric ID cross-project ambiguity
+ * B3: baton_detail bare numeric ID cross-project ambiguity
  * B4: topicKey upsert non-atomic concurrent race (TOCTOU)
  * B5: search mode process-level global → project-scoped
  */
@@ -63,8 +63,8 @@ describe('B2: loadYamlConfig(null) skips global fallback', () => {
   let ymlPath: string;
 
   beforeEach(async () => {
-    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-b2-'));
-    ymlPath = path.join(testDir, 'memorix.yml');
+    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-b2-'));
+    ymlPath = path.join(testDir, 'baton.yml');
     resetYamlConfigCache();
   });
 
@@ -74,7 +74,7 @@ describe('B2: loadYamlConfig(null) skips global fallback', () => {
   });
 
   it('loadYamlConfig(null) should NOT use globalProjectRoot', () => {
-    // Set up a project-level memorix.yml with distinctive config
+    // Set up a project-level baton.yml with distinctive config
     writeFileSync(ymlPath, 'llm:\n  provider: secret-startup-provider\n', 'utf-8');
     initProjectRoot(testDir);
 
@@ -97,7 +97,7 @@ describe('B2: loadYamlConfig(null) skips global fallback', () => {
 });
 
 // ================================================================
-// B3: memorix_detail bare numeric ID cross-project ambiguity
+// B3: baton_detail bare numeric ID cross-project ambiguity
 // ================================================================
 describe('B3: compactDetail project-scoped lookup', () => {
   let testDir: string;
@@ -106,7 +106,7 @@ describe('B3: compactDetail project-scoped lookup', () => {
   // isolated observations store for this suite. Keep the timeout local
   // to B3 instead of inflating the whole file.
   beforeEach(async () => {
-    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-b3-'));
+    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-b3-'));
     await resetDb();
     await initObservations(testDir);
   }, 15_000);
@@ -159,7 +159,7 @@ describe('B4: topicKey upsert atomicity', () => {
   let testDir: string;
 
   beforeEach(async () => {
-    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-b4-'));
+    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-b4-'));
     await resetDb();
     await initObservations(testDir);
   });
@@ -227,7 +227,7 @@ describe('B5: search mode is project-scoped', () => {
   let testDir: string;
 
   beforeEach(async () => {
-    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-b5-'));
+    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-b5-'));
     await resetDb();
     await initObservations(testDir);
   });
@@ -299,7 +299,7 @@ describe('release-blocker test helpers', () => {
 // ================================================================
 // B1 + B2: Real embedded serve-http route tests
 //
-// These tests spawn the REAL `memorix serve-http` binary as a child
+// These tests spawn the REAL `baton serve-http` binary as a child
 // process and hit its real HTTP routes. This verifies the full
 // production handler chain, not a mirror or copy of the logic.
 //
@@ -324,9 +324,9 @@ describe('B1: Real serve-http CORS tests', () => {
     REAL_PORT = await reserveEphemeralPort();
     REAL_BASE = `http://127.0.0.1:${REAL_PORT}`;
 
-    // Create temp dir with fake git repo + memorix.yml containing canary values
-    startupDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-real-http-'));
-    childHomeDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-real-http-home-'));
+    // Create temp dir with fake git repo + baton.yml containing canary values
+    startupDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-real-http-'));
+    childHomeDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-real-http-home-'));
     await fs.mkdir(path.join(startupDir, '.git'), { recursive: true });
     await fs.writeFile(
       path.join(startupDir, '.git', 'config'),
@@ -334,7 +334,7 @@ describe('B1: Real serve-http CORS tests', () => {
       'utf-8',
     );
     writeFileSync(
-      path.join(startupDir, 'memorix.yml'),
+      path.join(startupDir, 'baton.yml'),
       'llm:\n  provider: leak-canary-http\n  model: canary-model-http\n',
       'utf-8',
     );
@@ -343,7 +343,7 @@ describe('B1: Real serve-http CORS tests', () => {
     process.env.HOME = childHomeDir;
     process.env.USERPROFILE = childHomeDir;
 
-    const startupDataDir = path.join(childHomeDir, '.memorix', 'data');
+    const startupDataDir = path.join(childHomeDir, '.baton', 'data');
     await fs.mkdir(startupDataDir, { recursive: true });
 
     const now = new Date().toISOString();
@@ -389,10 +389,10 @@ describe('B1: Real serve-http CORS tests', () => {
           ...process.env,
           HOME: childHomeDir,
           USERPROFILE: childHomeDir,
-          MEMORIX_EMBEDDING: 'off',
-          MEMORIX_LLM_PROVIDER: '',
-          MEMORIX_LLM_MODEL: '',
-          MEMORIX_LLM_API_KEY: '',
+          BATON_EMBEDDING: 'off',
+          BATON_LLM_PROVIDER: '',
+          BATON_LLM_MODEL: '',
+          BATON_LLM_API_KEY: '',
         },
       },
     );
@@ -465,7 +465,7 @@ describe('B1: Real serve-http CORS tests', () => {
 });
 
 // ================================================================
-// P1: CLI `memorix search` cold-start must find persisted memories
+// P1: CLI `baton search` cold-start must find persisted memories
 //
 // Spawns the REAL built CLI binary in a temp git repo with
 // pre-seeded observations.json and verifies search returns results.
@@ -483,7 +483,7 @@ describe('P1: CLI cold-start search finds persisted memories', () => {
     }
 
     // Fake git repo whose remote normalizes to "test/cold-search"
-    repoDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-cold-search-repo-'));
+    repoDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-cold-search-repo-'));
     await fs.mkdir(path.join(repoDir, '.git'), { recursive: true });
     await fs.writeFile(
       path.join(repoDir, '.git', 'config'),
@@ -492,7 +492,7 @@ describe('P1: CLI cold-start search finds persisted memories', () => {
     );
 
     // Isolated data dir with pre-seeded observation
-    dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-cold-search-data-'));
+    dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-cold-search-data-'));
     const seedObs = [
       {
         id: 1,
@@ -526,7 +526,7 @@ describe('P1: CLI cold-start search finds persisted memories', () => {
   });
 
   /**
-   * Spawn `memorix search <query>` as a fresh process (cold start)
+   * Spawn `baton search <query>` as a fresh process (cold start)
    * and return its stdout. The CLI process may not exit on its own
    * (Orama keeps the event loop alive), so we collect output for up
    * to 8 seconds then kill the process and return what we have.
@@ -540,9 +540,9 @@ describe('P1: CLI cold-start search finds persisted memories', () => {
           cwd: repoDir,
           env: {
             ...process.env,
-            MEMORIX_DATA_DIR: dataDir,
-            MEMORIX_EMBEDDING: 'off',
-            MEMORIX_LLM_API_KEY: '',
+            BATON_DATA_DIR: dataDir,
+            BATON_EMBEDDING: 'off',
+            BATON_LLM_API_KEY: '',
           },
           stdio: ['pipe', 'pipe', 'pipe'],
         },
@@ -603,14 +603,14 @@ describe('Git-missing prompt: CLI shows clear guidance', () => {
       throw new Error(`dist/cli/index.js not found. Run \`npm run build\` first.`);
     }
     // Directory with NO .git
-    noGitDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-nogit-'));
+    noGitDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-nogit-'));
   });
 
   function runCli(args: string[]): Promise<{ stdout: string; stderr: string }> {
     return new Promise((resolve) => {
       const child = spawn(process.execPath, [distCli, ...args], {
         cwd: noGitDir,
-        env: { ...process.env, MEMORIX_EMBEDDING: 'off', MEMORIX_LLM_API_KEY: '' },
+        env: { ...process.env, BATON_EMBEDDING: 'off', BATON_LLM_API_KEY: '' },
         stdio: ['pipe', 'pipe', 'pipe'],
       });
       let stdout = '';
@@ -637,13 +637,13 @@ describe('Git-missing prompt: CLI shows clear guidance', () => {
     });
   }
 
-  it('memorix search in non-git dir shows unified git prompt', async () => {
+  it('baton search in non-git dir shows unified git prompt', async () => {
     const { stdout } = await runCli(['search', 'test']);
     expect(stdout).toContain('git repo');
     expect(stdout).toContain('git init');
   }, 40_000);
 
-  it('memorix recent in non-git dir shows unified git prompt', async () => {
+  it('baton recent in non-git dir shows unified git prompt', async () => {
     const { stdout } = await runCli(['recent']);
     expect(stdout).toContain('git repo');
     expect(stdout).toContain('git init');

@@ -29,7 +29,7 @@ FROM node:22-bookworm-slim AS runtime
 
 ENV NODE_ENV=production
 ENV HOME=/data
-ENV MEMORIX_DATA_DIR=/data/.memorix/data
+ENV BATON_DATA_DIR=/data/.baton/data
 
 WORKDIR /app
 

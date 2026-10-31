@@ -10,7 +10,7 @@
  *   - Low-signal commit message patterns (typo, format, bump, lint, etc.)
  *   - File-only commits (only lockfiles, generated files, etc.)
  *
- * All thresholds are configurable via memorix.yml `git` section.
+ * All thresholds are configurable via baton.yml `git` section.
  */
 
 import type { CommitInfo } from './extractor.js';
@@ -151,7 +151,7 @@ function matchesGlob(file: string, pattern: string): boolean {
  * Determine if a commit should be filtered out as noise.
  *
  * @param commit - The commit to evaluate
- * @param config - Optional config overrides from memorix.yml git section
+ * @param config - Optional config overrides from baton.yml git section
  * @returns FilterResult with skip=true if the commit should be skipped
  */
 export function shouldFilterCommit(
@@ -172,7 +172,7 @@ export function shouldFilterCommit(
     }
   }
 
-  // 3. User-defined literal noise keywords from memorix.yml
+  // 3. User-defined literal noise keywords from baton.yml
   if (config?.noiseKeywords) {
     for (const keyword of config.noiseKeywords) {
       const needle = keyword.trim().toLocaleLowerCase();

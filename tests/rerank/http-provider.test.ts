@@ -180,9 +180,9 @@ describe('rerankViaHttp', () => {
     })).rejects.toMatchObject({ name: 'AbortError' });
   });
 
-  it('uses MEMORIX_RERANK_TIMEOUT_MS when timeoutMs is omitted', async () => {
-    const previous = process.env.MEMORIX_RERANK_TIMEOUT_MS;
-    process.env.MEMORIX_RERANK_TIMEOUT_MS = '12000';
+  it('uses BATON_RERANK_TIMEOUT_MS when timeoutMs is omitted', async () => {
+    const previous = process.env.BATON_RERANK_TIMEOUT_MS;
+    process.env.BATON_RERANK_TIMEOUT_MS = '12000';
     const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
     const fetchImpl = vi.fn(async () => jsonResponse({ results: [{ index: 0, relevance_score: 1 }] }));
 
@@ -195,8 +195,8 @@ describe('rerankViaHttp', () => {
       expect(setTimeoutSpy.mock.calls.some((call) => call[1] === 12_000)).toBe(true);
     } finally {
       setTimeoutSpy.mockRestore();
-      if (previous === undefined) delete process.env.MEMORIX_RERANK_TIMEOUT_MS;
-      else process.env.MEMORIX_RERANK_TIMEOUT_MS = previous;
+      if (previous === undefined) delete process.env.BATON_RERANK_TIMEOUT_MS;
+      else process.env.BATON_RERANK_TIMEOUT_MS = previous;
     }
   });
 });

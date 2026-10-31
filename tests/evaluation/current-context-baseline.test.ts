@@ -20,12 +20,12 @@ import { WORKSET_EVALUATION_FIXTURES } from './workset-fixtures.js';
 
 const fixtureRoot = path.resolve(process.cwd(), 'tests/fixtures/workset-evaluation');
 const projectId = 'evaluation/current-context';
-const originalEmbedding = process.env.MEMORIX_EMBEDDING;
+const originalEmbedding = process.env.BATON_EMBEDDING;
 let sandboxRoot = '';
 
 function makeSandbox(fixtureId: string): { repoDir: string; dataDir: string } {
   const fixture = WORKSET_EVALUATION_FIXTURES.find(item => item.id === fixtureId)!;
-  sandboxRoot = mkdtempSync(path.join(tmpdir(), 'memorix-workset-baseline-'));
+  sandboxRoot = mkdtempSync(path.join(tmpdir(), 'baton-workset-baseline-'));
   const repoDir = path.join(sandboxRoot, 'repo');
   const dataDir = path.join(sandboxRoot, 'data');
   cpSync(path.join(fixtureRoot, fixture.repositoryPath), repoDir, { recursive: true });
@@ -50,9 +50,9 @@ function asCurrentWorkset(input: {
 
 afterEach(async () => {
   if (originalEmbedding === undefined) {
-    delete process.env.MEMORIX_EMBEDDING;
+    delete process.env.BATON_EMBEDDING;
   } else {
-    process.env.MEMORIX_EMBEDDING = originalEmbedding;
+    process.env.BATON_EMBEDDING = originalEmbedding;
   }
   resetObservationStore();
   await resetDb();
@@ -65,7 +65,7 @@ describe('current Project Context evaluation baseline', () => {
   it('produces a source-backed current baseline for a TypeScript fixture', async () => {
     const fixture = WORKSET_EVALUATION_FIXTURES.find(item => item.id === 'typescript-auth')!;
     const { repoDir, dataDir } = makeSandbox(fixture.id);
-    process.env.MEMORIX_EMBEDDING = 'off';
+    process.env.BATON_EMBEDDING = 'off';
     await initObservationStore(dataDir);
     await initObservations(dataDir);
     await storeObservation({
@@ -109,7 +109,7 @@ describe('current Project Context evaluation baseline', () => {
   it('keeps an uncommitted worktree visible in the current baseline', async () => {
     const fixture = WORKSET_EVALUATION_FIXTURES.find(item => item.id === 'dirty-worktree')!;
     const { repoDir, dataDir } = makeSandbox(fixture.id);
-    process.env.MEMORIX_EMBEDDING = 'off';
+    process.env.BATON_EMBEDDING = 'off';
     await initObservationStore(dataDir);
     await initObservations(dataDir);
     await storeObservation({

@@ -15,7 +15,7 @@ import { detectProject, detectProjectWithDiagnostics, findGitInSubdirs } from '.
 
 const tempDirs: string[] = [];
 
-function makeTempDir(prefix = 'memorix-det-'): string {
+function makeTempDir(prefix = 'baton-det-'): string {
   const dir = mkdtempSync(join(tmpdir(), prefix));
   tempDirs.push(dir);
   return dir;
@@ -66,7 +66,7 @@ describe('detectProjectWithDiagnostics', () => {
   });
 
   it('detects git repo from a subdirectory', () => {
-    // process.cwd() is the memorix repo root; tests run from a subdir
+    // process.cwd() is the baton repo root; tests run from a subdir
     const subDir = join(process.cwd(), 'src');
     if (!existsSync(subDir)) return; // skip if src doesn't exist
     const result = detectProjectWithDiagnostics(subDir);

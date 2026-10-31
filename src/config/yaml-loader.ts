@@ -1,15 +1,15 @@
 /**
- * memorix.yml Configuration Loader
+ * baton.yml Configuration Loader
  *
  * Loads YAML configuration from project-level and user-level paths.
- * This is the platform-grade config format — Memorix as a central hub,
+ * This is the platform-grade config format — Baton as a central hub,
  * not just an MCP plugin.
  *
  * Priority chain (highest wins):
  *   1. Environment variables
- *   2. ./memorix.yml (project-level, in project root)
- *   3. ~/.memorix/memorix.yml (user-level, global defaults)
- *   4. ~/.memorix/config.json (legacy, backward compat)
+ *   2. ./baton.yml (project-level, in project root)
+ *   3. ~/.baton/baton.yml (user-level, global defaults)
+ *   4. ~/.baton/config.json (legacy, backward compat)
  *   5. Hardcoded defaults
  *
  * Inspired by: Cipher's cipher.yml, Docker's docker-compose.yml
@@ -22,7 +22,7 @@ import { getGlobalYamlPath, getProjectYamlPath } from './config-paths.js';
 
 // ─── Types ───────────────────────────────────────────────────────────
 
-export interface MemorixYamlConfig {
+export interface BatonYamlConfig {
   /** LLM provider configuration */
   llm?: {
     provider?: 'openai' | 'anthropic' | 'openrouter' | 'requesty' | 'apiroute' | 'cheaperinference' | string;
@@ -98,7 +98,7 @@ export interface MemorixYamlConfig {
     formationMode?: 'active' | 'shadow' | 'fallback';
   };
 
-  /** MCP server mode configuration (when Memorix runs as hub) */
+  /** MCP server mode configuration (when Baton runs as hub) */
   server?: {
     /** Transport: stdio (default) or http */
     transport?: 'stdio' | 'http';
@@ -118,7 +118,7 @@ export interface MemorixYamlConfig {
     workspaceCollection?: string;
   };
 
-  // NOTE: a previous `mcpServers` declaration ("Memorix as an MCP hub") was
+  // NOTE: a previous `mcpServers` declaration ("Baton as an MCP hub") was
   // removed — no code ever consumed it. Unknown top-level keys are ignored,
   // so existing files with the old key keep loading without error.
 }
@@ -131,7 +131,7 @@ interface LoadYamlOptions {
 
 // Cache entries are scoped by both the user home and project root so test and
 // long-lived multi-project callers cannot reuse another configuration scope.
-const configCache = new Map<string, MemorixYamlConfig>();
+const configCache = new Map<string, BatonYamlConfig>();
 
 function cacheKey(homeDir: string, projectRoot: string | null): string {
   return `${homeDir}\0${projectRoot ?? ''}`;
@@ -142,7 +142,7 @@ let globalProjectRoot: string | null = null;
 /**
  * Set the project root for YAML config resolution.
  * Call this once during server init so all config getters
- * (which call loadYamlConfig() without args) pick up project-level memorix.yml.
+ * (which call loadYamlConfig() without args) pick up project-level baton.yml.
  *
  * In HTTP mode, this is called per-session/switchProject — the Map cache
  * preserves configs for all projects simultaneously.
@@ -162,10 +162,10 @@ export function clearProjectRoot(): void {
 }
 
 /**
- * Load memorix.yml from project root and/or user home.
+ * Load baton.yml from project root and/or user home.
  * Project-level overrides user-level (shallow merge per top-level key).
  */
-export function loadYamlConfig(projectRoot?: string | null, options: LoadYamlOptions = {}): MemorixYamlConfig {
+export function loadYamlConfig(projectRoot?: string | null, options: LoadYamlOptions = {}): BatonYamlConfig {
   const homeDir = options.homeDir ?? homedir();
   // When null is explicitly passed, skip global fallback (user-level config only).
   // When undefined (no arg), fall back to globally-initialized project root.
@@ -179,15 +179,15 @@ export function loadYamlConfig(projectRoot?: string | null, options: LoadYamlOpt
   const userYaml = getGlobalYamlPath(homeDir);
   const projectYaml = resolvedRoot ? getProjectYamlPath(resolvedRoot) : null;
 
-  let userConfig: MemorixYamlConfig = {};
-  let projectConfig: MemorixYamlConfig = {};
+  let userConfig: BatonYamlConfig = {};
+  let projectConfig: BatonYamlConfig = {};
 
   // Load user-level config
   if (existsSync(userYaml)) {
     try {
       userConfig = parseYaml(readFileSync(userYaml, 'utf-8'));
     } catch (err) {
-      console.error(`[memorix] Warning: Failed to parse ${userYaml}: ${err}`);
+      console.error(`[baton] Warning: Failed to parse ${userYaml}: ${err}`);
     }
   }
 
@@ -196,12 +196,12 @@ export function loadYamlConfig(projectRoot?: string | null, options: LoadYamlOpt
     try {
       projectConfig = parseYaml(readFileSync(projectYaml, 'utf-8'));
     } catch (err) {
-      console.error(`[memorix] Warning: Failed to parse ${projectYaml}: ${err}`);
+      console.error(`[baton] Warning: Failed to parse ${projectYaml}: ${err}`);
     }
   }
 
   // Shallow merge: project-level top keys override user-level
-  const merged: MemorixYamlConfig = {
+  const merged: BatonYamlConfig = {
     ...userConfig,
     ...projectConfig,
     // Deep merge for nested objects where both exist
@@ -232,14 +232,14 @@ export function resetYamlConfigCache(projectRoot?: string | null, homeDir = home
   }
 }
 
-function parseYaml(content: string): MemorixYamlConfig {
+function parseYaml(content: string): BatonYamlConfig {
   try {
     const parsed = parseYamlDocument(content);
     return (parsed && typeof parsed === 'object' && !Array.isArray(parsed))
-      ? parsed as MemorixYamlConfig
+      ? parsed as BatonYamlConfig
       : {};
   } catch {
-    console.error('[memorix] YAML parse failed — check memorix.yml syntax');
+    console.error('[baton] YAML parse failed — check baton.yml syntax');
     return {};
   }
 }

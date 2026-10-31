@@ -32,7 +32,7 @@ describe('Project Detector', () => {
     const { mkdtempSync } = await import('node:fs');
     const { tmpdir } = await import('node:os');
     const { join } = await import('node:path');
-    const emptyDir = mkdtempSync(join(tmpdir(), 'memorix-test-'));
+    const emptyDir = mkdtempSync(join(tmpdir(), 'baton-test-'));
     const project = detectProject(emptyDir);
     expect(project).toBeNull();
   }, 30_000);

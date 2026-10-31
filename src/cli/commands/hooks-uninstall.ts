@@ -1,5 +1,5 @@
 /**
- * CLI Command: memorix hooks uninstall
+ * CLI Command: baton hooks uninstall
  *
  * Remove hook configurations for agents.
  */

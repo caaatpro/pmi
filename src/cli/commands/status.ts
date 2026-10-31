@@ -1,5 +1,5 @@
 /**
- * memorix status — Show project info + rules sync status
+ * baton status — Show project info + rules sync status
  */
 
 import { defineCommand } from 'citty';
@@ -24,14 +24,14 @@ export default defineCommand({
 
     const project = detectProject();
     if (!project) {
-      const message = 'Memorix requires a git repo to establish project identity. Run `git init` in this workspace first.';
+      const message = 'Baton requires a git repo to establish project identity. Run `git init` in this workspace first.';
       if (asJson) {
         console.log(JSON.stringify({
           ok: false,
           error: { code: 'NO_GIT_REPOSITORY', message },
         }, null, 2));
       } else {
-        p.intro('memorix status');
+        p.intro('baton status');
         p.log.error(message);
       }
       return;
@@ -60,25 +60,25 @@ export default defineCommand({
     let embeddingStatus = 'None (fulltext/BM25 only)';
     let embeddingHint = '';
     let embeddingProvider: { name: string; dimensions: number } | null = null;
-    const embeddingMode = process.env.MEMORIX_EMBEDDING?.toLowerCase()?.trim() || 'off';
+    const embeddingMode = process.env.BATON_EMBEDDING?.toLowerCase()?.trim() || 'off';
     try {
       const provider = await getEmbeddingProvider();
       if (provider) {
         embeddingProvider = provider;
         embeddingStatus = `${provider.name} (${provider.dimensions}d)`;
         if (embeddingMode === 'api') {
-          const model = process.env.MEMORIX_EMBEDDING_MODEL || 'text-embedding-3-small';
+          const model = process.env.BATON_EMBEDDING_MODEL || 'text-embedding-3-small';
           embeddingHint = `\n  API: ${model}`;
         }
       } else {
         if (embeddingMode === 'api') {
           embeddingHint = '\n  WARN: API embedding configured but failed to connect — check API key/URL';
         } else {
-          embeddingHint = '\n  Hint: Set MEMORIX_EMBEDDING=api for best quality, or install @huggingface/transformers or fastembed for local';
+          embeddingHint = '\n  Hint: Set BATON_EMBEDDING=api for best quality, or install @huggingface/transformers or fastembed for local';
         }
       }
     } catch {
-      embeddingHint = '\n  Hint: Set MEMORIX_EMBEDDING=api for best quality, or install @huggingface/transformers or fastembed for local';
+      embeddingHint = '\n  Hint: Set BATON_EMBEDDING=api for best quality, or install @huggingface/transformers or fastembed for local';
     }
 
     // ── TOML-first Config Snapshot ──
@@ -115,19 +115,19 @@ export default defineCommand({
         const resolved = resolveHooksDir(project.rootPath);
         if (resolved && existsSync(resolved.hookPath)) {
           const hookContent = readFileSync(resolved.hookPath, 'utf-8');
-          if (hookContent.includes('# [memorix-git-hook]')) {
+          if (hookContent.includes('# [baton-git-hook]')) {
             diagLines.push(`  Git hook:      installed [OK]`);
           } else {
-            diagLines.push(`  Git hook:      not installed (run "memorix git-hook")`);
+            diagLines.push(`  Git hook:      not installed (run "baton git-hook")`);
           }
         } else {
-          diagLines.push(`  Git hook:      not installed (run "memorix git-hook")`);
+          diagLines.push(`  Git hook:      not installed (run "baton git-hook")`);
         }
       } catch { /* best effort */ }
 
       if (resolved.sources.toml.length === 0) {
         diagLines.push('');
-        diagLines.push('[TIP] Run "memorix init" to create TOML config');
+        diagLines.push('[TIP] Run "baton init" to create TOML config');
       }
 
       configNote = diagLines.join('\n');
@@ -220,7 +220,7 @@ export default defineCommand({
       return;
     }
 
-    p.intro('memorix status');
+    p.intro('baton status');
     p.note(
       [
         `Name:         ${project.name}`,

@@ -177,6 +177,6 @@ describe('Progressive disclosure hint', () => {
     const output = formatIndexTable(entries);
 
     expect(output).toContain('Progressive Disclosure');
-    expect(output).toContain('memorix_detail');
+    expect(output).toContain('baton_detail');
   });
 });

@@ -48,37 +48,37 @@ async function runCommand(command: any, args: Record<string, unknown>) {
 
 describe('CLI native parity', () => {
   const originalCwd = process.cwd();
-  const originalDataDir = process.env.MEMORIX_DATA_DIR;
-  const originalEmbedding = process.env.MEMORIX_EMBEDDING;
+  const originalDataDir = process.env.BATON_DATA_DIR;
+  const originalEmbedding = process.env.BATON_EMBEDDING;
   let sandboxRoot = '';
   let repoDir = '';
   let dataDir = '';
 
   beforeEach(() => {
-    sandboxRoot = mkdtempSync(path.join(tmpdir(), 'memorix-cli-parity-'));
+    sandboxRoot = mkdtempSync(path.join(tmpdir(), 'baton-cli-parity-'));
     repoDir = path.join(sandboxRoot, 'repo');
     dataDir = path.join(sandboxRoot, 'data');
     mkdirSync(repoDir, { recursive: true });
     writeFileSync(path.join(repoDir, 'README.md'), '# test\n', 'utf8');
     execSync('git init', { cwd: repoDir, stdio: 'ignore' });
     execSync('git config user.email test@example.com', { cwd: repoDir, stdio: 'ignore' });
-    execSync('git config user.name "Memorix Test"', { cwd: repoDir, stdio: 'ignore' });
+    execSync('git config user.name "Baton Test"', { cwd: repoDir, stdio: 'ignore' });
     process.chdir(repoDir);
-    process.env.MEMORIX_DATA_DIR = dataDir;
-    process.env.MEMORIX_EMBEDDING = 'off';
+    process.env.BATON_DATA_DIR = dataDir;
+    process.env.BATON_EMBEDDING = 'off';
   });
 
   afterEach(async () => {
     process.chdir(originalCwd);
     if (originalDataDir === undefined) {
-      delete process.env.MEMORIX_DATA_DIR;
+      delete process.env.BATON_DATA_DIR;
     } else {
-      process.env.MEMORIX_DATA_DIR = originalDataDir;
+      process.env.BATON_DATA_DIR = originalDataDir;
     }
     if (originalEmbedding === undefined) {
-      delete process.env.MEMORIX_EMBEDDING;
+      delete process.env.BATON_EMBEDDING;
     } else {
-      process.env.MEMORIX_EMBEDDING = originalEmbedding;
+      process.env.BATON_EMBEDDING = originalEmbedding;
     }
     resetObservationStore();
     resetSessionStore();
@@ -88,7 +88,7 @@ describe('CLI native parity', () => {
     rmSync(sandboxRoot, { recursive: true, force: true });
   });
 
-  it('provides an explicit CLI route for every Memorix-native MCP tool', () => {
+  it('provides an explicit CLI route for every Baton-native MCP tool', () => {
     expect(new Set(Object.keys(CLI_NATIVE_PARITY))).toEqual(new Set(Object.keys(TOOL_PROFILES)));
   });
 
@@ -224,7 +224,7 @@ describe('CLI native parity', () => {
     for (let index = 0; index < 3; index += 1) {
       const result = await runCommand(memoryCommand, {
         _: ['store'],
-        text: `CLI gotcha ${index}: operators should prefer memorix session start without team join unless needed.`,
+        text: `CLI gotcha ${index}: operators should prefer baton session start without team join unless needed.`,
         title: `CLI team gotcha ${index}`,
         entity: 'session-start-cli',
         type: 'gotcha',

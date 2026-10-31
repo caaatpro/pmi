@@ -1,7 +1,7 @@
 import { callLLM, initLLM, isLLMEnabled } from '../llm/provider.js';
 
 const CJK_PATTERN = /[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/g;
-const COMMAND_LIKE_QUERY = /\b(git|npm|npx|pnpm|yarn|node|bash|powershell|curl|memorix)\b/i;
+const COMMAND_LIKE_QUERY = /\b(git|npm|npx|pnpm|yarn|node|bash|powershell|curl|baton)\b/i;
 
 const QUERY_EXPANSION_PROMPT = `You rewrite coding-memory search queries for retrieval.
 

@@ -25,7 +25,7 @@ import os from 'node:os';
 let testDir: string;
 
 beforeEach(async () => {
-  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-compact-'));
+  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-compact-'));
   await resetDb();
   resetAliasCache();
   initAliasRegistry(testDir);
@@ -125,7 +125,7 @@ describe('Compact Engine', () => {
       const result = await compactSearch({ query: 'nonexistent', projectId: 'test/project' });
       expect(result.entries).toHaveLength(0);
       expect(result.formatted).toContain('No memories found');
-      expect(result.formatted).toContain('This project does have stored Memorix memories');
+      expect(result.formatted).toContain('This project does have stored Baton memories');
       expect(result.formatted).not.toContain('fresh project');
     });
 
@@ -133,7 +133,7 @@ describe('Compact Engine', () => {
       const result = await compactSearch({ query: 'auth', projectId: 'fresh/project' });
 
       expect(result.entries).toHaveLength(0);
-      expect(result.formatted).toContain('This project does not have any Memorix memories yet.');
+      expect(result.formatted).toContain('This project does not have any Baton memories yet.');
       expect(result.formatted).toContain('fresh project');
     });
   });
@@ -211,8 +211,8 @@ describe('Compact Engine', () => {
     });
 
     it('should fall back to the global index for cross-project detail lookups', async () => {
-      const projectADir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-compact-a-'));
-      const projectBDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-compact-b-'));
+      const projectADir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-compact-a-'));
+      const projectBDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-compact-b-'));
 
       try {
         await initObservations(projectADir);
@@ -357,15 +357,15 @@ describe('Compact Engine', () => {
 
     it('should preserve evidence links across canonical project aliases', async () => {
       await registerAlias({
-        id: 'local/memorix',
-        name: 'memorix',
-        rootPath: 'E:/repo/memorix',
+        id: 'local/baton',
+        name: 'baton',
+        rootPath: 'E:/repo/baton',
       }, testDir);
       await registerAlias({
-        id: 'AVIDS2/memorix',
-        name: 'memorix',
-        rootPath: 'E:/repo/memorix',
-        gitRemote: 'https://github.com/AVIDS2/memorix.git',
+        id: 'AVIDS2/baton',
+        name: 'baton',
+        rootPath: 'E:/repo/baton',
+        gitRemote: 'https://github.com/AVIDS2/baton.git',
       }, testDir);
 
       const { observation: reasoning } = await storeObservation({
@@ -373,20 +373,20 @@ describe('Compact Engine', () => {
         type: 'reasoning',
         title: 'Alias reasoning',
         narrative: 'Local alias reasoning should still see canonical git evidence.',
-        projectId: 'local/memorix',
+        projectId: 'local/baton',
       });
       await storeObservation({
         entityName: 'auth',
         type: 'what-changed',
         title: 'Canonical git evidence',
         narrative: 'Git evidence stored under canonical alias',
-        projectId: 'AVIDS2/memorix',
+        projectId: 'AVIDS2/baton',
         source: 'git',
         sourceDetail: 'git-ingest',
         commitHash: 'ccc5555dddd6666',
       });
 
-      const detailResult = await compactDetail([{ id: reasoning.id, projectId: 'local/memorix' }]);
+      const detailResult = await compactDetail([{ id: reasoning.id, projectId: 'local/baton' }]);
       expect(detailResult.formatted).toContain('Evidence support:');
       expect(detailResult.formatted).toContain('Canonical git evidence');
     });

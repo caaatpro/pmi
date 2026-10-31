@@ -1,9 +1,9 @@
 /**
- * `memorix sync store <push|pull|status>` — multi-device store replication.
+ * `baton sync store <push|pull|status>` — multi-device store replication.
  *
- * Separated from `memorix sync rules|workspace` (cross-agent rules) so the two
+ * Separated from `baton sync rules|workspace` (cross-agent rules) so the two
  * meanings of "sync" never collide. Store sync is opt-in and provider-agnostic;
- * the remote is selected by `MEMORIX_SYNC_PROVIDER`.
+ * the remote is selected by `BATON_SYNC_PROVIDER`.
  */
 
 import { defineCommand } from 'citty';
@@ -18,8 +18,8 @@ import { USER_SYNC_SCOPE_ID } from '../../sync/namespace.js';
 import type { SyncScope } from '../../sync/policy.js';
 import type { SyncReport } from '../../sync/types.js';
 import { readProjectLink, type ProjectLink } from '../../client/config.js';
-import type { PmiServerRemote } from '../../sync/adapters/pmi-server.js';
-import type { PmiApiError } from '../../client/api.js';
+import type { BatonServerRemote } from '../../sync/adapters/baton-server.js';
+import type { BatonApiError } from '../../client/api.js';
 
 function parseScope(raw: unknown): SyncScope {
   const value = String(raw || 'project').toLowerCase();
@@ -40,7 +40,7 @@ async function openSyncStore(scope: SyncScope): Promise<{ projectId: string; syn
   await initObservationStore(dataDir);
   const link = readProjectLink(project.rootPath);
   if (link && link.legacyProjectId !== project.id) {
-    throw new Error(`.pmi/project.json links Memorix project ${link.legacyProjectId}, but this working copy resolves to ${project.id}; run \`pmi project link\` again`);
+    throw new Error(`.baton/project.json links Baton project ${link.legacyProjectId}, but this working copy resolves to ${project.id}; run \`baton project link\` again`);
   }
   return {
     projectId: project.id,
@@ -49,12 +49,12 @@ async function openSyncStore(scope: SyncScope): Promise<{ projectId: string; syn
   };
 }
 
-/** Lines explaining what a PMI server refused, so nothing is dropped silently. */
+/** Lines explaining what a Baton server refused, so nothing is dropped silently. */
 function serverNotes(remote: unknown): string[] {
-  const pmi = remote as Partial<PmiServerRemote>;
-  if (!Array.isArray(pmi.rejected)) return [];
-  const lines = pmi.rejected.map((item) => `- Server refused ${item.syncKey}: ${item.reason ?? 'rejected'} (kept locally)`);
-  if (pmi.conflicts) lines.push(`- Server recorded ${pmi.conflicts} concurrent-edit conflict(s); see \`pmi memory conflicts\``);
+  const baton = remote as Partial<BatonServerRemote>;
+  if (!Array.isArray(baton.rejected)) return [];
+  const lines = baton.rejected.map((item) => `- Server refused ${item.syncKey}: ${item.reason ?? 'rejected'} (kept locally)`);
+  if (baton.conflicts) lines.push(`- Server recorded ${baton.conflicts} concurrent-edit conflict(s); see \`baton memory conflicts\``);
   return lines;
 }
 
@@ -111,7 +111,7 @@ export default defineCommand({
     if (action === 'device') {
       const subaction = (args._ as string[])?.[1] || '';
       if (subaction !== 'rotate') {
-        emitError('expected "memorix sync store device rotate"', asJson);
+        emitError('expected "baton sync store device rotate"', asJson);
         process.exitCode = 2;
         return;
       }
@@ -141,13 +141,13 @@ export default defineCommand({
     if (!config.enabled || !config.provider) {
       emitResult(
         { enabled: false },
-        'Store sync is disabled. Run `pmi project link` to sync with a PMI server, or set MEMORIX_SYNC_PROVIDER=fs|github|s3|postgres.',
+        'Store sync is disabled. Run `baton project link` to sync with a Baton server, or set BATON_SYNC_PROVIDER=fs|github|s3|postgres.',
         asJson,
       );
       return;
     }
-    if (config.provider === 'pmi' && scope !== 'project') {
-      emitError('the PMI server replicates one project at a time; use --scope project', asJson);
+    if (config.provider === 'baton' && scope !== 'project') {
+      emitError('the Baton server replicates one project at a time; use --scope project', asJson);
       process.exitCode = 2;
       return;
     }
@@ -217,7 +217,7 @@ export default defineCommand({
         });
         emitResult({ project: projectId, offline: false, ...report }, renderReport(report), asJson);
       } catch (err) {
-        if (!(err as PmiApiError).offline) {
+        if (!(err as BatonApiError).offline) {
           emitError((err as Error).message, asJson);
           process.exitCode = 1;
           return;
@@ -266,7 +266,7 @@ export default defineCommand({
     } catch (err) {
       emitError((err as Error).message, asJson);
       // Exit code 3: the server is unreachable; local changes stay buffered.
-      process.exitCode = (err as PmiApiError).offline ? 3 : 1;
+      process.exitCode = (err as BatonApiError).offline ? 3 : 1;
     }
   },
 });

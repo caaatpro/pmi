@@ -159,9 +159,9 @@ describe('AntigravityMCPAdapter', () => {
         it('should generate valid mcp_config.json for stdio servers', () => {
             const servers: MCPServerEntry[] = [
                 {
-                    name: 'memorix',
+                    name: 'baton',
                     command: 'npx',
-                    args: ['-y', 'memorix'],
+                    args: ['-y', 'baton'],
                 },
             ];
 
@@ -169,9 +169,9 @@ describe('AntigravityMCPAdapter', () => {
             const parsed = JSON.parse(output);
 
             expect(parsed.mcpServers).toBeDefined();
-            expect(parsed.mcpServers.memorix).toBeDefined();
-            expect(parsed.mcpServers.memorix.command).toBe('npx');
-            expect(parsed.mcpServers.memorix.args).toEqual(['-y', 'memorix']);
+            expect(parsed.mcpServers.baton).toBeDefined();
+            expect(parsed.mcpServers.baton.command).toBe('npx');
+            expect(parsed.mcpServers.baton.args).toEqual(['-y', 'baton']);
         });
 
         it('should generate valid mcp_config.json for HTTP servers', () => {
@@ -271,9 +271,9 @@ describe('AntigravityMCPAdapter', () => {
         it('should survive parse → generate → parse round-trip', () => {
             const original = JSON.stringify({
                 mcpServers: {
-                    memorix: {
+                    baton: {
                         command: 'npx',
-                        args: ['-y', 'memorix'],
+                        args: ['-y', 'baton'],
                         env: { DEBUG: 'true' },
                     },
                     context7: {

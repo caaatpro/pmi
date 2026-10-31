@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, 'pmi/**']
+    branches: [main, 'baton/**']
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -62,15 +62,15 @@ jobs:
       postgres:
         image: pgvector/pgvector:pg17
         env:
-          POSTGRES_USER: pmi
-          POSTGRES_PASSWORD: pmi
-          POSTGRES_DB: pmi
+          POSTGRES_USER: baton
+          POSTGRES_PASSWORD: baton
+          POSTGRES_DB: baton
         ports: ['5432:5432']
         options: >-
-          --health-cmd "pg_isready -U pmi -d pmi"
+          --health-cmd "pg_isready -U baton -d baton"
           --health-interval 5s --health-timeout 5s --health-retries 20
     env:
-      PMI_TEST_PG_URL: postgres://pmi:pmi@127.0.0.1:5432/pmi
+      BATON_TEST_PG_URL: postgres://baton:baton@127.0.0.1:5432/baton
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -100,21 +100,21 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Build the published HTTP control-plane image
-        run: docker build --tag memorix:ci .
+        run: docker build --tag baton:ci .
       - name: Verify the image starts and becomes healthy
         run: |
           set -euo pipefail
-          docker run --detach --rm --name memorix-ci -p 3211:3211 \
-            --env MEMORIX_HTTP_ALLOW_UNAUTHENTICATED_BIND=1 \
-            memorix:ci
+          docker run --detach --rm --name baton-ci -p 3211:3211 \
+            --env BATON_HTTP_ALLOW_UNAUTHENTICATED_BIND=1 \
+            baton:ci
           for attempt in {1..30}; do
             if curl --fail --silent --show-error http://127.0.0.1:3211/health; then
               exit 0
             fi
             sleep 1
           done
-          docker logs memorix-ci
+          docker logs baton-ci
           exit 1
       - name: Remove the verification container
         if: always()
-        run: docker rm --force memorix-ci || true
+        run: docker rm --force baton-ci || true

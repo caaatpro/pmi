@@ -24,7 +24,7 @@ import {
  */
 
 const projectId = 'eval/session-replay';
-const originalEmbedding = process.env.MEMORIX_EMBEDDING;
+const originalEmbedding = process.env.BATON_EMBEDDING;
 let sandbox = '';
 
 const LIMIT = 4;
@@ -116,12 +116,12 @@ function buildQuestions(ids: Map<string, number>): SessionReplayQuestion[] {
 
 describe('session replay retrieval exam', () => {
   beforeEach(() => {
-    sandbox = mkdtempSync(path.join(tmpdir(), 'memorix-session-replay-'));
+    sandbox = mkdtempSync(path.join(tmpdir(), 'baton-session-replay-'));
   });
 
   afterEach(async () => {
-    if (originalEmbedding === undefined) delete process.env.MEMORIX_EMBEDDING;
-    else process.env.MEMORIX_EMBEDDING = originalEmbedding;
+    if (originalEmbedding === undefined) delete process.env.BATON_EMBEDDING;
+    else process.env.BATON_EMBEDDING = originalEmbedding;
     resetObservationStore();
     await resetDb();
     closeAllDatabases();
@@ -130,7 +130,7 @@ describe('session replay retrieval exam', () => {
   });
 
   async function runExam(useSurfacedDedup: boolean): Promise<ReturnType<typeof scoreSessionReplay>> {
-    process.env.MEMORIX_EMBEDDING = 'off';
+    process.env.BATON_EMBEDDING = 'off';
     await initObservationStore(path.join(sandbox, 'data'));
     await initObservations(path.join(sandbox, 'data'));
     const ids = await seedKnownMemories();

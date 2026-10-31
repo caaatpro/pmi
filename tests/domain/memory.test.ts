@@ -10,7 +10,7 @@ import {
 } from '../../src/domain/memory.js';
 
 describe('memory classification', () => {
-  it('maps Memorix types onto PMI categories without ever confirming', () => {
+  it('maps Baton types onto Baton categories without ever confirming', () => {
     expect(classifyObservationType('decision')).toEqual({ category: 'architecture_decision', confidence: 'proposed' });
     expect(classifyObservationType('problem-solution')).toEqual({ category: 'solution', confidence: 'observed' });
     expect(classifyObservationType('gotcha')).toEqual({ category: 'known_limitation', confidence: 'observed' });
@@ -69,7 +69,7 @@ describe('status transitions', () => {
     expect(canTransitionStatus('active', 'archived', 'agent').ok).toBe(true);
   });
 
-  it('maps unknown Memorix statuses to active', () => {
+  it('maps unknown Baton statuses to active', () => {
     expect(toMemoryStatus('resolved')).toBe('resolved');
     expect(toMemoryStatus(undefined)).toBe('active');
     expect(toMemoryStatus('weird')).toBe('active');

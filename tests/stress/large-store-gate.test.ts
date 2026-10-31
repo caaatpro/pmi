@@ -1,7 +1,7 @@
 /**
  * Reproducible large-store gate for the embedding-cache / control-plane PR.
  *
- * Always runs 1,000 records. Set MEMORIX_LARGE_STORE_40K=1 to also run 40k
+ * Always runs 1,000 records. Set BATON_LARGE_STORE_40K=1 to also run 40k
  * when the machine can spare a few minutes.
  */
 import { execSync, spawnSync } from 'node:child_process';
@@ -26,7 +26,7 @@ import { resetDb } from '../../src/store/orama-store.js';
 import { closeAllDatabases } from '../../src/store/sqlite-db.js';
 import { resetConfigCache } from '../../src/config.js';
 
-const RUN_40K = process.env.MEMORIX_LARGE_STORE_40K === '1';
+const RUN_40K = process.env.BATON_LARGE_STORE_40K === '1';
 
 function uniqueLookupToken(index: number): string {
   let value = index;
@@ -65,40 +65,40 @@ function writeExternalObservation(input: {
         }
         return new (require('node:sqlite').DatabaseSync)(dbPath);
       }
-      const db = openDatabase(process.env.MEMORIX_WRITER_DB);
+      const db = openDatabase(process.env.BATON_WRITER_DB);
       db.prepare(\`INSERT OR REPLACE INTO observations (
         id, entityName, type, title, narrative, facts, filesModified, concepts,
         tokens, createdAt, projectId, status, source, sourceDetail
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\`).run(
-        Number(process.env.MEMORIX_WRITER_ID),
+        Number(process.env.BATON_WRITER_ID),
         'external-writer',
         'discovery',
-        process.env.MEMORIX_WRITER_TITLE,
+        process.env.BATON_WRITER_TITLE,
         'Inserted after MemoryClient.close()',
         '[]',
         '[]',
         '[]',
         8,
         new Date().toISOString(),
-        process.env.MEMORIX_WRITER_PROJECT,
+        process.env.BATON_WRITER_PROJECT,
         'active',
         'agent',
-        process.env.MEMORIX_WRITER_SOURCE,
+        process.env.BATON_WRITER_SOURCE,
       );
       db.prepare("UPDATE meta SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT) WHERE key = 'storage_generation'").run();
-      db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('next_id', ?)").run(process.env.MEMORIX_WRITER_NEXT_ID);
+      db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('next_id', ?)").run(process.env.BATON_WRITER_NEXT_ID);
       db.close();
     `],
     {
       cwd: process.cwd(),
       env: {
         ...process.env,
-        MEMORIX_WRITER_DB: path.join(input.dataDir, 'memorix.db'),
-        MEMORIX_WRITER_ID: String(input.id),
-        MEMORIX_WRITER_TITLE: input.title,
-        MEMORIX_WRITER_PROJECT: input.projectId,
-        MEMORIX_WRITER_NEXT_ID: String(input.nextId),
-        MEMORIX_WRITER_SOURCE: input.title.includes('MCP') ? 'mcp' : 'hook',
+        BATON_WRITER_DB: path.join(input.dataDir, 'baton.db'),
+        BATON_WRITER_ID: String(input.id),
+        BATON_WRITER_TITLE: input.title,
+        BATON_WRITER_PROJECT: input.projectId,
+        BATON_WRITER_NEXT_ID: String(input.nextId),
+        BATON_WRITER_SOURCE: input.title.includes('MCP') ? 'mcp' : 'hook',
       },
       encoding: 'utf8',
       windowsHide: true,
@@ -115,11 +115,11 @@ describe('large-store gate', () => {
   let previousEmbedding: string | undefined;
 
   beforeEach(() => {
-    sandbox = mkdtempSync(path.join(tmpdir(), 'memorix-large-store-'));
-    previousDataDir = process.env.MEMORIX_DATA_DIR;
-    previousEmbedding = process.env.MEMORIX_EMBEDDING;
-    process.env.MEMORIX_DATA_DIR = path.join(sandbox, 'data');
-    process.env.MEMORIX_EMBEDDING = 'off';
+    sandbox = mkdtempSync(path.join(tmpdir(), 'baton-large-store-'));
+    previousDataDir = process.env.BATON_DATA_DIR;
+    previousEmbedding = process.env.BATON_EMBEDDING;
+    process.env.BATON_DATA_DIR = path.join(sandbox, 'data');
+    process.env.BATON_EMBEDDING = 'off';
     resetConfigCache();
     resetProvider();
     resetApiEmbeddingCacheForTests();
@@ -133,10 +133,10 @@ describe('large-store gate', () => {
     closeAllDatabases();
     resetProvider();
     resetApiEmbeddingCacheForTests();
-    if (previousDataDir === undefined) delete process.env.MEMORIX_DATA_DIR;
-    else process.env.MEMORIX_DATA_DIR = previousDataDir;
-    if (previousEmbedding === undefined) delete process.env.MEMORIX_EMBEDDING;
-    else process.env.MEMORIX_EMBEDDING = previousEmbedding;
+    if (previousDataDir === undefined) delete process.env.BATON_DATA_DIR;
+    else process.env.BATON_DATA_DIR = previousDataDir;
+    if (previousEmbedding === undefined) delete process.env.BATON_EMBEDDING;
+    else process.env.BATON_EMBEDDING = previousEmbedding;
     resetConfigCache();
     if (sandbox) rmSync(sandbox, { recursive: true, force: true });
     sandbox = '';
@@ -196,7 +196,7 @@ describe('large-store gate', () => {
 
     await client.close();
 
-    const dataDir = process.env.MEMORIX_DATA_DIR!;
+    const dataDir = process.env.BATON_DATA_DIR!;
     writeExternalObservation({
       dataDir,
       projectId: client.projectId,
@@ -225,8 +225,8 @@ describe('large-store gate', () => {
     await resetDb();
 
     const hookInitStarted = performance.now();
-    await initObservationStore(process.env.MEMORIX_DATA_DIR!);
-    await initObservations(process.env.MEMORIX_DATA_DIR!, hookObservationRuntimeOptions(projectRoot));
+    await initObservationStore(process.env.BATON_DATA_DIR!);
+    await initObservations(process.env.BATON_DATA_DIR!, hookObservationRuntimeOptions(projectRoot));
     const hookInitMs = performance.now() - hookInitStarted;
     const hookWriteStarted = performance.now();
     const { observation } = await storeObservation({
@@ -242,7 +242,7 @@ describe('large-store gate', () => {
     expect(hookWriteMs).toBeLessThan(200);
     expect(hookInitMs + hookWriteMs).toBeLessThan(records <= 1_000 ? 200 : 1_000);
 
-    const jsonl = path.join(process.env.MEMORIX_DATA_DIR!, '.embedding-api-cache.jsonl');
+    const jsonl = path.join(process.env.BATON_DATA_DIR!, '.embedding-api-cache.jsonl');
     writeFileSync(
       jsonl,
       `${JSON.stringify({ h: 'gatehash00000001', v: [0.1, 0.2, 0.3] })}\n${JSON.stringify({ h: 'gatehash00000002', v: [0.4, 0.5, 0.6] })}\n`,

@@ -1,8 +1,8 @@
 /**
- * PMI context and memory tools (docs/PMI/API.md §2): context_build,
+ * Baton context and memory tools (docs/baton/API.md §2): context_build,
  * project_overview, memory_search, memory_get, memory_save, decision_log.
  *
- * Connected mode asks the PMI server, which holds the whole shared memory
+ * Connected mode asks the Baton server, which holds the whole shared memory
  * (hybrid search, cached overview); when it is unreachable or the working
  * copy is not linked, the same engine runs over the local memory. Writes go
  * to local memory first and reach the server with the next sync.
@@ -29,7 +29,7 @@ function failure(error: unknown): ToolResult {
   return { content: [{ type: 'text', text: (error as Error).message }], isError: true };
 }
 
-/** Memorix observation type that carries a PMI category (the category itself is stored explicitly). */
+/** Baton observation type that carries a Baton category (the category itself is stored explicitly). */
 const TYPE_FOR_CATEGORY: Partial<Record<MemoryCategory, ObservationType>> = {
   architecture_decision: 'decision',
   solution: 'problem-solution',
@@ -46,7 +46,7 @@ function isOffline(error: unknown): boolean {
   return Boolean((error as { offline?: boolean })?.offline) || ((error as { status?: number })?.status ?? 0) >= 500;
 }
 
-export function registerContextTools(server: McpServer, ctx: Omit<SessionToolContext, 'setConnectionSessionId' | 'openMemorixSession' | 'agentPid'>): void {
+export function registerContextTools(server: McpServer, ctx: Omit<SessionToolContext, 'setConnectionSessionId' | 'openBatonSession' | 'agentPid'>): void {
   const localMemories = () => getAllObservations()
     .filter((obs) => obs.projectId === ctx.project().id && (obs.visibility ?? 'project') === 'project' && (obs.sharedWithAgentIds?.length ?? 0) === 0)
     .map(observationToContextMemory);
@@ -140,7 +140,7 @@ export function registerContextTools(server: McpServer, ctx: Omit<SessionToolCon
 
   server.registerTool('memory_search', {
     title: 'Memory Search',
-    description: 'Search project memory (hybrid keyword + semantic on the PMI server; local when offline). Returns ids for memory_get.',
+    description: 'Search project memory (hybrid keyword + semantic on the Baton server; local when offline). Returns ids for memory_get.',
     inputSchema: {
       query: z.string().min(1).max(500),
       limit: z.number().int().min(1).max(50).optional(),

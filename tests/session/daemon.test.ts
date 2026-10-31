@@ -19,7 +19,7 @@ let repo = '';
 let store: LocalSessionStore;
 
 const settings: DaemonSettings = { tickMs: 10, memorySyncMs: 60_000, debounceMs: 0, intervalMs: 60_000, agentIdleMs: 60_000, heartbeatMs: 60_000 };
-const env = { PMI_HOME: '' } as NodeJS.ProcessEnv;
+const env = { BATON_HOME: '' } as NodeJS.ProcessEnv;
 
 function git(...args: string[]): string {
   return execFileSync('git', args, { cwd: repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
@@ -31,7 +31,7 @@ function deadPid(): number {
 }
 
 beforeEach(() => {
-  root = mkdtempSync(path.join(tmpdir(), 'pmi-daemon-'));
+  root = mkdtempSync(path.join(tmpdir(), 'baton-daemon-'));
   repo = path.join(root, 'repo');
   execFileSync('git', ['init', '-q', '-b', 'main', repo]);
   git('config', 'user.email', 't@test.dev');
@@ -39,7 +39,7 @@ beforeEach(() => {
   writeFileSync(path.join(repo, 'a.ts'), 'export const a = 1;\n');
   git('add', '.');
   git('commit', '-q', '-m', 'init');
-  env.PMI_HOME = path.join(root, 'pmi-home');
+  env.BATON_HOME = path.join(root, 'baton-home');
   store = new LocalSessionStore(path.join(root, 'data'));
 });
 
@@ -182,11 +182,11 @@ describe('outbox', () => {
       const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
       writeProjectLink(repo, { server: url, projectId: 'p1', slug: 'app', legacyProjectId: 'acme/app', linkedAt: 'x' });
       // Nothing unpushed or dirty, so no snapshots: only session operations go out.
-      writeFileSync(path.join(repo, '.git', 'info', 'exclude'), '.pmi/\n');
+      writeFileSync(path.join(repo, '.git', 'info', 'exclude'), '.baton/\n');
       git('update-ref', 'refs/remotes/origin/main', 'HEAD');
       git('config', 'branch.main.remote', 'origin');
       git('config', 'branch.main.merge', 'refs/heads/main');
-      const connected = { ...env, PMI_SERVER: url, PMI_TOKEN: 'pmi_pat_test' } as NodeJS.ProcessEnv;
+      const connected = { ...env, BATON_SERVER: url, BATON_TOKEN: 'baton_pat_test' } as NodeJS.ProcessEnv;
       const session = startSession(store, { projectId: 'acme/app', projectRoot: repo, agentPid: process.pid });
       checkpointSession(store, session.id, 'manual', { completed: ['a'] });
       handoffSession(store, session.id, { next: 'b' });

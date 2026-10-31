@@ -1,7 +1,7 @@
-// Client for the pmi-server /v1 API. The personal access token travels only
+// Client for the baton-server /v1 API. The personal access token travels only
 // in the Authorization header (no cookies, so no CSRF).
 
-const TOKEN_KEY = 'pmi.token';
+const TOKEN_KEY = 'baton.token';
 
 let memoryToken: string | null = null;
 

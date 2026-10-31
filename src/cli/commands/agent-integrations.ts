@@ -12,7 +12,7 @@ import {
   installAgentGuidance,
 } from '../../hooks/installers/index.js';
 import {
-  buildMemorixServer,
+  buildBatonServer,
   getMcpAdapter,
   installPluginPackage,
   installMcpConfig,
@@ -162,7 +162,7 @@ const GUIDANCE_AGENTS = new Set<AgentName>([
   'grok',
 ]);
 
-const CODEX_PLUGIN_NAME = 'memorix';
+const CODEX_PLUGIN_NAME = 'baton';
 const CODEX_PLUGIN_MARKETPLACE = 'personal';
 const CODEX_PLUGIN_ID = `${CODEX_PLUGIN_NAME}@${CODEX_PLUGIN_MARKETPLACE}`;
 const CODEX_HOOK_EVENTS = ['SessionStart', 'UserPromptSubmit', 'PostToolUse', 'PreCompact', 'Stop'];
@@ -319,7 +319,7 @@ function isMcpConfigAgent(agent: AgentName): agent is McpConfigAgent {
 }
 
 function isActionableMcpRepairIssue(issue: string): boolean {
-  return issue !== 'memorix-server-missing';
+  return issue !== 'baton-server-missing';
 }
 
 function aggregateMcpStatus(checks: AgentMcpCheck[]): AgentIntegrationStatus {
@@ -398,7 +398,7 @@ function normalizeMarketplacePath(value: string): string {
   return value.replace(/\\/g, '/').replace(/^\.\//, '');
 }
 
-function isMemorixCodexPlugin(value: JsonRecord): boolean {
+function isBatonCodexPlugin(value: JsonRecord): boolean {
   return value.pluginId === CODEX_PLUGIN_ID
     || (value.name === CODEX_PLUGIN_NAME && value.marketplaceName === CODEX_PLUGIN_MARKETPLACE);
 }
@@ -411,7 +411,7 @@ export function parseCodexPluginList(output: string): AgentPluginCheck['runtime'
     const parsed = asRecord(JSON.parse(output.slice(start, end + 1)));
     if (!parsed) return null;
     const entries = [...asRecordArray(parsed.installed), ...asRecordArray(parsed.available)];
-    const plugin = entries.find(isMemorixCodexPlugin);
+    const plugin = entries.find(isBatonCodexPlugin);
     if (!plugin) return { installed: false, enabled: false };
     return {
       installed: plugin.installed === true,
@@ -483,7 +483,7 @@ async function inspectCodexPluginBundle(): Promise<AgentPluginCheck> {
   } else {
     try {
       const mcpConfig = asRecord(JSON.parse(await readFile(mcpPath, 'utf-8')));
-      const server = coerceMcpServer('memorix', asRecord(mcpConfig?.mcpServers)?.memorix);
+      const server = coerceMcpServer('baton', asRecord(mcpConfig?.mcpServers)?.baton);
       if (!server || !isRecommendedStdioServer(server)) {
         issues.push('codex-plugin-mcp-manifest-invalid');
       }
@@ -561,7 +561,7 @@ async function inspectCodexMarketplace(): Promise<AgentPluginCheck> {
 
   const source = asRecord(entry.source);
   const sourcePath = typeof source?.path === 'string' ? source.path : '';
-  const issues = source?.source === 'local' && normalizeMarketplacePath(sourcePath) === 'plugins/memorix'
+  const issues = source?.source === 'local' && normalizeMarketplacePath(sourcePath) === 'plugins/baton'
     ? []
     : ['codex-marketplace-entry-stale'];
   return {
@@ -655,7 +655,7 @@ async function inspectCodexHookTrust(): Promise<AgentPluginCheck> {
     kind: 'hook-trust',
     path: configPath,
     exists: true,
-    // Codex records hook approval only after the user has reviewed it. Memorix
+    // Codex records hook approval only after the user has reviewed it. Baton
     // must not treat an intentional, host-owned consent step as a broken setup.
     status: issues.length > 0 ? 'skipped' : 'ok',
     issues,
@@ -701,14 +701,14 @@ async function inspectPlugin(agent: AgentName, scope: AgentIntegrationScope): Pr
   };
 }
 
-function looksLikeStaleMemorixCommand(server: MCPServerEntry): boolean {
+function looksLikeStaleBatonCommand(server: MCPServerEntry): boolean {
   const text = [server.command, ...(server.args ?? [])].join(' ');
   return /[\\/]\.worktrees[\\/]/i.test(text) || /[\\/]dist[\\/]cli[\\/]index\.js/i.test(text);
 }
 
 function isRecommendedStdioServer(server: MCPServerEntry): boolean {
   const commandBase = basename(server.command).toLowerCase().replace(/\.(cmd|ps1|exe)$/i, '');
-  return commandBase === 'memorix' && server.args?.[0] === 'serve';
+  return commandBase === 'baton' && server.args?.[0] === 'serve';
 }
 
 function sanitizeServer(server: MCPServerEntry): AgentMcpCheck['server'] {
@@ -810,19 +810,19 @@ async function inspectClaudeLocalMcp(projectRoot: string): Promise<AgentMcpCheck
   }
 
   const servers = asRecord(localProject.project.mcpServers);
-  const server = coerceMcpServer('memorix', servers?.memorix);
+  const server = coerceMcpServer('baton', servers?.baton);
   if (!server) {
     return {
       scope: 'local',
       path: pathLabel,
       exists: true,
       status: 'repairable',
-      issues: ['memorix-server-missing'],
+      issues: ['baton-server-missing'],
     };
   }
 
   const issues: string[] = [];
-  if (!server.url && looksLikeStaleMemorixCommand(server)) issues.push('stale-command-path');
+  if (!server.url && looksLikeStaleBatonCommand(server)) issues.push('stale-command-path');
   if (!server.url && !isRecommendedStdioServer(server)) issues.push('nonstandard-mcp-command');
   if (server.alwaysLoad !== true) issues.push('claude-always-load-missing');
 
@@ -850,10 +850,10 @@ async function installClaudeLocalMcpConfig(projectRoot: string): Promise<void> {
   const projectKey = existing?.key ?? defaultClaudeProjectKey(projectRoot);
   const project = existing?.project ?? asRecord(projects[projectKey]) ?? {};
   const mcpServers = asRecord(project.mcpServers) ?? {};
-  const server = buildMemorixServer('stdio');
+  const server = buildBatonServer('stdio');
   server.alwaysLoad = true;
 
-  mcpServers.memorix = {
+  mcpServers.baton = {
     type: 'stdio',
     command: server.command,
     args: server.args,
@@ -885,7 +885,7 @@ async function inspectCodexPluginMcp(): Promise<AgentMcpCheck | null> {
 
   try {
     const config = asRecord(JSON.parse(await readFile(mcpPath, 'utf-8')));
-    const server = coerceMcpServer('memorix', asRecord(config?.mcpServers)?.memorix);
+    const server = coerceMcpServer('baton', asRecord(config?.mcpServers)?.baton);
     if (!server) {
       return {
         scope: 'global',
@@ -897,7 +897,7 @@ async function inspectCodexPluginMcp(): Promise<AgentMcpCheck | null> {
       };
     }
     const issues: string[] = [];
-    if (looksLikeStaleMemorixCommand(server)) issues.push('stale-command-path');
+    if (looksLikeStaleBatonCommand(server)) issues.push('stale-command-path');
     if (!isRecommendedStdioServer(server)) issues.push('nonstandard-mcp-command');
     return {
       scope: 'global',
@@ -942,7 +942,7 @@ async function inspectOptionalGrokMcp(scope: AgentIntegrationScope): Promise<Age
   }
 
   const content = await readFile(configPath, 'utf-8');
-  const server = adapter.parse(content).find((entry) => entry.name === 'memorix');
+  const server = adapter.parse(content).find((entry) => entry.name === 'baton');
   if (!server) {
     return {
       status: 'skipped',
@@ -958,7 +958,7 @@ async function inspectOptionalGrokMcp(scope: AgentIntegrationScope): Promise<Age
   }
 
   const issues: string[] = [];
-  if (!server.url && looksLikeStaleMemorixCommand(server)) issues.push('stale-command-path');
+  if (!server.url && looksLikeStaleBatonCommand(server)) issues.push('stale-command-path');
   if (!server.url && !isRecommendedStdioServer(server)) issues.push('nonstandard-mcp-command');
   return {
     status: issues.length > 0 ? 'repairable' : 'ok',
@@ -1003,7 +1003,7 @@ async function inspectMcp(agent: AgentName, projectRoot: string, scope: AgentInt
     const legacyIssues: string[] = [];
     if (agent === 'claude' && targetScope === 'project' && !existsSync(configPath)) {
       const legacyPath = resolve(projectRoot, '.claude', 'settings.json');
-      if (existsSync(legacyPath) && adapter.parse(await readFile(legacyPath, 'utf-8')).some((entry) => entry.name === 'memorix')) {
+      if (existsSync(legacyPath) && adapter.parse(await readFile(legacyPath, 'utf-8')).some((entry) => entry.name === 'baton')) {
         configPath = legacyPath;
         legacyIssues.push('claude-project-config-not-read');
       }
@@ -1053,20 +1053,20 @@ async function inspectMcp(agent: AgentName, projectRoot: string, scope: AgentInt
     }
 
     const servers = adapter.parse(content);
-    const server = servers.find((entry) => entry.name === 'memorix');
+    const server = servers.find((entry) => entry.name === 'baton');
     if (!server) {
       checks.push({
         scope: targetScope,
         path: configPath,
         exists: true,
         status: 'repairable',
-        issues: ['memorix-server-missing'],
+        issues: ['baton-server-missing'],
       });
       continue;
     }
 
     const issues: string[] = [...legacyIssues];
-    if (!server.url && looksLikeStaleMemorixCommand(server)) issues.push('stale-command-path');
+    if (!server.url && looksLikeStaleBatonCommand(server)) issues.push('stale-command-path');
     if (!server.url && !isRecommendedStdioServer(server)) issues.push('nonstandard-mcp-command');
     if (agent === 'claude' && server.alwaysLoad !== true) issues.push('claude-always-load-missing');
 
@@ -1091,10 +1091,10 @@ function isCurrentGuidance(content: string): boolean {
   return (
     content.includes('Memory Autopilot') &&
     content.includes('Default first step for non-trivial coding work') &&
-    content.includes('memorix_project_context') &&
-    content.includes('memorix resume') &&
+    content.includes('baton_project_context') &&
+    content.includes('baton resume') &&
     content.includes('Continuation fallback is mandatory') &&
-    content.includes('Do not call more Memorix retrieval tools') &&
+    content.includes('Do not call more Baton retrieval tools') &&
     content.includes('read-only work')
   );
 }
@@ -1174,13 +1174,13 @@ export async function inspectAgentIntegrations(options: {
       missing: entryStatuses.filter((status) => status === 'missing').length,
       repairable: entryStatuses.filter((status) => status === 'repairable').length,
     },
-    repairCommand: `memorix repair agents${options.agent ? ` --agent ${options.agent}` : ''}${scope === 'all' ? '' : ` --scope ${scope}`}`,
+    repairCommand: `baton repair agents${options.agent ? ` --agent ${options.agent}` : ''}${scope === 'all' ? '' : ` --scope ${scope}`}`,
   };
 }
 
 export function formatAgentIntegrationReport(report: AgentIntegrationReport): string {
   const lines = [
-    'Memorix Agent Doctor',
+    'Baton Agent Doctor',
     `Project: ${report.projectRoot}`,
     `Scope: ${report.scope}`,
     '',
@@ -1328,7 +1328,7 @@ export async function repairAgentIntegrations(options: {
 
 export function formatAgentRepairResult(result: AgentRepairResult): string {
   const lines = [
-    'Memorix Agent Repair',
+    'Baton Agent Repair',
     `Project: ${result.projectRoot}`,
     `Scope: ${result.scope}`,
     '',

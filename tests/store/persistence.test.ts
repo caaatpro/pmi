@@ -24,7 +24,7 @@ import {
 let testDir: string;
 
 beforeEach(async () => {
-  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-persist-'));
+  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-persist-'));
 });
 
 afterEach(async () => {
@@ -135,7 +135,7 @@ describe('Persistence Layer', () => {
   describe('File paths', () => {
     it('should generate correct db file path', () => {
       const p = getDbFilePath('/some/dir');
-      expect(p).toContain('memorix.msp');
+      expect(p).toContain('baton.msp');
     });
 
     it('should generate correct graph file path', () => {

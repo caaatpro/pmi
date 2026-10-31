@@ -6,7 +6,7 @@
  * deduplicates by content hash, detects conflicts, and
  * generates output in any target agent format.
  *
- * This is the ~15% original logic in Memorix — dedup and
+ * This is the ~15% original logic in Baton — dedup and
  * conflict detection are not found in any existing tool.
  */
 

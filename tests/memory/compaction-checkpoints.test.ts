@@ -17,7 +17,7 @@ describe('compaction checkpoints', () => {
   });
 
   function createStore(): CompactionCheckpointStore {
-    const dataDir = mkdtempSync(path.join(os.tmpdir(), 'memorix-checkpoints-'));
+    const dataDir = mkdtempSync(path.join(os.tmpdir(), 'baton-checkpoints-'));
     tempDirs.push(dataDir);
     return new CompactionCheckpointStore(dataDir);
   }

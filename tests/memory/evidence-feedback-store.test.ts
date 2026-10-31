@@ -37,7 +37,7 @@ function observation(): Observation {
 
 describe('1.8 persisted evidence and feedback', () => {
   it('persists evidence cards, stale state, and events across a reopened database', async () => {
-    tempDir = await mkdtemp(path.join(os.tmpdir(), 'memorix-evidence-'));
+    tempDir = await mkdtemp(path.join(os.tmpdir(), 'baton-evidence-'));
     const first = new EvidenceCardStore();
     await first.init(tempDir);
     const card = first.upsertObservation(observation());
@@ -56,7 +56,7 @@ describe('1.8 persisted evidence and feedback', () => {
   });
 
   it('strengthens, weakens, and revokes feedback without deleting audit history', async () => {
-    tempDir = await mkdtemp(path.join(os.tmpdir(), 'memorix-feedback-'));
+    tempDir = await mkdtemp(path.join(os.tmpdir(), 'baton-feedback-'));
     const store = new MemoryFeedbackStore();
     await store.init(tempDir);
     const observedAt = '2026-08-23T00:00:00.000Z';

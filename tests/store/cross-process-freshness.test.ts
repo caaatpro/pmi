@@ -43,7 +43,7 @@ import type { Observation } from '../../src/types.js';
 let tmpDir: string;
 
 beforeEach(async () => {
-  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-freshness-'));
+  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-freshness-'));
   await resetDb();
 });
 
@@ -82,7 +82,7 @@ describe('Cross-process freshness', () => {
 
     // ── Instance A: open a raw connection (simulates a truly separate process)
     const DB = loadBetterSqlite3();
-    const rawA = new DB(path.join(tmpDir, 'memorix.db'));
+    const rawA = new DB(path.join(tmpDir, 'baton.db'));
     rawA.prepare(`INSERT OR REPLACE INTO observations (id, entityName, type, title, narrative, facts, filesModified, concepts, tokens, createdAt, projectId, status, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
       .run(1, 'entity-1', 'discovery', 'Written by Process A', 'Narrative', '[]', '[]', '["freshness-test"]', 10, new Date().toISOString(), 'test/freshness', 'active', 'agent');
     rawA.prepare(`UPDATE meta SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT) WHERE key = 'storage_generation'`).run();
@@ -116,7 +116,7 @@ describe('Cross-process freshness', () => {
 
     // ── Instance A: write 2 observations via raw connection
     const DB = loadBetterSqlite3();
-    const rawA = new DB(path.join(tmpDir, 'memorix.db'));
+    const rawA = new DB(path.join(tmpDir, 'baton.db'));
     const stmt = rawA.prepare(`INSERT OR REPLACE INTO observations (id, entityName, type, title, narrative, facts, filesModified, concepts, tokens, createdAt, projectId, status, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
     stmt.run(1, 'entity-1', 'discovery', 'Authentication module setup', 'Narrative', '[]', '[]', '["freshness-test"]', 10, new Date().toISOString(), 'test/freshness', 'active', 'agent');
     stmt.run(2, 'entity-2', 'discovery', 'Database schema migration', 'Narrative', '[]', '[]', '["freshness-test"]', 10, new Date().toISOString(), 'test/freshness', 'active', 'agent');
@@ -140,7 +140,7 @@ describe('Cross-process freshness', () => {
     await initObservations(tmpDir);
 
     const DB = loadBetterSqlite3();
-    const rawA = new DB(path.join(tmpDir, 'memorix.db'));
+    const rawA = new DB(path.join(tmpDir, 'baton.db'));
     rawA.prepare(`INSERT OR REPLACE INTO observations (id, entityName, type, title, narrative, facts, filesModified, concepts, tokens, createdAt, projectId, status, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
       .run(1, 'entity-1', 'discovery', 'Timeline anchor from Process A', 'Narrative', '[]', '[]', '["freshness-test"]', 10, new Date().toISOString(), 'test/freshness', 'active', 'agent');
     rawA.prepare(`UPDATE meta SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT) WHERE key = 'storage_generation'`).run();
@@ -160,7 +160,7 @@ describe('Cross-process freshness', () => {
 
     // Round 1: A writes obs #1
     const DB = loadBetterSqlite3();
-    let rawA = new DB(path.join(tmpDir, 'memorix.db'));
+    let rawA = new DB(path.join(tmpDir, 'baton.db'));
     rawA.prepare(`INSERT OR REPLACE INTO observations (id, entityName, type, title, narrative, facts, filesModified, concepts, tokens, createdAt, projectId, status, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
       .run(1, 'entity-1', 'discovery', 'Round 1 observation', 'Narrative', '[]', '[]', '["freshness-test"]', 10, new Date().toISOString(), 'test/freshness', 'active', 'agent');
     rawA.prepare(`UPDATE meta SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT) WHERE key = 'storage_generation'`).run();
@@ -171,7 +171,7 @@ describe('Cross-process freshness', () => {
     expect(getAllObservations()).toHaveLength(1);
 
     // Round 2: A writes obs #2
-    rawA = new DB(path.join(tmpDir, 'memorix.db'));
+    rawA = new DB(path.join(tmpDir, 'baton.db'));
     rawA.prepare(`INSERT OR REPLACE INTO observations (id, entityName, type, title, narrative, facts, filesModified, concepts, tokens, createdAt, projectId, status, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
       .run(2, 'entity-2', 'discovery', 'Round 2 observation', 'Narrative', '[]', '[]', '["freshness-test"]', 10, new Date().toISOString(), 'test/freshness', 'active', 'agent');
     rawA.prepare(`UPDATE meta SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT) WHERE key = 'storage_generation'`).run();
@@ -197,7 +197,7 @@ describe('Cross-process freshness', () => {
 
     // A writes directly to SQLite via raw connection
     const DB = loadBetterSqlite3();
-    const rawA = new DB(path.join(tmpDir, 'memorix.db'));
+    const rawA = new DB(path.join(tmpDir, 'baton.db'));
     const existingCount = rawA.prepare(`SELECT COUNT(*) AS cnt FROM observations`).get().cnt;
     const newId = existingCount + 1;
     rawA.prepare(`INSERT OR REPLACE INTO observations (id, entityName, type, title, narrative, facts, filesModified, concepts, tokens, createdAt, projectId, status, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)

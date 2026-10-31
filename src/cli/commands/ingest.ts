@@ -1,5 +1,5 @@
 /**
- * CLI Command: memorix ingest
+ * CLI Command: baton ingest
  *
  * Parent command for Git→Memory ingestion.
  */
@@ -28,10 +28,10 @@ export default defineCommand({
       return;
     }
 
-    console.log('Memorix Ingest Commands');
+    console.log('Baton Ingest Commands');
     console.log('');
     console.log('Usage:');
-    console.log('  memorix ingest commit [--ref HEAD]');
-    console.log('  memorix ingest log [--count 10]');
+    console.log('  baton ingest commit [--ref HEAD]');
+    console.log('  baton ingest log [--count 10]');
   },
 });

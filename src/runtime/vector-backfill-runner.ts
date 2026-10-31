@@ -23,7 +23,7 @@ import { MaintenanceJobStore, MaintenanceJobWorker } from './maintenance-jobs.js
 import { MaintenanceTargetStore, type MaintenanceTarget } from './maintenance-targets.js';
 import { createProjectMaintenanceHandler } from './project-maintenance.js';
 
-const VECTOR_BACKFILL_LOCK_FILE = '.memorix-vector-backfill.lock';
+const VECTOR_BACKFILL_LOCK_FILE = '.baton-vector-backfill.lock';
 const STALE_LOCK_RECOVERY_MS = 24 * 60 * 60 * 1_000;
 
 export interface VectorBackfillRequest {
@@ -193,7 +193,7 @@ function acquireVectorBackfillLock(
   return undefined;
 }
 
-export function releaseVectorBackfillLock(lockPath = process.env.MEMORIX_VECTOR_BACKFILL_LOCK): void {
+export function releaseVectorBackfillLock(lockPath = process.env.BATON_VECTOR_BACKFILL_LOCK): void {
   if (!lockPath) return;
   const lock = readVectorBackfillLock(lockPath);
   if (lock && lock.childPid !== process.pid) return;
@@ -227,8 +227,8 @@ export function launchDetachedVectorBackfill(
       // Environment transport avoids a live stdin pipe keeping the CLI alive.
       env: {
         ...process.env,
-        MEMORIX_VECTOR_BACKFILL_REQUEST: JSON.stringify(request),
-        MEMORIX_VECTOR_BACKFILL_LOCK: lock.path,
+        BATON_VECTOR_BACKFILL_REQUEST: JSON.stringify(request),
+        BATON_VECTOR_BACKFILL_LOCK: lock.path,
       },
       windowsHide: true,
     }) as ChildProcess;
@@ -307,11 +307,11 @@ async function readStdin(): Promise<string> {
 
 export async function main(): Promise<void> {
   try {
-    const raw = process.env.MEMORIX_VECTOR_BACKFILL_REQUEST ?? await readStdin();
+    const raw = process.env.BATON_VECTOR_BACKFILL_REQUEST ?? await readStdin();
     await executeVectorBackfill(parseVectorBackfillRequest(raw));
   } catch (error) {
     const detail = sanitizeCredentials(error instanceof Error ? error.message : String(error));
-    process.stderr.write(`[memorix] vector backfill worker failed: ${detail}\n`);
+    process.stderr.write(`[baton] vector backfill worker failed: ${detail}\n`);
     process.exitCode = 1;
   } finally {
     releaseVectorBackfillLock();

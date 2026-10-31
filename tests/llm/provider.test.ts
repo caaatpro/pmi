@@ -13,7 +13,7 @@ import {
 } from '../../src/llm/provider.ts';
 import { resetConfigCache, resetDotenv } from '../../src/config.ts';
 
-const TEST_ROOT = mkdtempSync(join(tmpdir(), 'memorix-llm-provider-'));
+const TEST_ROOT = mkdtempSync(join(tmpdir(), 'baton-llm-provider-'));
 const TEST_HOME = join(TEST_ROOT, 'home');
 const TEST_PROJECT = join(TEST_ROOT, 'project');
 mkdirSync(TEST_HOME, { recursive: true });
@@ -24,19 +24,19 @@ afterAll(() => {
 });
 
 const LLM_ENV_KEYS = [
-  'MEMORIX_AGENT_API_KEY',
-  'MEMORIX_AGENT_PROVIDER',
-  'MEMORIX_AGENT_MODEL',
-  'MEMORIX_AGENT_BASE_URL',
-  'MEMORIX_AGENT_LLM_API_KEY',
-  'MEMORIX_AGENT_LLM_PROVIDER',
-  'MEMORIX_AGENT_LLM_MODEL',
-  'MEMORIX_AGENT_LLM_BASE_URL',
-  'MEMORIX_LLM_API_KEY',
-  'MEMORIX_LLM_PROVIDER',
-  'MEMORIX_LLM_MODEL',
-  'MEMORIX_LLM_BASE_URL',
-  'MEMORIX_API_KEY',
+  'BATON_AGENT_API_KEY',
+  'BATON_AGENT_PROVIDER',
+  'BATON_AGENT_MODEL',
+  'BATON_AGENT_BASE_URL',
+  'BATON_AGENT_LLM_API_KEY',
+  'BATON_AGENT_LLM_PROVIDER',
+  'BATON_AGENT_LLM_MODEL',
+  'BATON_AGENT_LLM_BASE_URL',
+  'BATON_LLM_API_KEY',
+  'BATON_LLM_PROVIDER',
+  'BATON_LLM_MODEL',
+  'BATON_LLM_BASE_URL',
+  'BATON_API_KEY',
   'OPENAI_API_KEY',
   'ANTHROPIC_API_KEY',
   'OPENROUTER_API_KEY',
@@ -66,52 +66,52 @@ describe('initLLM config scopes', () => {
   });
 
   it('initializes the optional Atlas memory preset and preserves explicit overrides', () => {
-    process.env.MEMORIX_LLM_PROVIDER = 'atlascloud';
-    process.env.MEMORIX_LLM_API_KEY = 'atlas-test-key';
+    process.env.BATON_LLM_PROVIDER = 'atlascloud';
+    process.env.BATON_LLM_API_KEY = 'atlas-test-key';
     const options = { scope: 'memory' as const, projectRoot: TEST_PROJECT, homeDir: TEST_HOME };
     expect(initLLM(options)).toEqual({
       provider: 'atlascloud', apiKey: 'atlas-test-key',
       model: 'deepseek-ai/deepseek-v3.2', baseUrl: 'https://api.atlascloud.ai/v1',
     });
-    process.env.MEMORIX_LLM_MODEL = 'custom-model';
-    process.env.MEMORIX_LLM_BASE_URL = 'https://gateway.example/v1';
+    process.env.BATON_LLM_MODEL = 'custom-model';
+    process.env.BATON_LLM_BASE_URL = 'https://gateway.example/v1';
     expect(initLLM(options)).toMatchObject({
       model: 'custom-model', baseUrl: 'https://gateway.example/v1',
     });
   });
 
   it('initializes the optional Requesty memory preset from REQUESTY_API_KEY', () => {
-    process.env.MEMORIX_LLM_PROVIDER = 'requesty';
+    process.env.BATON_LLM_PROVIDER = 'requesty';
     process.env.REQUESTY_API_KEY = 'requesty-test-key';
     const options = { scope: 'memory' as const, projectRoot: TEST_PROJECT, homeDir: TEST_HOME };
     expect(initLLM(options)).toEqual({
       provider: 'requesty', apiKey: 'requesty-test-key',
       model: 'openai/gpt-4.1-nano', baseUrl: 'https://router.requesty.ai/v1',
     });
-    process.env.MEMORIX_LLM_MODEL = 'anthropic/claude-sonnet-4-5';
-    process.env.MEMORIX_LLM_BASE_URL = 'https://router.eu.requesty.ai/v1';
+    process.env.BATON_LLM_MODEL = 'anthropic/claude-sonnet-4-5';
+    process.env.BATON_LLM_BASE_URL = 'https://router.eu.requesty.ai/v1';
     expect(initLLM(options)).toMatchObject({
       model: 'anthropic/claude-sonnet-4-5', baseUrl: 'https://router.eu.requesty.ai/v1',
     });
   });
 
   it('initializes API Route memory with its dedicated key and preserves explicit overrides', () => {
-    process.env.MEMORIX_LLM_PROVIDER = 'apiroute';
+    process.env.BATON_LLM_PROVIDER = 'apiroute';
     process.env.API_ROUTE_API_KEY = 'api-route-test-key';
     const options = { scope: 'memory' as const, projectRoot: TEST_PROJECT, homeDir: TEST_HOME };
     expect(initLLM(options)).toEqual({
       provider: 'apiroute', apiKey: 'api-route-test-key',
       model: 'deepseek-v4.1-flash', baseUrl: 'https://global.api-route.com/v1',
     });
-    process.env.MEMORIX_LLM_MODEL = 'custom-model';
-    process.env.MEMORIX_LLM_BASE_URL = 'https://gateway.example/v1';
+    process.env.BATON_LLM_MODEL = 'custom-model';
+    process.env.BATON_LLM_BASE_URL = 'https://gateway.example/v1';
     expect(initLLM(options)).toMatchObject({
       model: 'custom-model', baseUrl: 'https://gateway.example/v1',
     });
   });
 
   it('leaves API Route memory disabled when only unrelated keys are available', () => {
-    process.env.MEMORIX_LLM_PROVIDER = 'apiroute';
+    process.env.BATON_LLM_PROVIDER = 'apiroute';
     process.env.OPENAI_API_KEY = 'openai-test-key';
     process.env.ANTHROPIC_API_KEY = 'anthropic-test-key';
     process.env.OPENROUTER_API_KEY = 'router-test-key';
@@ -119,22 +119,22 @@ describe('initLLM config scopes', () => {
   });
 
   it('initializes Cheaper Inference memory with its dedicated key and preserves explicit overrides', () => {
-    process.env.MEMORIX_LLM_PROVIDER = 'cheaperinference';
+    process.env.BATON_LLM_PROVIDER = 'cheaperinference';
     process.env.CHEAPER_INFERENCE_API_KEY = 'cheaper-inference-test-key';
     const options = { scope: 'memory' as const, projectRoot: TEST_PROJECT, homeDir: TEST_HOME };
     expect(initLLM(options)).toEqual({
       provider: 'cheaperinference', apiKey: 'cheaper-inference-test-key',
       model: 'gpt-5.4-mini', baseUrl: 'https://api.cheaperinference.com/v1',
     });
-    process.env.MEMORIX_LLM_MODEL = 'custom-model';
-    process.env.MEMORIX_LLM_BASE_URL = 'https://gateway.example/v1';
+    process.env.BATON_LLM_MODEL = 'custom-model';
+    process.env.BATON_LLM_BASE_URL = 'https://gateway.example/v1';
     expect(initLLM(options)).toMatchObject({
       model: 'custom-model', baseUrl: 'https://gateway.example/v1',
     });
   });
 
   it('leaves Cheaper Inference memory disabled when only unrelated keys are available', () => {
-    process.env.MEMORIX_LLM_PROVIDER = 'cheaperinference';
+    process.env.BATON_LLM_PROVIDER = 'cheaperinference';
     process.env.OPENAI_API_KEY = 'openai-test-key';
     process.env.ANTHROPIC_API_KEY = 'anthropic-test-key';
     process.env.OPENROUTER_API_KEY = 'router-test-key';
@@ -142,12 +142,12 @@ describe('initLLM config scopes', () => {
   });
 
   it('uses agent-specific LLM env vars for TUI agent scope', () => {
-    process.env.MEMORIX_LLM_API_KEY = 'sk-memory';
-    process.env.MEMORIX_LLM_MODEL = 'memory-model';
-    process.env.MEMORIX_AGENT_LLM_API_KEY = 'sk-agent';
-    process.env.MEMORIX_AGENT_LLM_PROVIDER = 'openrouter';
-    process.env.MEMORIX_AGENT_LLM_MODEL = 'agent-model';
-    process.env.MEMORIX_AGENT_LLM_BASE_URL = 'https://agent.example.com/v1';
+    process.env.BATON_LLM_API_KEY = 'sk-memory';
+    process.env.BATON_LLM_MODEL = 'memory-model';
+    process.env.BATON_AGENT_LLM_API_KEY = 'sk-agent';
+    process.env.BATON_AGENT_LLM_PROVIDER = 'openrouter';
+    process.env.BATON_AGENT_LLM_MODEL = 'agent-model';
+    process.env.BATON_AGENT_LLM_BASE_URL = 'https://agent.example.com/v1';
 
     const config = initLLM({ scope: 'agent' });
 
@@ -159,13 +159,13 @@ describe('initLLM config scopes', () => {
     });
   });
 
-  it('uses short MEMORIX_AGENT_* env aliases for TUI agent scope', () => {
-    process.env.MEMORIX_LLM_API_KEY = 'sk-memory';
-    process.env.MEMORIX_LLM_MODEL = 'memory-model';
-    process.env.MEMORIX_AGENT_API_KEY = 'sk-agent-short';
-    process.env.MEMORIX_AGENT_PROVIDER = 'openrouter';
-    process.env.MEMORIX_AGENT_MODEL = 'agent-short-model';
-    process.env.MEMORIX_AGENT_BASE_URL = 'https://agent-short.example.com/v1';
+  it('uses short BATON_AGENT_* env aliases for TUI agent scope', () => {
+    process.env.BATON_LLM_API_KEY = 'sk-memory';
+    process.env.BATON_LLM_MODEL = 'memory-model';
+    process.env.BATON_AGENT_API_KEY = 'sk-agent-short';
+    process.env.BATON_AGENT_PROVIDER = 'openrouter';
+    process.env.BATON_AGENT_MODEL = 'agent-short-model';
+    process.env.BATON_AGENT_BASE_URL = 'https://agent-short.example.com/v1';
 
     const config = initLLM({ scope: 'agent' });
 
@@ -177,15 +177,15 @@ describe('initLLM config scopes', () => {
     });
   });
 
-  it('prefers short MEMORIX_AGENT_* aliases over legacy MEMORIX_AGENT_LLM_* aliases', () => {
-    process.env.MEMORIX_AGENT_API_KEY = 'sk-agent-short';
-    process.env.MEMORIX_AGENT_LLM_API_KEY = 'sk-agent-legacy';
-    process.env.MEMORIX_AGENT_PROVIDER = 'openrouter';
-    process.env.MEMORIX_AGENT_LLM_PROVIDER = 'openai';
-    process.env.MEMORIX_AGENT_MODEL = 'agent-short-model';
-    process.env.MEMORIX_AGENT_LLM_MODEL = 'agent-legacy-model';
-    process.env.MEMORIX_AGENT_BASE_URL = 'https://agent-short.example.com/v1';
-    process.env.MEMORIX_AGENT_LLM_BASE_URL = 'https://agent-legacy.example.com/v1';
+  it('prefers short BATON_AGENT_* aliases over legacy BATON_AGENT_LLM_* aliases', () => {
+    process.env.BATON_AGENT_API_KEY = 'sk-agent-short';
+    process.env.BATON_AGENT_LLM_API_KEY = 'sk-agent-legacy';
+    process.env.BATON_AGENT_PROVIDER = 'openrouter';
+    process.env.BATON_AGENT_LLM_PROVIDER = 'openai';
+    process.env.BATON_AGENT_MODEL = 'agent-short-model';
+    process.env.BATON_AGENT_LLM_MODEL = 'agent-legacy-model';
+    process.env.BATON_AGENT_BASE_URL = 'https://agent-short.example.com/v1';
+    process.env.BATON_AGENT_LLM_BASE_URL = 'https://agent-legacy.example.com/v1';
 
     const config = initLLM({ scope: 'agent' });
 
@@ -197,10 +197,10 @@ describe('initLLM config scopes', () => {
     });
   });
 
-  it('keeps memory LLM scope on existing MEMORIX_LLM_* config', () => {
-    process.env.MEMORIX_LLM_API_KEY = 'sk-memory';
-    process.env.MEMORIX_LLM_PROVIDER = 'openai';
-    process.env.MEMORIX_LLM_MODEL = 'memory-model';
+  it('keeps memory LLM scope on existing BATON_LLM_* config', () => {
+    process.env.BATON_LLM_API_KEY = 'sk-memory';
+    process.env.BATON_LLM_PROVIDER = 'openai';
+    process.env.BATON_LLM_MODEL = 'memory-model';
 
     const config = initLLM({ scope: 'memory' });
 
@@ -209,8 +209,8 @@ describe('initLLM config scopes', () => {
   });
 
   it('falls back to memory LLM config for agent scope when no agent config exists', () => {
-    process.env.MEMORIX_LLM_API_KEY = 'sk-memory';
-    process.env.MEMORIX_LLM_MODEL = 'memory-model';
+    process.env.BATON_LLM_API_KEY = 'sk-memory';
+    process.env.BATON_LLM_MODEL = 'memory-model';
 
     const config = initLLM({ scope: 'agent' });
 

@@ -310,7 +310,7 @@ export class SqliteBackend implements ObservationStore {
     await withFileLock(this.dataDir, async () => {
       // Re-check under the cross-process lock. Another initializer may have
       // completed the migration while this process was waiting.
-      // Mini-skills converted by migration pmi-5 do not count: they were
+      // Mini-skills converted by migration baton-5 do not count: they were
       // allocated ids past this JSON source, which is still to be imported.
       const count = this.db.prepare(`SELECT COUNT(*) AS cnt FROM observations WHERE topicKey IS NULL OR topicKey NOT LIKE 'mini-skill/%/%'`).get();
       if (count.cnt > 0) return;
@@ -318,15 +318,15 @@ export class SqliteBackend implements ObservationStore {
       const raw = fs.readFileSync(jsonPath, 'utf-8');
       const parsed: unknown = JSON.parse(raw);
       if (!Array.isArray(parsed)) {
-        throw new Error('[memorix] observations.json migration refused: expected a JSON array');
+        throw new Error('[baton] observations.json migration refused: expected a JSON array');
       }
       const observations = parsed as Observation[];
       if (observations.length === 0) return;
       if (observations.some((obs) => !obs || !Number.isSafeInteger(obs.id) || obs.id < 1 || typeof obs.projectId !== 'string')) {
-        throw new Error('[memorix] observations.json migration refused: invalid observation record');
+        throw new Error('[baton] observations.json migration refused: invalid observation record');
       }
 
-      console.error(`[memorix] Migrating ${observations.length} observations from JSON to SQLite...`);
+      console.error(`[baton] Migrating ${observations.length} observations from JSON to SQLite...`);
 
       // The SQLite transaction makes the migration all-or-nothing. The JSON
       // source remains intact until an operator explicitly removes it.
@@ -341,7 +341,7 @@ export class SqliteBackend implements ObservationStore {
           const counterData = JSON.parse(fs.readFileSync(counterPath, 'utf-8')) as { nextId?: unknown; next_id?: unknown };
           const candidate = counterData.nextId ?? counterData.next_id;
           if (candidate !== undefined && (!Number.isSafeInteger(candidate) || Number(candidate) < 1)) {
-            throw new Error('[memorix] counter.json migration refused: nextId must be a positive integer');
+            throw new Error('[baton] counter.json migration refused: nextId must be a positive integer');
           }
           counterNextId = candidate === undefined ? undefined : Number(candidate);
         }
@@ -351,7 +351,7 @@ export class SqliteBackend implements ObservationStore {
       });
       insertMany(observations);
 
-      console.error(`[memorix] Migration complete. ${observations.length} observations now in SQLite.`);
+      console.error(`[baton] Migration complete. ${observations.length} observations now in SQLite.`);
     });
   }
 

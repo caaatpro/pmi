@@ -604,7 +604,7 @@ function isWithin(root: string, candidate: string): boolean {
 }
 
 function adapterRelativePath(workflow: WorkflowSpec, agent: WorkflowAdapterTarget): string {
-  const name = 'memorix-workflow-' + slug(workflow.id.replace(/^workflow:/, ''));
+  const name = 'baton-workflow-' + slug(workflow.id.replace(/^workflow:/, ''));
   if (agent === 'codex') return '.agents/skills/' + name + '/SKILL.md';
   if (agent === 'claude-code') return '.claude/skills/' + name + '/SKILL.md';
   if (agent === 'cursor') return '.cursor/rules/' + name + '.mdc';
@@ -612,7 +612,7 @@ function adapterRelativePath(workflow: WorkflowSpec, agent: WorkflowAdapterTarge
 }
 
 function adapterMarker(workflow: WorkflowSpec): string {
-  return '<!-- memorix:workflow-adapter id="' + workflow.id + '" -->';
+  return '<!-- baton:workflow-adapter id="' + workflow.id + '" -->';
 }
 
 function adapterContent(workflow: WorkflowSpec, agent: WorkflowAdapterTarget): string {
@@ -642,7 +642,7 @@ function adapterContent(workflow: WorkflowSpec, agent: WorkflowAdapterTarget): s
       workflow.body.trim(),
       '',
     ].join('\n'), {
-      name: 'memorix-workflow-' + slug(workflow.id.replace(/^workflow:/, '')),
+      name: 'baton-workflow-' + slug(workflow.id.replace(/^workflow:/, '')),
       description: workflow.description || workflow.title,
     });
   }
@@ -686,7 +686,7 @@ export async function previewWorkflowAdapter(input: {
       agent: input.agent,
       workflowId: input.workflow.id,
       status: 'unsupported',
-      reason: 'This agent has no safe native workflow adapter. Use Memorix Project Context instead.',
+      reason: 'This agent has no safe native workflow adapter. Use Baton Project Context instead.',
     };
   }
   if (
@@ -719,10 +719,10 @@ export async function previewWorkflowAdapter(input: {
     return { agent: input.agent, workflowId: input.workflow.id, targetPath, content, status: 'create', reason: 'No existing project adapter file.' };
   }
   if (existing === content) {
-    return { agent: input.agent, workflowId: input.workflow.id, targetPath, content, status: 'unchanged', reason: 'Existing Memorix adapter already matches the canonical workflow.' };
+    return { agent: input.agent, workflowId: input.workflow.id, targetPath, content, status: 'unchanged', reason: 'Existing Baton adapter already matches the canonical workflow.' };
   }
   if (existing.includes(adapterMarker(input.workflow))) {
-    return { agent: input.agent, workflowId: input.workflow.id, targetPath, content, status: 'update', reason: 'Existing Memorix-owned adapter will be updated.' };
+    return { agent: input.agent, workflowId: input.workflow.id, targetPath, content, status: 'update', reason: 'Existing Baton-owned adapter will be updated.' };
   }
   return { agent: input.agent, workflowId: input.workflow.id, targetPath, content, status: 'conflict', reason: 'A user-owned project file already occupies this adapter path.' };
 }

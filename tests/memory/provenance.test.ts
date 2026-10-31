@@ -25,14 +25,14 @@ import { storeObservation, initObservations, getObservation } from '../../src/me
 import { resetDb, searchObservations } from '../../src/store/orama-store.js';
 import { isImmune, calculateRelevance, getRetentionZone } from '../../src/memory/retention.js';
 import { scoreObservationForSessionContext } from '../../src/memory/session.js';
-import type { MemorixDocument, Observation } from '../../src/types.js';
+import type { BatonDocument, Observation } from '../../src/types.js';
 
 const PROJECT_ID = 'test/provenance';
 
 let testDir: string;
 
 beforeEach(async () => {
-  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-provenance-'));
+  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-provenance-'));
   await resetDb();
   await initObservations(testDir);
 });
@@ -183,7 +183,7 @@ describe('Search result provenance', () => {
 // ── Retention source-aware decay ─────────────────────────────────────
 
 describe('Retention source-aware decay', () => {
-  function makeDoc(overrides: Partial<MemorixDocument>): MemorixDocument {
+  function makeDoc(overrides: Partial<BatonDocument>): BatonDocument {
     return {
       id: 'obs-1',
       observationId: 1,

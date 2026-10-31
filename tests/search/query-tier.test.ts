@@ -7,7 +7,7 @@
  * - heavy:    CJK, long complex queries
  *
  * Critical invariant: natural language queries that merely MENTION a tool
- * (memorix, git, npm) must NEVER be classified as fast. Only actual CLI
+ * (baton, git, npm) must NEVER be classified as fast. Only actual CLI
  * invocations (tool word leads + no natural language markers) may be fast.
  */
 
@@ -46,12 +46,12 @@ describe('classifyQueryTier', () => {
     expect(classifyQueryTier('npm publish')).toBe('fast');
   });
 
-  it('"memorix search hook" → fast (CLI invocation)', () => {
-    expect(classifyQueryTier('memorix search hook')).toBe('fast');
+  it('"baton search hook" → fast (CLI invocation)', () => {
+    expect(classifyQueryTier('baton search hook')).toBe('fast');
   });
 
-  it('"memorix store entity" → fast', () => {
-    expect(classifyQueryTier('memorix store entity')).toBe('fast');
+  it('"baton store entity" → fast', () => {
+    expect(classifyQueryTier('baton store entity')).toBe('fast');
   });
 
   it('"npx vitest run" → fast', () => {
@@ -81,21 +81,21 @@ describe('classifyQueryTier', () => {
   // so they must NOT be treated as CLI invocations.
   // ════════════════════════════════════════════
 
-  // ── memorix ──
-  it('"memorix search slow" → NOT fast (NL: "slow")', () => {
-    expect(classifyQueryTier('memorix search slow')).not.toBe('fast');
+  // ── baton ──
+  it('"baton search slow" → NOT fast (NL: "slow")', () => {
+    expect(classifyQueryTier('baton search slow')).not.toBe('fast');
   });
 
-  it('"memorix cold start performance" → NOT fast (NL: "performance")', () => {
-    expect(classifyQueryTier('memorix cold start performance')).not.toBe('fast');
+  it('"baton cold start performance" → NOT fast (NL: "performance")', () => {
+    expect(classifyQueryTier('baton cold start performance')).not.toBe('fast');
   });
 
-  it('"memorix rerank issue" → NOT fast (NL: "issue")', () => {
-    expect(classifyQueryTier('memorix rerank issue')).not.toBe('fast');
+  it('"baton rerank issue" → NOT fast (NL: "issue")', () => {
+    expect(classifyQueryTier('baton rerank issue')).not.toBe('fast');
   });
 
-  it('"memorix deduplicate error" → NOT fast (NL: "error")', () => {
-    expect(classifyQueryTier('memorix deduplicate error')).not.toBe('fast');
+  it('"baton deduplicate error" → NOT fast (NL: "error")', () => {
+    expect(classifyQueryTier('baton deduplicate error')).not.toBe('fast');
   });
 
   // ── git ──
@@ -121,24 +121,24 @@ describe('classifyQueryTier', () => {
   // Natural language questions with embedded tool mentions.
   // ════════════════════════════════════════════
 
-  it('"why is memorix search slow" → NOT fast', () => {
-    expect(classifyQueryTier('why is memorix search slow')).not.toBe('fast');
+  it('"why is baton search slow" → NOT fast', () => {
+    expect(classifyQueryTier('why is baton search slow')).not.toBe('fast');
   });
 
-  it('"how does memorix deduplicate work" → NOT fast', () => {
-    expect(classifyQueryTier('how does memorix deduplicate work')).not.toBe('fast');
+  it('"how does baton deduplicate work" → NOT fast', () => {
+    expect(classifyQueryTier('how does baton deduplicate work')).not.toBe('fast');
   });
 
-  it('"how does memorix rerank work" → NOT fast', () => {
-    expect(classifyQueryTier('how does memorix rerank work')).not.toBe('fast');
+  it('"how does baton rerank work" → NOT fast', () => {
+    expect(classifyQueryTier('how does baton rerank work')).not.toBe('fast');
   });
 
-  it('"what makes memorix slow" → NOT fast', () => {
-    expect(classifyQueryTier('what makes memorix slow')).not.toBe('fast');
+  it('"what makes baton slow" → NOT fast', () => {
+    expect(classifyQueryTier('what makes baton slow')).not.toBe('fast');
   });
 
-  it('"search performance in memorix" → NOT fast', () => {
-    expect(classifyQueryTier('search performance in memorix')).not.toBe('fast');
+  it('"search performance in baton" → NOT fast', () => {
+    expect(classifyQueryTier('search performance in baton')).not.toBe('fast');
   });
 
   it('"why did npm publish fail" → NOT fast', () => {

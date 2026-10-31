@@ -3,13 +3,13 @@ import { loadBetterSqlite3 } from './sqlite-db.js';
 const SQLITE_BUSY_RETRY_DELAYS_MS = [50, 150, 400, 1000, 2500] as const;
 
 export class SqliteUnavailableError extends Error {
-  readonly code = 'MEMORIX_SQLITE_UNAVAILABLE';
+  readonly code = 'BATON_SQLITE_UNAVAILABLE';
 
   constructor(cause?: unknown) {
     super(
       cause instanceof Error && cause.message
         ? cause.message
-        : '[memorix] SQLite is unavailable (install a supported SQLite runtime)',
+        : '[baton] SQLite is unavailable (install a supported SQLite runtime)',
     );
     this.name = 'SqliteUnavailableError';
   }
@@ -32,11 +32,11 @@ export function isSqliteUnavailableError(error: unknown): boolean {
 }
 
 export function degradedReadError(storeName: string): Error {
-  return new Error(`[memorix] Cannot read ${storeName}: SQLite backend unavailable (memory is not loaded)`);
+  return new Error(`[baton] Cannot read ${storeName}: SQLite backend unavailable (memory is not loaded)`);
 }
 
 export function degradedWriteError(storeName: string): Error {
-  return new Error(`[memorix] Cannot write ${storeName}: SQLite backend unavailable (degraded mode; read-only)`);
+  return new Error(`[baton] Cannot write ${storeName}: SQLite backend unavailable (degraded mode; read-only)`);
 }
 
 export function formatSqliteFailure(error: unknown): string {
@@ -56,7 +56,7 @@ export async function retrySqliteBusy<T>(operation: () => Promise<T>, label: str
       if (!isTransientSqliteError(error) || attempt >= SQLITE_BUSY_RETRY_DELAYS_MS.length) throw error;
       const waitMs = SQLITE_BUSY_RETRY_DELAYS_MS[attempt];
       console.error(
-        `[memorix] ${label} SQLite busy (attempt ${attempt + 1}/${SQLITE_BUSY_RETRY_DELAYS_MS.length + 1}), retrying in ${waitMs}ms`,
+        `[baton] ${label} SQLite busy (attempt ${attempt + 1}/${SQLITE_BUSY_RETRY_DELAYS_MS.length + 1}), retrying in ${waitMs}ms`,
       );
       await delay(waitMs);
     }

@@ -13,7 +13,7 @@ const PROJECT = join(TEMP_ROOT, 'project');
 
 beforeEach(() => {
   rmSync(TEMP_ROOT, { recursive: true, force: true });
-  mkdirSync(join(HOME, '.memorix'), { recursive: true });
+  mkdirSync(join(HOME, '.baton'), { recursive: true });
   mkdirSync(PROJECT, { recursive: true });
   resetBehaviorConfigCache();
   resetResolvedConfigCache();
@@ -31,7 +31,7 @@ afterEach(() => {
 
 describe('behavior config resolution', () => {
   it('uses resolved TOML behavior settings instead of only legacy config.json', () => {
-    writeFileSync(join(HOME, '.memorix', 'config.toml'), [
+    writeFileSync(join(HOME, '.baton', 'config.toml'), [
       '[memory]',
       'inject = "silent"',
       'formation = "shadow"',
@@ -48,7 +48,7 @@ describe('behavior config resolution', () => {
   });
 
   it('uses project YAML behavior settings when TOML is absent', () => {
-    writeFileSync(join(PROJECT, 'memorix.yml'), [
+    writeFileSync(join(PROJECT, 'baton.yml'), [
       'behavior:',
       '  sessionInject: full',
       '  formationMode: fallback',
@@ -65,8 +65,8 @@ describe('behavior config resolution', () => {
   });
 
   it('falls back to legacy behavior when resolved config is temporarily malformed', () => {
-    writeFileSync(join(HOME, '.memorix', 'config.toml'), '[memory\n', 'utf8');
-    writeFileSync(join(HOME, '.memorix', 'config.json'), JSON.stringify({
+    writeFileSync(join(HOME, '.baton', 'config.toml'), '[memory\n', 'utf8');
+    writeFileSync(join(HOME, '.baton', 'config.json'), JSON.stringify({
       behavior: {
         sessionInject: 'silent',
         formationMode: 'shadow',

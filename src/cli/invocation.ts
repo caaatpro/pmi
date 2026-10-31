@@ -96,12 +96,12 @@ export function normalizeCliInvocation(argv: string[] = process.argv): CliInvoca
     // two paths (for example /var and /private/var on macOS).
     const projectRoot = realpathSync(resolvedProjectRoot);
     process.chdir(projectRoot);
-    process.env.MEMORIX_CLI_PROJECT_ROOT = projectRoot;
+    process.env.BATON_CLI_PROJECT_ROOT = projectRoot;
     invocation.projectRoot = projectRoot;
   }
 
   if (invocation.actorId) {
-    process.env.MEMORIX_CLI_ACTOR_ID = invocation.actorId;
+    process.env.BATON_CLI_ACTOR_ID = invocation.actorId;
   }
 
   process.argv = normalized;
@@ -109,8 +109,8 @@ export function normalizeCliInvocation(argv: string[] = process.argv): CliInvoca
 }
 
 export function getCliInvocation(): CliInvocation {
-  const projectRoot = process.env.MEMORIX_CLI_PROJECT_ROOT?.trim();
-  const actorId = process.env.MEMORIX_CLI_ACTOR_ID?.trim();
+  const projectRoot = process.env.BATON_CLI_PROJECT_ROOT?.trim();
+  const actorId = process.env.BATON_CLI_ACTOR_ID?.trim();
   return {
     ...(projectRoot ? { projectRoot } : {}),
     ...(actorId ? { actorId } : {}),

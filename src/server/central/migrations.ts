@@ -1,5 +1,5 @@
 /**
- * Postgres schema migrations for the central server (docs/PMI/DATABASE.md §2).
+ * Postgres schema migrations for the central server (docs/baton/DATABASE.md §2).
  *
  * Migrations are append-only: never edit one that has shipped, add a new one.
  * They are embedded as strings so the bundled CLI needs no SQL files on disk.
@@ -195,7 +195,7 @@ CREATE TABLE work.changes (
   },
   {
     // Phase 5: teams, per-project grants and row-level security. Project data
-    // is read and written under the NOLOGIN role pmi_app with app.user_id set
+    // is read and written under the NOLOGIN role baton_app with app.user_id set
     // per transaction; policies call core.can(), so a bug in the service
     // layer still cannot return another project's rows.
     id: '0002-rbac-rls',
@@ -284,54 +284,54 @@ $f$;
 -- only change to this migration since it shipped.)
 DO $do$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'pmi_app') THEN
-    CREATE ROLE pmi_app NOLOGIN;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'baton_app') THEN
+    CREATE ROLE baton_app NOLOGIN;
   END IF;
 EXCEPTION WHEN duplicate_object OR unique_violation THEN
   NULL;
 END
 $do$;
-GRANT pmi_app TO CURRENT_USER;
+GRANT baton_app TO CURRENT_USER;
 
-GRANT USAGE ON SCHEMA core, memory, work TO pmi_app;
-GRANT SELECT, INSERT, UPDATE ON memory.memories, memory.memory_versions, memory.memory_links, memory.conflicts TO pmi_app;
-GRANT SELECT, INSERT ON work.changes TO pmi_app;
-GRANT SELECT, UPDATE ON work.project_seq TO pmi_app;
-GRANT INSERT ON core.audit_log TO pmi_app;
-GRANT USAGE ON SEQUENCE core.audit_log_id_seq TO pmi_app;
+GRANT USAGE ON SCHEMA core, memory, work TO baton_app;
+GRANT SELECT, INSERT, UPDATE ON memory.memories, memory.memory_versions, memory.memory_links, memory.conflicts TO baton_app;
+GRANT SELECT, INSERT ON work.changes TO baton_app;
+GRANT SELECT, UPDATE ON work.project_seq TO baton_app;
+GRANT INSERT ON core.audit_log TO baton_app;
+GRANT USAGE ON SEQUENCE core.audit_log_id_seq TO baton_app;
 
 ALTER TABLE memory.memories ENABLE ROW LEVEL SECURITY;
-CREATE POLICY memories_read ON memory.memories FOR SELECT TO pmi_app USING (core.can(project_id, 'viewer'));
-CREATE POLICY memories_insert ON memory.memories FOR INSERT TO pmi_app WITH CHECK (core.can(project_id, 'developer'));
-CREATE POLICY memories_update ON memory.memories FOR UPDATE TO pmi_app
+CREATE POLICY memories_read ON memory.memories FOR SELECT TO baton_app USING (core.can(project_id, 'viewer'));
+CREATE POLICY memories_insert ON memory.memories FOR INSERT TO baton_app WITH CHECK (core.can(project_id, 'developer'));
+CREATE POLICY memories_update ON memory.memories FOR UPDATE TO baton_app
   USING (core.can(project_id, 'developer')) WITH CHECK (core.can(project_id, 'developer'));
 
 ALTER TABLE memory.memory_versions ENABLE ROW LEVEL SECURITY;
-CREATE POLICY versions_read ON memory.memory_versions FOR SELECT TO pmi_app
+CREATE POLICY versions_read ON memory.memory_versions FOR SELECT TO baton_app
   USING (core.can((SELECT m.project_id FROM memory.memories m WHERE m.id = memory_id), 'viewer'));
-CREATE POLICY versions_insert ON memory.memory_versions FOR INSERT TO pmi_app
+CREATE POLICY versions_insert ON memory.memory_versions FOR INSERT TO baton_app
   WITH CHECK (core.can((SELECT m.project_id FROM memory.memories m WHERE m.id = memory_id), 'developer'));
 
 ALTER TABLE memory.memory_links ENABLE ROW LEVEL SECURITY;
-CREATE POLICY links_read ON memory.memory_links FOR SELECT TO pmi_app
+CREATE POLICY links_read ON memory.memory_links FOR SELECT TO baton_app
   USING (core.can((SELECT m.project_id FROM memory.memories m WHERE m.id = from_id), 'viewer'));
-CREATE POLICY links_write ON memory.memory_links FOR INSERT TO pmi_app
+CREATE POLICY links_write ON memory.memory_links FOR INSERT TO baton_app
   WITH CHECK (core.can((SELECT m.project_id FROM memory.memories m WHERE m.id = from_id), 'developer'));
 
 ALTER TABLE memory.conflicts ENABLE ROW LEVEL SECURITY;
-CREATE POLICY conflicts_read ON memory.conflicts FOR SELECT TO pmi_app USING (core.can(project_id, 'viewer'));
-CREATE POLICY conflicts_insert ON memory.conflicts FOR INSERT TO pmi_app WITH CHECK (core.can(project_id, 'developer'));
-CREATE POLICY conflicts_update ON memory.conflicts FOR UPDATE TO pmi_app USING (core.can(project_id, 'developer'));
+CREATE POLICY conflicts_read ON memory.conflicts FOR SELECT TO baton_app USING (core.can(project_id, 'viewer'));
+CREATE POLICY conflicts_insert ON memory.conflicts FOR INSERT TO baton_app WITH CHECK (core.can(project_id, 'developer'));
+CREATE POLICY conflicts_update ON memory.conflicts FOR UPDATE TO baton_app USING (core.can(project_id, 'developer'));
 
 ALTER TABLE work.changes ENABLE ROW LEVEL SECURITY;
-CREATE POLICY changes_read ON work.changes FOR SELECT TO pmi_app USING (core.can(project_id, 'viewer'));
-CREATE POLICY changes_insert ON work.changes FOR INSERT TO pmi_app WITH CHECK (core.can(project_id, 'developer'));
+CREATE POLICY changes_read ON work.changes FOR SELECT TO baton_app USING (core.can(project_id, 'viewer'));
+CREATE POLICY changes_insert ON work.changes FOR INSERT TO baton_app WITH CHECK (core.can(project_id, 'developer'));
 
 ALTER TABLE work.project_seq ENABLE ROW LEVEL SECURITY;
-CREATE POLICY seq_read ON work.project_seq FOR SELECT TO pmi_app USING (core.can(project_id, 'viewer'));
-CREATE POLICY seq_update ON work.project_seq FOR UPDATE TO pmi_app USING (core.can(project_id, 'developer'));
+CREATE POLICY seq_read ON work.project_seq FOR SELECT TO baton_app USING (core.can(project_id, 'viewer'));
+CREATE POLICY seq_update ON work.project_seq FOR UPDATE TO baton_app USING (core.can(project_id, 'developer'));
 
-REVOKE UPDATE, DELETE, TRUNCATE ON core.audit_log FROM PUBLIC, pmi_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON core.audit_log FROM PUBLIC, baton_app;
 
 -- Memory ids are global. Row-level security hides a row of another project,
 -- so the sync path asks which project owns a key before writing it.
@@ -391,12 +391,12 @@ CREATE TABLE work.checkpoints (
   UNIQUE (session_id, seq)
 );
 
-GRANT SELECT, INSERT, UPDATE ON work.sessions, work.checkpoints TO pmi_app;
+GRANT SELECT, INSERT, UPDATE ON work.sessions, work.checkpoints TO baton_app;
 
 ALTER TABLE work.sessions ENABLE ROW LEVEL SECURITY;
-CREATE POLICY sessions_read ON work.sessions FOR SELECT TO pmi_app USING (core.can(project_id, 'viewer'));
-CREATE POLICY sessions_insert ON work.sessions FOR INSERT TO pmi_app WITH CHECK (core.can(project_id, 'developer'));
-CREATE POLICY sessions_update ON work.sessions FOR UPDATE TO pmi_app
+CREATE POLICY sessions_read ON work.sessions FOR SELECT TO baton_app USING (core.can(project_id, 'viewer'));
+CREATE POLICY sessions_insert ON work.sessions FOR INSERT TO baton_app WITH CHECK (core.can(project_id, 'developer'));
+CREATE POLICY sessions_update ON work.sessions FOR UPDATE TO baton_app
   USING (core.can(project_id, 'developer')) WITH CHECK (core.can(project_id, 'developer'));
 
 -- Session ids are generated by clients and global; RLS hides other projects'
@@ -406,7 +406,7 @@ CREATE FUNCTION work.session_project(p_id text) RETURNS uuid
   SELECT project_id FROM work.sessions WHERE id = p_id
 $f$;
 
--- Session lists show who runs each session; pmi_app has no access to core.users.
+-- Session lists show who runs each session; baton_app has no access to core.users.
 CREATE FUNCTION core.user_email(p_user uuid) RETURNS text
   LANGUAGE sql STABLE SECURITY DEFINER SET search_path = core, pg_temp AS $f$
   SELECT email::text FROM core.users WHERE id = p_user
@@ -414,9 +414,9 @@ $f$;
 
 -- Checkpoint state is developer-only (SESSION_CONTINUITY.md §8).
 ALTER TABLE work.checkpoints ENABLE ROW LEVEL SECURITY;
-CREATE POLICY checkpoints_read ON work.checkpoints FOR SELECT TO pmi_app
+CREATE POLICY checkpoints_read ON work.checkpoints FOR SELECT TO baton_app
   USING (core.can((SELECT s.project_id FROM work.sessions s WHERE s.id = session_id), 'developer'));
-CREATE POLICY checkpoints_insert ON work.checkpoints FOR INSERT TO pmi_app
+CREATE POLICY checkpoints_insert ON work.checkpoints FOR INSERT TO baton_app
   WITH CHECK (core.can((SELECT s.project_id FROM work.sessions s WHERE s.id = session_id), 'developer'));
 `,
   },
@@ -472,20 +472,20 @@ CREATE TABLE work.snapshot_blobs (
 
 ALTER TABLE work.checkpoints ADD COLUMN snapshot_id text;
 
-GRANT SELECT, INSERT ON work.project_blobs, work.snapshots, work.snapshot_blobs TO pmi_app;
-GRANT UPDATE (pinned) ON work.snapshots TO pmi_app;
+GRANT SELECT, INSERT ON work.project_blobs, work.snapshots, work.snapshot_blobs TO baton_app;
+GRANT UPDATE (pinned) ON work.snapshots TO baton_app;
 
 -- Snapshot contents are working-copy code: developer and above only.
 ALTER TABLE work.project_blobs ENABLE ROW LEVEL SECURITY;
-CREATE POLICY project_blobs_read ON work.project_blobs FOR SELECT TO pmi_app USING (core.can(project_id, 'developer'));
-CREATE POLICY project_blobs_insert ON work.project_blobs FOR INSERT TO pmi_app WITH CHECK (core.can(project_id, 'developer'));
+CREATE POLICY project_blobs_read ON work.project_blobs FOR SELECT TO baton_app USING (core.can(project_id, 'developer'));
+CREATE POLICY project_blobs_insert ON work.project_blobs FOR INSERT TO baton_app WITH CHECK (core.can(project_id, 'developer'));
 ALTER TABLE work.snapshots ENABLE ROW LEVEL SECURITY;
-CREATE POLICY snapshots_read ON work.snapshots FOR SELECT TO pmi_app USING (core.can(project_id, 'developer'));
-CREATE POLICY snapshots_insert ON work.snapshots FOR INSERT TO pmi_app WITH CHECK (core.can(project_id, 'developer'));
-CREATE POLICY snapshots_update ON work.snapshots FOR UPDATE TO pmi_app USING (core.can(project_id, 'developer'));
+CREATE POLICY snapshots_read ON work.snapshots FOR SELECT TO baton_app USING (core.can(project_id, 'developer'));
+CREATE POLICY snapshots_insert ON work.snapshots FOR INSERT TO baton_app WITH CHECK (core.can(project_id, 'developer'));
+CREATE POLICY snapshots_update ON work.snapshots FOR UPDATE TO baton_app USING (core.can(project_id, 'developer'));
 ALTER TABLE work.snapshot_blobs ENABLE ROW LEVEL SECURITY;
-CREATE POLICY snapshot_blobs_read ON work.snapshot_blobs FOR SELECT TO pmi_app USING (core.can(project_id, 'developer'));
-CREATE POLICY snapshot_blobs_insert ON work.snapshot_blobs FOR INSERT TO pmi_app WITH CHECK (core.can(project_id, 'developer'));
+CREATE POLICY snapshot_blobs_read ON work.snapshot_blobs FOR SELECT TO baton_app USING (core.can(project_id, 'developer'));
+CREATE POLICY snapshot_blobs_insert ON work.snapshot_blobs FOR INSERT TO baton_app WITH CHECK (core.can(project_id, 'developer'));
 
 CREATE FUNCTION work.snapshot_project(p_id text) RETURNS uuid
   LANGUAGE sql STABLE SECURITY DEFINER SET search_path = work, pg_temp AS $f$
@@ -519,13 +519,13 @@ CREATE TABLE work.metrics_events (
 CREATE INDEX metrics_events_name_at ON work.metrics_events (name, at DESC);
 CREATE INDEX metrics_events_session ON work.metrics_events (session_id) WHERE session_id IS NOT NULL;
 
-GRANT SELECT ON memory.overviews TO pmi_app;
+GRANT SELECT ON memory.overviews TO baton_app;
 ALTER TABLE memory.overviews ENABLE ROW LEVEL SECURITY;
-CREATE POLICY overviews_read ON memory.overviews FOR SELECT TO pmi_app USING (core.can(project_id, 'viewer'));
-GRANT INSERT ON work.metrics_events TO pmi_app;
-GRANT USAGE ON SEQUENCE work.metrics_events_id_seq TO pmi_app;
+CREATE POLICY overviews_read ON memory.overviews FOR SELECT TO baton_app USING (core.can(project_id, 'viewer'));
+GRANT INSERT ON work.metrics_events TO baton_app;
+GRANT USAGE ON SEQUENCE work.metrics_events_id_seq TO baton_app;
 ALTER TABLE work.metrics_events ENABLE ROW LEVEL SECURITY;
-CREATE POLICY metrics_insert ON work.metrics_events FOR INSERT TO pmi_app WITH CHECK (project_id IS NULL OR core.can(project_id, 'viewer'));
+CREATE POLICY metrics_insert ON work.metrics_events FOR INSERT TO baton_app WITH CHECK (project_id IS NULL OR core.can(project_id, 'viewer'));
 `,
   },
   {
@@ -558,15 +558,15 @@ CREATE TABLE work.git_commits (
   PRIMARY KEY (repository_id, sha)
 );
 
-GRANT SELECT, INSERT, UPDATE ON work.git_cursors TO pmi_app;
-GRANT SELECT, INSERT ON work.git_commits TO pmi_app;
+GRANT SELECT, INSERT, UPDATE ON work.git_cursors TO baton_app;
+GRANT SELECT, INSERT ON work.git_commits TO baton_app;
 ALTER TABLE work.git_cursors ENABLE ROW LEVEL SECURITY;
-CREATE POLICY git_cursors_read ON work.git_cursors FOR SELECT TO pmi_app USING (core.can(project_id, 'viewer'));
-CREATE POLICY git_cursors_write ON work.git_cursors FOR INSERT TO pmi_app WITH CHECK (core.can(project_id, 'developer'));
-CREATE POLICY git_cursors_update ON work.git_cursors FOR UPDATE TO pmi_app USING (core.can(project_id, 'developer'));
+CREATE POLICY git_cursors_read ON work.git_cursors FOR SELECT TO baton_app USING (core.can(project_id, 'viewer'));
+CREATE POLICY git_cursors_write ON work.git_cursors FOR INSERT TO baton_app WITH CHECK (core.can(project_id, 'developer'));
+CREATE POLICY git_cursors_update ON work.git_cursors FOR UPDATE TO baton_app USING (core.can(project_id, 'developer'));
 ALTER TABLE work.git_commits ENABLE ROW LEVEL SECURITY;
-CREATE POLICY git_commits_read ON work.git_commits FOR SELECT TO pmi_app USING (core.can(project_id, 'viewer'));
-CREATE POLICY git_commits_insert ON work.git_commits FOR INSERT TO pmi_app WITH CHECK (core.can(project_id, 'developer'));
+CREATE POLICY git_commits_read ON work.git_commits FOR SELECT TO baton_app USING (core.can(project_id, 'viewer'));
+CREATE POLICY git_commits_insert ON work.git_commits FOR INSERT TO baton_app WITH CHECK (core.can(project_id, 'developer'));
 `,
   },
   {
@@ -682,16 +682,16 @@ export interface MigrationReport {
 export async function migrate(db: Database, options: { until?: string } = {}): Promise<MigrationReport> {
   return db.transaction(async (tx) => {
     await tx.query('SELECT pg_advisory_xact_lock($1)', [MIGRATION_LOCK_KEY]);
-    await tx.query(`CREATE TABLE IF NOT EXISTS public.pmi_schema_migrations (
+    await tx.query(`CREATE TABLE IF NOT EXISTS public.baton_schema_migrations (
       id text PRIMARY KEY,
       applied_at timestamptz NOT NULL DEFAULT now()
     )`);
-    const done = new Set((await tx.query<{ id: string }>('SELECT id FROM public.pmi_schema_migrations')).map((row) => row.id));
+    const done = new Set((await tx.query<{ id: string }>('SELECT id FROM public.baton_schema_migrations')).map((row) => row.id));
     const applied: string[] = [];
     for (const migration of PG_MIGRATIONS) {
       if (done.has(migration.id)) continue;
       await tx.query(migration.sql);
-      await tx.query('INSERT INTO public.pmi_schema_migrations (id) VALUES ($1)', [migration.id]);
+      await tx.query('INSERT INTO public.baton_schema_migrations (id) VALUES ($1)', [migration.id]);
       applied.push(migration.id);
       if (migration.id === options.until) break;
     }
@@ -701,8 +701,8 @@ export async function migrate(db: Database, options: { until?: string } = {}): P
 
 /** Migration ids not yet applied; empty when the schema is current. */
 export async function pendingMigrations(db: Database): Promise<string[]> {
-  const [exists] = await db.query<{ name: string | null }>("SELECT to_regclass('public.pmi_schema_migrations')::text AS name");
+  const [exists] = await db.query<{ name: string | null }>("SELECT to_regclass('public.baton_schema_migrations')::text AS name");
   if (!exists?.name) return PG_MIGRATIONS.map((migration) => migration.id);
-  const done = new Set((await db.query<{ id: string }>('SELECT id FROM public.pmi_schema_migrations')).map((row) => row.id));
+  const done = new Set((await db.query<{ id: string }>('SELECT id FROM public.baton_schema_migrations')).map((row) => row.id));
   return PG_MIGRATIONS.filter((migration) => !done.has(migration.id)).map((migration) => migration.id);
 }

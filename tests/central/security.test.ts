@@ -39,7 +39,7 @@ async function call(pathname: string, init: { token?: string; method?: string; b
 
 describe.skipIf(!pgAvailable)('central server security', () => {
   beforeAll(async () => {
-    blobDir = fs.mkdtempSync(path.join(tmpdir(), 'pmi-sec-blobs-'));
+    blobDir = fs.mkdtempSync(path.join(tmpdir(), 'baton-sec-blobs-'));
     pg = await startPostgres();
     db = await openDatabase(pg.url);
     await migrate(db);
@@ -95,11 +95,11 @@ describe.skipIf(!pgAvailable)('central server security', () => {
     await new Promise<void>((resolve) => logged.listen(0, '127.0.0.1', resolve));
     const url = `http://127.0.0.1:${(logged.address() as AddressInfo).port}`;
     await fetch(`${url}/v1/me`, { headers: { authorization: `Bearer ${tokens.admin}` } });
-    const failed = await fetch(`${url}/v1/me`, { headers: { authorization: 'Bearer pmi_pat_wrongwrongwrongwrong' } });
-    expect(await failed.text()).not.toContain('pmi_pat_wrong');
+    const failed = await fetch(`${url}/v1/me`, { headers: { authorization: 'Bearer baton_pat_wrongwrongwrongwrong' } });
+    expect(await failed.text()).not.toContain('baton_pat_wrong');
     await new Promise<void>((resolve) => logged.close(() => resolve()));
     expect(lines.join('\n')).not.toContain(tokens.admin);
-    expect(lines.join('\n')).not.toContain('pmi_pat_');
+    expect(lines.join('\n')).not.toContain('baton_pat_');
   });
 
   it('limits failed authentications per client', async () => {
@@ -109,8 +109,8 @@ describe.skipIf(!pgAvailable)('central server security', () => {
     const url = `http://127.0.0.1:${(limited.address() as AddressInfo).port}`;
     const me = (token: string) => fetch(`${url}/v1/me`, { headers: { authorization: `Bearer ${token}` } }).then((res) => res.status);
     try {
-      for (let i = 0; i < 5; i++) expect(await me(`pmi_pat_guess${i}aaaaaaaaaaaaaaaaaaaa`)).toBe(401);
-      expect(await me('pmi_pat_guess6aaaaaaaaaaaaaaaaaaaa')).toBe(429);
+      for (let i = 0; i < 5; i++) expect(await me(`baton_pat_guess${i}aaaaaaaaaaaaaaaaaaaa`)).toBe(401);
+      expect(await me('baton_pat_guess6aaaaaaaaaaaaaaaaaaaa')).toBe(429);
       // A valid token from the same address is refused too while the window lasts: the limit is per client, not per token.
       expect(await me(tokens.admin)).toBe(429);
     } finally {
@@ -125,10 +125,10 @@ describe.skipIf(!pgAvailable)('central server security', () => {
     for (const data of [small, large]) await storage.put(db, sha256Hex(data), data);
     const [inline] = await db.query<{ data: Buffer }>("SELECT data FROM work.blobs WHERE sha256 = $1", [sha256Hex(small)]);
     expect(inline.data.includes(Buffer.from('secret source code'))).toBe(false);
-    expect(inline.data.subarray(0, 5).toString()).toBe('PMIE1');
+    expect(inline.data.subarray(0, 5).toString()).toBe('BTNE1');
     const sha = sha256Hex(large);
     const onDisk = fs.readFileSync(path.join(blobDir, sha.slice(0, 2), sha.slice(2, 4), sha));
-    expect(onDisk.subarray(0, 5).toString()).toBe('PMIE1');
+    expect(onDisk.subarray(0, 5).toString()).toBe('BTNE1');
     expect((await storage.get(db, sha256Hex(small))).equals(small)).toBe(true);
     expect((await storage.get(db, sha)).equals(large)).toBe(true);
 
@@ -140,7 +140,7 @@ describe.skipIf(!pgAvailable)('central server security', () => {
     expect((await storage.verifyAll(db)).failed).toEqual([sha256Hex(small)]);
     await db.query('UPDATE work.blobs SET data = $2 WHERE sha256 = $1', [sha256Hex(small), inline.data]);
 
-    // Rotation: a new key reads old blobs through PMI_BLOB_KEYS_OLD and re-encrypts them.
+    // Rotation: a new key reads old blobs through BATON_BLOB_KEYS_OLD and re-encrypts them.
     const next = randomBytes(32);
     const rotated = new ServerBlobStorage(blobDir, { current: next, previous: [key] });
     expect((await rotated.get(db, sha)).equals(large)).toBe(true);

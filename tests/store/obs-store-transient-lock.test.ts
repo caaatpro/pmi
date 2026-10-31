@@ -24,7 +24,7 @@ afterEach(async () => {
  */
 describe('createObservationStore under lock contention', () => {
   it('retries a transient lock instead of degrading to read-only', async () => {
-    tempDir = await mkdtemp(path.join(os.tmpdir(), 'memorix-obs-lock-'));
+    tempDir = await mkdtemp(path.join(os.tmpdir(), 'baton-obs-lock-'));
 
     const sqliteStore = await import('../../src/store/sqlite-store.js');
     const realInit = sqliteStore.SqliteBackend.prototype.init;
@@ -54,7 +54,7 @@ describe('createObservationStore under lock contention', () => {
   });
 
   it('surfaces a persistent lock as an error rather than an empty store', async () => {
-    tempDir = await mkdtemp(path.join(os.tmpdir(), 'memorix-obs-lock-'));
+    tempDir = await mkdtemp(path.join(os.tmpdir(), 'baton-obs-lock-'));
 
     const sqliteStore = await import('../../src/store/sqlite-store.js');
     vi.spyOn(sqliteStore.SqliteBackend.prototype, 'init').mockImplementation(async () => {

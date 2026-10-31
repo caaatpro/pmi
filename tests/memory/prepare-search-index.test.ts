@@ -6,7 +6,7 @@ import path from 'node:path';
 
 // Some writes are not mocked, so the fake project must live in a temp dir
 // rather than a Windows-style path that becomes a relative directory elsewhere.
-const TEST_PROJECT_DIR = path.join(tmpdir(), `pmi-prepare-search-index-${process.pid}`);
+const TEST_PROJECT_DIR = path.join(tmpdir(), `baton-prepare-search-index-${process.pid}`);
 // Each test imports fresh modules (resetModules), so close that test's SQLite
 // handles before the next reset; Windows cannot delete an open database.
 afterEach(async () => {
@@ -108,7 +108,7 @@ describe('prepareSearchIndex', () => {
     mockLoadObservationsJson.mockResolvedValue([
       {
         id: 1,
-        projectId: 'AVIDS2/memorix',
+        projectId: 'AVIDS2/baton',
         entityName: 'search-layer',
         type: 'what-changed',
         title: 'Prepared startup index',
@@ -123,7 +123,7 @@ describe('prepareSearchIndex', () => {
       },
       {
         id: 2,
-        projectId: 'AVIDS2/memorix',
+        projectId: 'AVIDS2/baton',
         entityName: 'history',
         type: 'decision',
         title: 'Resolved old note',
@@ -164,7 +164,7 @@ describe('prepareSearchIndex', () => {
     mockLoadObservationsJson.mockResolvedValue([
       {
         id: 7,
-        projectId: 'AVIDS2/memorix',
+        projectId: 'AVIDS2/baton',
         entityName: 'fallback',
         type: 'discovery',
         title: 'Fulltext only startup',
@@ -194,8 +194,8 @@ describe('prepareSearchIndex', () => {
 
   it('does not re-embed vectors already persisted in Lance after a cold cache start', async () => {
     mockLoadObservationsJson.mockResolvedValue([
-      { id: 21, projectId: 'AVIDS2/memorix', title: 'Persisted vector', facts: [], filesModified: [], concepts: [] },
-      { id: 22, projectId: 'AVIDS2/memorix', title: 'Missing vector', facts: [], filesModified: [], concepts: [] },
+      { id: 21, projectId: 'AVIDS2/baton', title: 'Persisted vector', facts: [], filesModified: [], concepts: [] },
+      { id: 22, projectId: 'AVIDS2/baton', title: 'Missing vector', facts: [], filesModified: [], concepts: [] },
     ]);
     mockLoadIdCounter.mockResolvedValue(23);
     mockHydrateIndexForStartup.mockResolvedValue(2);
@@ -213,7 +213,7 @@ describe('prepareSearchIndex', () => {
     mockLoadObservationsJson.mockResolvedValue([
       {
         id: 9,
-        projectId: 'AVIDS2/memorix',
+        projectId: 'AVIDS2/baton',
         entityName: 'footer-status',
         type: 'discovery',
         title: 'Status should be idempotent',
@@ -248,7 +248,7 @@ describe('prepareSearchIndex', () => {
     mockLoadObservationsJson.mockResolvedValue([
       {
         id: 11,
-        projectId: 'AVIDS2/memorix',
+        projectId: 'AVIDS2/baton',
         entityName: 'runtime-status',
         type: 'discovery',
         title: 'Runtime status is stable',
@@ -281,7 +281,7 @@ describe('prepareSearchIndex', () => {
     mockLoadObservationsJson.mockResolvedValue([
       {
         id: 13,
-        projectId: 'AVIDS2/memorix',
+        projectId: 'AVIDS2/baton',
         entityName: 'split-module-graph',
         type: 'discovery',
         title: 'Hydrated index remains ready',

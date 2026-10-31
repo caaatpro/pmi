@@ -20,8 +20,8 @@ let sandbox = '';
 
 describe('session churn stress exam', () => {
   beforeEach(() => {
-    sandbox = mkdtempSync(path.join(tmpdir(), 'memorix-stress-session-'));
-    process.env.MEMORIX_EMBEDDING = 'off';
+    sandbox = mkdtempSync(path.join(tmpdir(), 'baton-stress-session-'));
+    process.env.BATON_EMBEDDING = 'off';
   });
 
   afterEach(async () => {

@@ -1,7 +1,7 @@
 /**
  * Simulated developer machines for end-to-end tests: each has its own HOME,
- * Memorix data dir, PMI credentials and git clone, and drives the built
- * `pmi` CLI (and its stdio MCP server) as a separate process.
+ * Baton data dir, Baton credentials and git clone, and drives the built
+ * `baton` CLI (and its stdio MCP server) as a separate process.
  */
 import { execFileSync, spawn } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -39,13 +39,13 @@ export function createRepoPair(root: string, origin: string): [string, string] {
 }
 
 /**
- * `pmi` and `memorix` executables on PATH that run the built CLI, so agent
- * configs written by `pmi setup` (command "memorix") start this build.
+ * `baton` and `baton` executables on PATH that run the built CLI, so agent
+ * configs written by `baton setup` (command "baton") start this build.
  */
 export function installCliShims(root: string): string {
   const bin = path.join(root, 'bin');
   mkdirSync(bin, { recursive: true });
-  for (const name of ['pmi', 'memorix']) {
+  for (const name of ['baton']) {
     const file = path.join(bin, name);
     writeFileSync(file, `#!/bin/sh\nexec "${process.execPath}" "${CLI}" "$@"\n`);
     chmodSync(file, 0o755);
@@ -64,9 +64,9 @@ export function machine(root: string, name: string, repo: string, extraEnv: Reco
       PATH: process.env.PATH ?? '',
       HOME: home,
       USERPROFILE: home,
-      MEMORIX_DATA_DIR: path.join(home, 'data'),
-      PMI_HOME: path.join(home, '.pmi'),
-      MEMORIX_SYNC_DEVICE_FINGERPRINT: `test|${name}`,
+      BATON_DATA_DIR: path.join(home, 'data'),
+      BATON_HOME: path.join(home, '.baton'),
+      BATON_SYNC_DEVICE_FINGERPRINT: `test|${name}`,
       ...extraEnv,
     },
   };
@@ -80,7 +80,7 @@ export interface CliResult {
 }
 
 /** Async on purpose: test servers run in this process and must keep serving while the CLI waits. */
-export function pmi(m: Machine, ...args: string[]): Promise<CliResult> {
+export function baton(m: Machine, ...args: string[]): Promise<CliResult> {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [CLI, ...args], { cwd: m.repo, env: m.env, stdio: ['ignore', 'pipe', 'pipe'] });
     let stdout = '';
@@ -98,13 +98,13 @@ export function pmi(m: Machine, ...args: string[]): Promise<CliResult> {
   });
 }
 
-/** An agent's view: the real `pmi serve` stdio MCP server in the machine's repository. */
+/** An agent's view: the real `baton serve` stdio MCP server in the machine's repository. */
 export async function connectAgent(m: Machine, agent: string): Promise<Client> {
   const transport = new StdioClientTransport({
     command: process.execPath,
     args: [CLI, 'serve', '--cwd', m.repo],
     cwd: m.repo,
-    env: { ...m.env, MEMORIX_MODE: 'full' },
+    env: { ...m.env, BATON_MODE: 'full' },
     stderr: 'ignore',
   });
   const client = new Client({ name: agent, version: '1.0.0' });
@@ -131,8 +131,8 @@ export function toolText(result: unknown): string {
 export async function stopDaemons(machines: Array<Machine | undefined>): Promise<void> {
   for (const m of machines) {
     if (!m) continue;
-    await pmi(m, 'daemon', 'stop');
-    const pidFile = path.join(m.env.MEMORIX_DATA_DIR, 'pmi-daemon.pid');
+    await baton(m, 'daemon', 'stop');
+    const pidFile = path.join(m.env.BATON_DATA_DIR, 'baton-daemon.pid');
     try {
       const pid = Number(JSON.parse(readFileSync(pidFile, 'utf8')).pid);
       if (pid) process.kill(pid, 'SIGKILL');

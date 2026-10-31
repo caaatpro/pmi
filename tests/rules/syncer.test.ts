@@ -16,7 +16,7 @@ import type { UnifiedRule } from '../../src/types.js';
 let testDir: string;
 
 beforeEach(async () => {
-  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-syncer-'));
+  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-syncer-'));
 });
 
 afterEach(async () => {

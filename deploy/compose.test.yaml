@@ -3,4 +3,4 @@
 services:
   postgres:
     ports:
-      - "127.0.0.1:${PMI_PG_PORT:-55433}:5432"
+      - "127.0.0.1:${BATON_PG_PORT:-55433}:5432"

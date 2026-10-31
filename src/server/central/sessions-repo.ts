@@ -1,6 +1,6 @@
 /**
  * Central session store: leases, checkpoints, handoff, resume and lease
- * expiry (docs/PMI/SESSION_CONTINUITY.md §3–§6).
+ * expiry (docs/baton/SESSION_CONTINUITY.md §3–§6).
  *
  * Ownership rule used by every write: the caller must be the session's user
  * and either hold the lease or find it free/expired while nobody else has
@@ -306,7 +306,7 @@ export interface ResumePackage {
   nextAction: string | null;
   nextActionInferred: boolean;
   lastCheckpoint: SessionState['lastCheckpoint'];
-  /** The working copy at the last checkpoint, when one was uploaded; restore it with `pmi workspace restore`. */
+  /** The working copy at the last checkpoint, when one was uploaded; restore it with `baton workspace restore`. */
   snapshot: ResumeSnapshot | null;
 }
 

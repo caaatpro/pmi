@@ -30,30 +30,30 @@ async function runCommand(command: any, args: Record<string, unknown>) {
 
 describe('memory store CLI argument coercion', () => {
   const originalCwd = process.cwd();
-  const originalDataDir = process.env.MEMORIX_DATA_DIR;
-  const originalEmbedding = process.env.MEMORIX_EMBEDDING;
+  const originalDataDir = process.env.BATON_DATA_DIR;
+  const originalEmbedding = process.env.BATON_EMBEDDING;
   let root = '';
   let project = '';
 
   beforeEach(() => {
-    root = mkdtempSync(path.join(tmpdir(), 'memorix-memory-cli-'));
+    root = mkdtempSync(path.join(tmpdir(), 'baton-memory-cli-'));
     project = path.join(root, 'project');
     mkdirSync(project, { recursive: true });
     writeFileSync(path.join(project, 'README.md'), '# test\n', 'utf8');
     execSync('git init', { cwd: project, stdio: 'ignore' });
     execSync('git config user.email test@example.com', { cwd: project, stdio: 'ignore' });
-    execSync('git config user.name "Memorix Test"', { cwd: project, stdio: 'ignore' });
+    execSync('git config user.name "Baton Test"', { cwd: project, stdio: 'ignore' });
     process.chdir(project);
-    process.env.MEMORIX_DATA_DIR = path.join(root, 'data');
-    process.env.MEMORIX_EMBEDDING = 'off';
+    process.env.BATON_DATA_DIR = path.join(root, 'data');
+    process.env.BATON_EMBEDDING = 'off';
   });
 
   afterEach(async () => {
     process.chdir(originalCwd);
-    if (originalDataDir === undefined) delete process.env.MEMORIX_DATA_DIR;
-    else process.env.MEMORIX_DATA_DIR = originalDataDir;
-    if (originalEmbedding === undefined) delete process.env.MEMORIX_EMBEDDING;
-    else process.env.MEMORIX_EMBEDDING = originalEmbedding;
+    if (originalDataDir === undefined) delete process.env.BATON_DATA_DIR;
+    else process.env.BATON_DATA_DIR = originalDataDir;
+    if (originalEmbedding === undefined) delete process.env.BATON_EMBEDDING;
+    else process.env.BATON_EMBEDDING = originalEmbedding;
     resetObservationStore();
     resetSessionStore();
     resetTeamStore();
@@ -103,15 +103,15 @@ describe('memory store CLI argument coercion', () => {
 
   it('initializes the project memory LLM before checking deduplicate availability', async () => {
     const originalKeys = {
-      apiKey: process.env.MEMORIX_LLM_API_KEY,
-      provider: process.env.MEMORIX_LLM_PROVIDER,
-      model: process.env.MEMORIX_LLM_MODEL,
-      baseUrl: process.env.MEMORIX_LLM_BASE_URL,
+      apiKey: process.env.BATON_LLM_API_KEY,
+      provider: process.env.BATON_LLM_PROVIDER,
+      model: process.env.BATON_LLM_MODEL,
+      baseUrl: process.env.BATON_LLM_BASE_URL,
     };
-    process.env.MEMORIX_LLM_API_KEY = 'test-memory-key';
-    process.env.MEMORIX_LLM_PROVIDER = 'openai';
-    process.env.MEMORIX_LLM_MODEL = 'test-memory-model';
-    process.env.MEMORIX_LLM_BASE_URL = 'http://127.0.0.1:9/v1';
+    process.env.BATON_LLM_API_KEY = 'test-memory-key';
+    process.env.BATON_LLM_PROVIDER = 'openai';
+    process.env.BATON_LLM_MODEL = 'test-memory-model';
+    process.env.BATON_LLM_BASE_URL = 'http://127.0.0.1:9/v1';
 
     try {
       const result = await runCommand(memoryCommand, {
@@ -126,10 +126,10 @@ describe('memory store CLI argument coercion', () => {
     } finally {
       setLLMConfig(null);
       for (const [key, value] of Object.entries({
-        MEMORIX_LLM_API_KEY: originalKeys.apiKey,
-        MEMORIX_LLM_PROVIDER: originalKeys.provider,
-        MEMORIX_LLM_MODEL: originalKeys.model,
-        MEMORIX_LLM_BASE_URL: originalKeys.baseUrl,
+        BATON_LLM_API_KEY: originalKeys.apiKey,
+        BATON_LLM_PROVIDER: originalKeys.provider,
+        BATON_LLM_MODEL: originalKeys.model,
+        BATON_LLM_BASE_URL: originalKeys.baseUrl,
       })) {
         if (value === undefined) delete process.env[key];
         else process.env[key] = value;

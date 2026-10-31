@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { getLegacyConfigJsonPath } from './config-paths.js';
 
-export interface MemorixConfig {
+export interface BatonConfig {
   llm?: {
     provider?: string;
     apiKey?: string;
@@ -24,9 +24,9 @@ export interface MemorixConfig {
   };
 }
 
-let cachedConfig: MemorixConfig | null = null;
+let cachedConfig: BatonConfig | null = null;
 
-export function loadFileConfig(homeDir = homedir()): MemorixConfig {
+export function loadFileConfig(homeDir = homedir()): BatonConfig {
   if (cachedConfig !== null) return cachedConfig;
 
   const configPath = getLegacyConfigJsonPath(homeDir);

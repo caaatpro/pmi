@@ -4,7 +4,7 @@
  * Detects when a write's entityName is better known in a different project than
  * the currently bound session project.  Used to:
  *
- *   1. Emit a passive warning on memorix_store / memorix_store_reasoning when a
+ *   1. Emit a passive warning on baton_store / baton_store_reasoning when a
  *      suspicious attribution is detected (Goal A — prevent new wrong-bucket writes).
  *   2. Scan an existing project for already-misattributed observations so an
  *      operator can archive/move them (Goal B — legacy cleanup audit).

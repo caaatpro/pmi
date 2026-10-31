@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "baton": {
+      "command": "baton",
+      "args": ["serve", "--mode", "lite"],
+      "alwaysLoad": true
+    }
+  }
+}

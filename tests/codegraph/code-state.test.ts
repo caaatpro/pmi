@@ -15,14 +15,14 @@ const BetterSqlite3 = require('better-sqlite3');
 let root: string | null = null;
 
 function tempRoot(): string {
-  root = mkdtempSync(path.join(tmpdir(), 'memorix-code-state-'));
+  root = mkdtempSync(path.join(tmpdir(), 'baton-code-state-'));
   return root;
 }
 
 function initGitRepository(dir: string): void {
   execFileSync('git', ['init'], { cwd: dir, stdio: 'ignore' });
-  execFileSync('git', ['config', 'user.email', 'tests@memorix.local'], { cwd: dir, stdio: 'ignore' });
-  execFileSync('git', ['config', 'user.name', 'Memorix Tests'], { cwd: dir, stdio: 'ignore' });
+  execFileSync('git', ['config', 'user.email', 'tests@baton.local'], { cwd: dir, stdio: 'ignore' });
+  execFileSync('git', ['config', 'user.name', 'Baton Tests'], { cwd: dir, stdio: 'ignore' });
   execFileSync('git', ['add', '.'], { cwd: dir, stdio: 'ignore' });
   execFileSync('git', ['commit', '-m', 'initial fixture'], { cwd: dir, stdio: 'ignore' });
 }
@@ -264,7 +264,7 @@ describe('CodeStateSnapshot', () => {
 
   it('upgrades a legacy CodeGraph database without replacing its existing rows', () => {
     const dataDir = tempRoot();
-    const legacy = new BetterSqlite3(path.join(dataDir, 'memorix.db'));
+    const legacy = new BetterSqlite3(path.join(dataDir, 'baton.db'));
     legacy.exec([
       'CREATE TABLE code_files (id TEXT PRIMARY KEY, projectId TEXT NOT NULL, path TEXT NOT NULL, language TEXT, contentHash TEXT NOT NULL, mtimeMs INTEGER, sizeBytes INTEGER, indexedAt TEXT NOT NULL, gitCommit TEXT, UNIQUE(projectId, path));',
       'CREATE TABLE code_symbols (id TEXT PRIMARY KEY, projectId TEXT NOT NULL, fileId TEXT NOT NULL, path TEXT NOT NULL, name TEXT NOT NULL, qualifiedName TEXT NOT NULL, kind TEXT NOT NULL, startLine INTEGER, endLine INTEGER, signature TEXT, contentHash TEXT, indexedAt TEXT NOT NULL, stale INTEGER NOT NULL DEFAULT 0, UNIQUE(projectId, fileId, qualifiedName, kind));',

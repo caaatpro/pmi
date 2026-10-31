@@ -83,7 +83,7 @@ const STORAGE_POLICY: Record<ToolCategory, StoragePolicy> = {
   command:          { store: 'always',         minLength: 50,  defaultType: 'discovery' },
   file_read:        { store: 'never',          minLength: 0,   defaultType: 'discovery' },
   search:           { store: 'if_substantial', minLength: 500, defaultType: 'discovery' },
-  memorix_internal: { store: 'never',          minLength: 0,   defaultType: 'discovery' },
+  baton_internal: { store: 'never',          minLength: 0,   defaultType: 'discovery' },
   unknown:          { store: 'if_substantial', minLength: 100, defaultType: 'discovery' },
 };
 
@@ -98,7 +98,7 @@ function classifyTool(input: NormalizedHookInput): ToolCategory {
   // Tool name-based classification (Claude Code sends PostToolUse for everything)
   const name = (input.toolName ?? '').toLowerCase();
 
-  if (name.startsWith('memorix_')) return 'memorix_internal';
+  if (name.startsWith('baton_')) return 'baton_internal';
 
   if (/^(write|edit|multi_?edit|multiedittool|create|patch|insert|notebook_?edit)$/i.test(name)) {
     return 'file_modify';
@@ -130,8 +130,8 @@ function extractRealCommand(command: string): string {
 function isNoiseCommand(command: string): boolean {
   const real = extractRealCommand(command);
   if (NOISE_COMMANDS.some(r => r.test(real))) return true;
-  // Filter self-referential commands (inspecting memorix's own data)
-  if (/\.memorix[/\\]|observations\.json|memorix.*data/i.test(command)) return true;
+  // Filter self-referential commands (inspecting baton's own data)
+  if (/\.baton[/\\]|observations\.json|baton.*data/i.test(command)) return true;
   return false;
 }
 
@@ -374,7 +374,7 @@ async function buildHookProjectContext(
   } catch (error) {
     // A context hint must never interrupt the host's turn. The structured
     // error is intentionally kept in stderr for hook diagnostics.
-    console.error('[memorix] hook context failed:', (error as Error)?.message ?? error);
+    console.error('[baton] hook context failed:', (error as Error)?.message ?? error);
     return null;
   }
 }
@@ -398,7 +398,7 @@ async function consumeCompactContinuation(
     const workset = await consumeCompactionWorkset(input, { task, maxTokens: 420 });
     return workset?.text;
   } catch (error) {
-    console.error('[memorix] compact continuation failed:', (error as Error)?.message ?? error);
+    console.error('[baton] compact continuation failed:', (error as Error)?.message ?? error);
     return undefined;
   }
 }
@@ -418,7 +418,7 @@ async function buildClaudeContinuationPromptContext(input: NormalizedHookInput):
   const compactContinuation = await consumeCompactContinuation(input, input.userPrompt);
   if (compactContinuation) {
     return [
-      'Memorix recovered one bounded checkpoint after the host compacted this session.',
+      'Baton recovered one bounded checkpoint after the host compacted this session.',
       'Treat it as background context; current code and the user request win.',
       '',
       compactContinuation,
@@ -431,7 +431,7 @@ async function buildClaudeContinuationPromptContext(input: NormalizedHookInput):
     const context = await buildHookProjectContext(input, input.userPrompt, 'hook-user-prompt');
     if (context?.hasContinuation) {
       return [
-        'Memorix prepared a bounded prior-work brief for this explicit continuation request.',
+        'Baton prepared a bounded prior-work brief for this explicit continuation request.',
         'Treat it as background context; current code wins. Use it before broad Git or file-history archaeology.',
         '',
         context.prompt,
@@ -446,9 +446,9 @@ async function buildClaudeContinuationPromptContext(input: NormalizedHookInput):
   // onboarding naturally discover the one-call Autopilot path.
   if (continuationRequested || resolveTaskLens(input.userPrompt).id === 'onboarding') {
     return [
-      'Memorix is available for this handoff or continuation.',
-      'Before broad file or Git exploration, call memorix_project_context with the user\'s actual task.',
-      'If it is not visible yet, use Claude Code tool search for memorix_project_context; use CLI only when MCP discovery is unavailable.',
+      'Baton is available for this handoff or continuation.',
+      'Before broad file or Git exploration, call baton_project_context with the user\'s actual task.',
+      'If it is not visible yet, use Claude Code tool search for baton_project_context; use CLI only when MCP discovery is unavailable.',
     ].join(' ');
   }
 
@@ -478,7 +478,7 @@ async function handleSessionStart(input: NormalizedHookInput): Promise<{
         output: {
           continue: true,
           systemMessage: [
-            'Memorix recovered one bounded checkpoint after the host compacted this session.',
+            'Baton recovered one bounded checkpoint after the host compacted this session.',
             'Treat it as background context; current code and the user request win.',
             '',
             compactContinuation,
@@ -497,10 +497,10 @@ async function handleSessionStart(input: NormalizedHookInput): Promise<{
   // Build system message based on inject mode
   let systemMessage: string;
   if (injectMode === 'full' && contextSummary) {
-    systemMessage = `Previous session context may be available. Use memorix_search when prior project context would materially help. If search reports a fresh project with no Memorix memories yet, treat that as a cold-start signal and do not repeat the search in the same turn.${contextSummary}`;
+    systemMessage = `Previous session context may be available. Use baton_search when prior project context would materially help. If search reports a fresh project with no Baton memories yet, treat that as a cold-start signal and do not repeat the search in the same turn.${contextSummary}`;
   } else {
     // minimal: one-line hint, no memory content
-    systemMessage = 'Previous session context may be available. Use memorix_search when prior project context would materially help. If search reports a fresh project with no Memorix memories yet, do not repeat the search in the same turn.';
+    systemMessage = 'Previous session context may be available. Use baton_search when prior project context would materially help. If search reports a fresh project with no Baton memories yet, do not repeat the search in the same turn.';
   }
 
   return {
@@ -561,7 +561,7 @@ async function handleHookEventCore(input: NormalizedHookInput): Promise<{
   const policy = STORAGE_POLICY[category] ?? STORAGE_POLICY.unknown;
   const content = extractContent(input);
 
-  // Never-store category (memorix's own tools)
+  // Never-store category (baton's own tools)
   if (policy.store === 'never') {
     return { observation: null, output };
   }
@@ -697,7 +697,7 @@ export async function handleHookEvent(input: NormalizedHookInput, options: {
 }
 
 /**
- * Convert Memorix's neutral hook response into the host-specific response
+ * Convert Baton's neutral hook response into the host-specific response
  * schema expected by each supported agent.
  */
 export function formatHookOutput(
@@ -737,7 +737,7 @@ export function formatHookOutput(
 
   // Grok's documented hook contract only gives passive hooks a success exit
   // signal; it does not define a Claude-style additionalContext response.
-  // Returning an empty object keeps Memorix capture-only and never changes
+  // Returning an empty object keeps Baton capture-only and never changes
   // Grok's prompt, tool, or stop decisions.
   if (agent === 'grok') return {};
 
@@ -768,7 +768,7 @@ export function formatHookOutput(
 
 /**
  * Main entry point: read stdin, process, write stdout.
- * Called by the CLI: `memorix hook`
+ * Called by the CLI: `baton hook`
  */
 export async function runHook(agentOverride?: string, eventOverride?: string): Promise<void> {
   // Some hosts (e.g. Gemini CLI) may not close stdin promptly. Bound the
@@ -791,10 +791,10 @@ export async function runHook(agentOverride?: string, eventOverride?: string): P
   // Inject agent identity from CLI --agent flag into the payload
   // so the normalizer can reliably identify the source agent.
   if (agentOverride) {
-    payload._memorix_agent = agentOverride;
+    payload._baton_agent = agentOverride;
   }
   if (eventOverride) {
-    payload._memorix_event = eventOverride;
+    payload._baton_event = eventOverride;
   }
 
   const input = normalizeHookInput(payload);
@@ -804,7 +804,7 @@ export async function runHook(agentOverride?: string, eventOverride?: string): P
   } catch (checkpointError) {
     // Host-native compaction is authoritative. Checkpoint persistence is an
     // additive recovery layer and must never block it.
-    console.error('[memorix] compact checkpoint failed:', (checkpointError as Error)?.message ?? checkpointError);
+    console.error('[baton] compact checkpoint failed:', (checkpointError as Error)?.message ?? checkpointError);
   }
   const { observation, output } = await handleHookEvent(input, { deferMaintenance: true });
 
@@ -837,12 +837,12 @@ export async function runHook(agentOverride?: string, eventOverride?: string): P
       await initObservations(dataDir, hookObservationRuntimeOptions(rawProject.rootPath));
       await storeObservation({ ...observation, projectId, sourceDetail: 'hook' });
       // Automatic capture is deliberately quiet. Candidate state and later
-      // qualification are visible through Memorix inspection, not injected as
+      // qualification are visible through Baton inspection, not injected as
       // a stream of status messages into the host agent's context.
     } catch (storeErr) {
       // Diagnostic log — hooks must never break the agent, but silent
       // swallow makes end-to-end debugging impossible.
-      console.error('[memorix] hook store failed:', (storeErr as Error)?.message ?? storeErr);
+      console.error('[baton] hook store failed:', (storeErr as Error)?.message ?? storeErr);
     }
   }
 
@@ -855,7 +855,7 @@ export async function runHook(agentOverride?: string, eventOverride?: string): P
   //   PreToolUse, UserPromptSubmit, PostToolUse
   // Other events (SessionStart, Stop, PreCompact) must NOT include hookSpecificOutput.
   // Claude Code sends hook_event_name (snake_case), Copilot sends hookEventName (camelCase)
-  const rawEventName = (payload._memorix_event as string)
+  const rawEventName = (payload._baton_event as string)
     ?? (payload.hook_event_name as string)
     ?? (payload.hookEventName as string)
     ?? '';

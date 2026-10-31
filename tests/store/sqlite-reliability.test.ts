@@ -31,7 +31,7 @@ describe('SQLite reliability across all durable stores', () => {
   });
 
   it('retries a transient atomic write conflict and keeps the transaction usable', async () => {
-    tempDir = await mkdtemp(path.join(os.tmpdir(), 'memorix-atomic-lock-'));
+    tempDir = await mkdtemp(path.join(os.tmpdir(), 'baton-atomic-lock-'));
     const store = await createObservationStore(tempDir);
     const db = getDatabase(tempDir);
     const originalPrepare = db.prepare.bind(db);
@@ -49,11 +49,11 @@ describe('SQLite reliability across all durable stores', () => {
   });
 
   it('waits for a real cross-process writer and reopens the store', async () => {
-    tempDir = await mkdtemp(path.join(os.tmpdir(), 'memorix-process-lock-'));
+    tempDir = await mkdtemp(path.join(os.tmpdir(), 'baton-process-lock-'));
     getDatabase(tempDir);
     closeAllDatabases();
 
-    const dbPath = path.join(tempDir, 'memorix.db');
+    const dbPath = path.join(tempDir, 'baton.db');
     const child = spawn(process.execPath, [
       '--input-type=module',
       '-e',
@@ -115,7 +115,7 @@ setTimeout(() => { db.prepare('COMMIT').run(); db.close(); }, 350);`,
   });
 
   it('does not convert a persistent session initialization error into a fallback', async () => {
-    tempDir = await mkdtemp(path.join(os.tmpdir(), 'memorix-session-error-'));
+    tempDir = await mkdtemp(path.join(os.tmpdir(), 'baton-session-error-'));
     vi.spyOn(SessionSqliteStore.prototype, 'init').mockRejectedValue(
       Object.assign(new Error('database schema is malformed'), { code: 'SQLITE_CORRUPT' }),
     );

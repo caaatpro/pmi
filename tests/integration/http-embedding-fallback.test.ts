@@ -51,18 +51,18 @@ import { closeAllDatabases } from '../../src/store/sqlite-db.js';
 
 let StreamableHTTPServerTransport: any;
 let isInitializeRequest: any;
-let createMemorixServer: any;
+let createBatonServer: any;
 let CallToolResultSchema: any;
 
 const TEST_PORT = 13212;
 const BASE_URL = `http://127.0.0.1:${TEST_PORT}`;
 const EMBEDDING_ENV_KEYS = [
-  'MEMORIX_API_KEY',
-  'MEMORIX_EMBEDDING',
-  'MEMORIX_EMBEDDING_API_KEY',
-  'MEMORIX_EMBEDDING_BASE_URL',
-  'MEMORIX_EMBEDDING_MODEL',
-  'MEMORIX_LLM_API_KEY',
+  'BATON_API_KEY',
+  'BATON_EMBEDDING',
+  'BATON_EMBEDDING_API_KEY',
+  'BATON_EMBEDDING_BASE_URL',
+  'BATON_EMBEDDING_MODEL',
+  'BATON_LLM_API_KEY',
   'OPENAI_API_KEY',
 ];
 
@@ -168,7 +168,7 @@ beforeAll(async () => {
   resetTeamStore();
   closeAllDatabases();
 
-  tempHomeDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-http-embed-home-'));
+  tempHomeDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-http-embed-home-'));
   process.env.HOME = tempHomeDir;
   process.env.USERPROFILE = tempHomeDir;
   process.env.HOMEPATH = tempHomeDir;
@@ -179,9 +179,9 @@ beforeAll(async () => {
   isInitializeRequest = typesMod.isInitializeRequest;
   CallToolResultSchema = typesMod.CallToolResultSchema;
   const serverMod = await import('../../src/server.js');
-  createMemorixServer = serverMod.createMemorixServer;
+  createBatonServer = serverMod.createBatonServer;
 
-  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-http-embed-test-'));
+  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-http-embed-test-'));
   projectDir = path.join(testDir, 'project-a');
   await fs.mkdir(projectDir, { recursive: true });
   await createFakeGitRepo(projectDir, 'https://github.com/AVIDS2/http-embed-project.git');
@@ -235,7 +235,7 @@ beforeAll(async () => {
             if (sid) sessions.delete(sid);
           };
 
-          const { server, switchProject } = await createMemorixServer(
+          const { server, switchProject } = await createBatonServer(
             testDir,
             undefined,
             undefined,
@@ -287,10 +287,10 @@ beforeEach(() => {
     delete process.env[key];
   }
 
-  process.env.MEMORIX_EMBEDDING = 'auto';
-  process.env.MEMORIX_EMBEDDING_API_KEY = 'api-key';
-  process.env.MEMORIX_EMBEDDING_BASE_URL = 'https://embeddings.example/v1';
-  process.env.MEMORIX_EMBEDDING_MODEL = 'text-embedding-3-small';
+  process.env.BATON_EMBEDDING = 'auto';
+  process.env.BATON_EMBEDDING_API_KEY = 'api-key';
+  process.env.BATON_EMBEDDING_BASE_URL = 'https://embeddings.example/v1';
+  process.env.BATON_EMBEDDING_MODEL = 'text-embedding-3-small';
 
   resetProvider();
   resetDb();
@@ -361,7 +361,7 @@ describe('HTTP embedding fallback regression', () => {
         jsonrpc: '2.0',
         method: 'tools/call',
         params: {
-          name: 'memorix_session_start',
+          name: 'baton_session_start',
           arguments: { agent: 'http-embed-fallback', projectRoot: projectDir },
         },
         id: 101,
@@ -374,7 +374,7 @@ describe('HTTP embedding fallback regression', () => {
         jsonrpc: '2.0',
         method: 'tools/call',
         params: {
-          name: 'memorix_store',
+          name: 'baton_store',
           arguments: {
             entityName: 'http-embed-fallback',
             type: 'problem-solution',
@@ -401,7 +401,7 @@ describe('HTTP embedding fallback regression', () => {
         jsonrpc: '2.0',
         method: 'tools/call',
         params: {
-          name: 'memorix_search',
+          name: 'baton_search',
           arguments: {
             query: 'why did the HTTP quota fallback memory break after the embedding provider switched at runtime',
           },
@@ -421,7 +421,7 @@ describe('HTTP embedding fallback regression', () => {
         jsonrpc: '2.0',
         method: 'tools/call',
         params: {
-          name: 'memorix_search',
+          name: 'baton_search',
           arguments: {
             query: 'HTTP quota fallback memory',
           },

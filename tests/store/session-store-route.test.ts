@@ -18,7 +18,7 @@ import { closeAllDatabases } from '../../src/store/sqlite-db.js';
 let tmpDir: string;
 
 beforeEach(async () => {
-  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-session-route-'));
+  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-session-route-'));
   resetSessionStore();
 });
 

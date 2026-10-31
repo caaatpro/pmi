@@ -3,7 +3,7 @@ export const FORMATION_TIMEOUT_MIN_MS = 1_000;
 export const FORMATION_TIMEOUT_MAX_MS = 300_000;
 
 /**
- * Parse and validate MEMORIX_FORMATION_TIMEOUT_MS.
+ * Parse and validate BATON_FORMATION_TIMEOUT_MS.
  * - Must be a valid integer in the range 1000-300000ms.
  * - Invalid values fall back to the default and log a warning.
  * - Out-of-range values are clamped to the nearest bound.
@@ -16,7 +16,7 @@ export function parseFormationTimeoutMs(raw: string | undefined): number {
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || Number.isNaN(parsed)) {
     console.warn(
-      `[memorix] MEMORIX_FORMATION_TIMEOUT_MS="${raw}" is invalid (must be a positive integer between ${FORMATION_TIMEOUT_MIN_MS}-${FORMATION_TIMEOUT_MAX_MS}ms). Using default ${DEFAULT_FORMATION_TIMEOUT_MS}ms.`,
+      `[baton] BATON_FORMATION_TIMEOUT_MS="${raw}" is invalid (must be a positive integer between ${FORMATION_TIMEOUT_MIN_MS}-${FORMATION_TIMEOUT_MAX_MS}ms). Using default ${DEFAULT_FORMATION_TIMEOUT_MS}ms.`,
     );
     return DEFAULT_FORMATION_TIMEOUT_MS;
   }

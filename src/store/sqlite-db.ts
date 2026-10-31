@@ -8,7 +8,7 @@
  *   - Dynamic require of better-sqlite3 (optionalDependencies)
  *   - WAL mode and busy_timeout configuration
  *   - Schema creation for ALL tables (observations, sessions, meta, team_*; the
- *     legacy mini_skills table is kept as the source of migration pmi-5)
+ *     legacy mini_skills table is kept as the source of migration baton-5)
  *   - Singleton caching per dataDir
  *   - Graceful close
  */
@@ -30,7 +30,7 @@ export function loadBetterSqlite3(): any {
     BetterSqlite3 = loadSqlite();
     return BetterSqlite3;
   } catch {
-    throw new Error('[memorix] SQLite is not available (better-sqlite3, node:sqlite, and bun:sqlite all failed)');
+    throw new Error('[baton] SQLite is not available (better-sqlite3, node:sqlite, and bun:sqlite all failed)');
   }
 }
 
@@ -1145,10 +1145,10 @@ const SCHEMA_MIGRATIONS: SchemaMigration[] = [
     },
   },
   {
-    // PMI: explicit memory classification. NULL means "derive from the
+    // Baton: explicit memory classification. NULL means "derive from the
     // observation type" (src/domain/memory.ts), so no row is rewritten and a
     // later type edit can never leave a stale derived category behind.
-    id: 'pmi-1-memory-classification',
+    id: 'baton-1-memory-classification',
     apply: (db) => {
       addColumnIfMissing(db, 'observations', 'category', 'category TEXT');
       addColumnIfMissing(db, 'observations', 'confidence', 'confidence TEXT');
@@ -1156,12 +1156,12 @@ const SCHEMA_MIGRATIONS: SchemaMigration[] = [
     },
   },
   {
-    // PMI session continuity (docs/PMI/SESSION_CONTINUITY.md). Kept beside
-    // the Memorix `sessions` table, which is rewritten with INSERT OR REPLACE
-    // and would drop extra columns. Same id as the Memorix session.
-    id: 'pmi-2-session-continuity',
+    // Baton session continuity (docs/baton/SESSION_CONTINUITY.md). Kept beside
+    // the Baton `sessions` table, which is rewritten with INSERT OR REPLACE
+    // and would drop extra columns. Same id as the Baton session.
+    id: 'baton-2-session-continuity',
     apply: (db) => {
-      db.exec(`CREATE TABLE IF NOT EXISTS pmi_sessions (
+      db.exec(`CREATE TABLE IF NOT EXISTS baton_sessions (
         id                 TEXT PRIMARY KEY,
         project_id         TEXT NOT NULL,
         status             TEXT NOT NULL,
@@ -1200,15 +1200,15 @@ const SCHEMA_MIGRATIONS: SchemaMigration[] = [
         created_at   TEXT NOT NULL,
         sent_at      TEXT
       )`);
-      db.exec('CREATE INDEX IF NOT EXISTS idx_pmi_sessions_project_status ON pmi_sessions(project_id, status, updated_at DESC)');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_baton_sessions_project_status ON baton_sessions(project_id, status, updated_at DESC)');
       db.exec('CREATE INDEX IF NOT EXISTS idx_session_checkpoints_session ON session_checkpoints(session_id, seq DESC)');
       db.exec('CREATE INDEX IF NOT EXISTS idx_session_outbox_pending ON session_outbox(state, id)');
     },
   },
   {
-    // PMI workspace snapshots (docs/PMI/WORKSPACE_RECOVERY.md). Blob bodies
+    // Baton workspace snapshots (docs/baton/WORKSPACE_RECOVERY.md). Blob bodies
     // live in <dataDir>/blobs; this table holds manifests.
-    id: 'pmi-3-workspace-snapshots',
+    id: 'baton-3-workspace-snapshots',
     apply: (db) => {
       db.exec(`CREATE TABLE IF NOT EXISTS workspace_snapshots (
         id              TEXT PRIMARY KEY,
@@ -1227,12 +1227,12 @@ const SCHEMA_MIGRATIONS: SchemaMigration[] = [
     },
   },
   {
-    // PMI git intelligence: incremental analysis cursors (Local mode) and the
+    // Baton git intelligence: incremental analysis cursors (Local mode) and the
     // "needs review" mark that commits put on knowledge they may have outdated.
-    id: 'pmi-4-git-intelligence',
+    id: 'baton-4-git-intelligence',
     apply: (db) => {
       addColumnIfMissing(db, 'observations', 'review', 'review TEXT');
-      db.exec(`CREATE TABLE IF NOT EXISTS pmi_git_cursors (
+      db.exec(`CREATE TABLE IF NOT EXISTS baton_git_cursors (
         root_commit            TEXT NOT NULL,
         branch                 TEXT NOT NULL,
         project_id             TEXT NOT NULL,
@@ -1244,10 +1244,10 @@ const SCHEMA_MIGRATIONS: SchemaMigration[] = [
     },
   },
   {
-    // PMI: mini-skills become ordinary memories of category coding_convention
-    // (docs/PMI/ROADMAP.md, Phase 3 deferral). The mini_skills table is left
+    // Baton: mini-skills become ordinary memories of category coding_convention
+    // (docs/baton/ROADMAP.md, Phase 3 deferral). The mini_skills table is left
     // as it was; each skill is copied once, keyed by topicKey mini-skill/<id>/<fingerprint>.
-    id: 'pmi-5-mini-skills-to-conventions',
+    id: 'baton-5-mini-skills-to-conventions',
     apply: (db, dataDir) => { convertMiniSkillsToConventions(db, dataDir); },
   },
   {
@@ -1411,26 +1411,26 @@ function convertMiniSkillsToConventions(db: any, dataDir?: string): void {
   db.prepare("UPDATE meta SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT) WHERE key = 'storage_generation'").run();
 }
 
-/** Migrations introduced by PMI; a store holding data is backed up before the first one runs. */
-const PMI_MIGRATION_PREFIX = 'pmi-';
+/** Migrations introduced by Baton; a store holding data is backed up before the first one runs. */
+const BATON_MIGRATION_PREFIX = 'baton-';
 
 /**
- * Copy the database to `memorix.db.pre-pmi-<timestamp>` with `VACUUM INTO` and
- * verify the copy before any PMI migration touches the schema
- * (docs/PMI/DATABASE.md §5). Empty stores have nothing to protect.
+ * Copy the database to `baton.db.pre-baton-<timestamp>` with `VACUUM INTO` and
+ * verify the copy before any Baton migration touches the schema
+ * (docs/baton/DATABASE.md §5). Empty stores have nothing to protect.
  */
-export function backupBeforePmiMigrations(db: any, dbPath: string, pendingIds: string[]): string | null {
-  if (!pendingIds.some((id) => id.startsWith(PMI_MIGRATION_PREFIX))) return null;
+export function backupBeforeBatonMigrations(db: any, dbPath: string, pendingIds: string[]): string | null {
+  if (!pendingIds.some((id) => id.startsWith(BATON_MIGRATION_PREFIX))) return null;
   const hasData = db.prepare('SELECT 1 FROM observations LIMIT 1').get();
   if (!hasData) return null;
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const backupPath = `${dbPath}.pre-pmi-${stamp}`;
+  const backupPath = `${dbPath}.pre-baton-${stamp}`;
   db.prepare('VACUUM INTO ?').run(backupPath);
   const copy = createDatabase(backupPath);
   try {
     const result = copy.prepare('PRAGMA integrity_check').get() as Record<string, unknown> | undefined;
     const verdict = result ? Object.values(result)[0] : undefined;
-    if (verdict !== 'ok') throw new Error(`[pmi] pre-migration backup failed integrity check: ${String(verdict)}`);
+    if (verdict !== 'ok') throw new Error(`[baton] pre-migration backup failed integrity check: ${String(verdict)}`);
   } finally {
     copy.close();
   }
@@ -1443,7 +1443,7 @@ function applySchemaMigrations(db: any, dbPath?: string): void {
     const pending = SCHEMA_MIGRATIONS
       .filter((migration) => !db.prepare('SELECT 1 FROM schema_migrations WHERE id = ?').get(migration.id))
       .map((migration) => migration.id);
-    backupBeforePmiMigrations(db, dbPath, pending);
+    backupBeforeBatonMigrations(db, dbPath, pending);
   }
   for (const migration of SCHEMA_MIGRATIONS) {
     const applied = db.prepare('SELECT 1 FROM schema_migrations WHERE id = ?').get(migration.id);
@@ -1505,7 +1505,7 @@ export function getDatabase(dataDir: string): any {
   loadBetterSqlite3();
   fs.mkdirSync(dataDir, { recursive: true });
 
-  const dbPath = path.join(dataDir, 'memorix.db');
+  const dbPath = path.join(dataDir, 'baton.db');
   let db: any;
   try {
     db = createDatabase(dbPath);

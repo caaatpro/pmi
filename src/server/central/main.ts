@@ -1,18 +1,18 @@
 /**
- * `pmi-server` — central PMI server and its administration commands.
+ * `baton-server` — central Baton server and its administration commands.
  *
- *   pmi-server migrate
- *   pmi-server serve [--host 0.0.0.0] [--port 7420] [--no-migrate]
- *   pmi-server create-org <slug> [--name "..."]
- *   pmi-server create-user <email> [--name "..."] [--org <slug>] [--role owner|admin|member]
- *   pmi-server add-member <org> <email> [--role ...]
- *   pmi-server issue-token <email> [--name laptop] [--days 90]
- *   pmi-server revoke-token <token-id>
- *   pmi-server create-team <org> <name>
- *   pmi-server add-team-member <org> <team> <email>
- *   pmi-server grant <org>/<project-slug> (--user <email> | --team <name>) --role maintainer|developer|viewer|none
+ *   baton-server migrate
+ *   baton-server serve [--host 0.0.0.0] [--port 7420] [--no-migrate]
+ *   baton-server create-org <slug> [--name "..."]
+ *   baton-server create-user <email> [--name "..."] [--org <slug>] [--role owner|admin|member]
+ *   baton-server add-member <org> <email> [--role ...]
+ *   baton-server issue-token <email> [--name laptop] [--days 90]
+ *   baton-server revoke-token <token-id>
+ *   baton-server create-team <org> <name>
+ *   baton-server add-team-member <org> <team> <email>
+ *   baton-server grant <org>/<project-slug> (--user <email> | --team <name>) --role maintainer|developer|viewer|none
  *
- * Configuration: PMI_DATABASE_URL (required), PMI_HOST, PMI_PORT.
+ * Configuration: BATON_DATABASE_URL (required), BATON_HOST, BATON_PORT.
  */
 import { parseArgs } from 'node:util';
 
@@ -39,10 +39,10 @@ import { EMBEDDING_DIMENSIONS, embedPending, type ServerEmbeddings } from './con
 import { ServerBlobStorage, applyRetention } from './snapshots-repo.js';
 import path from 'node:path';
 
-declare const __MEMORIX_VERSION__: string | undefined;
-const VERSION = typeof __MEMORIX_VERSION__ === 'string' ? __MEMORIX_VERSION__ : 'dev';
+declare const __BATON_VERSION__: string | undefined;
+const VERSION = typeof __BATON_VERSION__ === 'string' ? __BATON_VERSION__ : 'dev';
 
-const USAGE = `pmi-server ${VERSION} — central PMI server
+const USAGE = `baton-server ${VERSION} — central Baton server
 
 Commands:
   migrate                                   Apply Postgres migrations
@@ -55,7 +55,7 @@ Commands:
   gc                                        Apply snapshot retention and delete unused blobs
   list-tokens <email>                       Show a user's tokens (never the token values)
   verify-blobs                              Check every snapshot blob against its SHA-256 (after restoring a backup)
-  reencrypt-blobs                           Rewrite blobs with PMI_BLOB_KEY (enable encryption, rotate keys)
+  reencrypt-blobs                           Rewrite blobs with BATON_BLOB_KEY (enable encryption, rotate keys)
   create-team <org> <name>
   add-team-member <org> <team> <email>
   grant <org>/<project> (--user EMAIL | --team NAME) --role maintainer|developer|viewer|none
@@ -63,10 +63,10 @@ Commands:
 Organization owners/admins have full access to every project of their
 organization; everyone else needs a project grant (directly or via a team).
 
-Environment: PMI_DATABASE_URL (required), PMI_HOST (default 127.0.0.1), PMI_PORT (default 7420),
-PMI_LEASE_TTL (session lease seconds, default 600), PMI_METRICS_TOKEN (enables /metrics),
-MEMORIX_EMBEDDING (fastembed|transformers|api: semantic search, 384 dimensions),
-PMI_BLOB_KEY / PMI_BLOB_KEYS_OLD (AES-256-GCM for snapshot blobs at rest), PMI_TRUST_PROXY=1 (behind Caddy), PMI_BLOB_DIR (large snapshot blobs, default ./data/blobs)`;
+Environment: BATON_DATABASE_URL (required), BATON_HOST (default 127.0.0.1), BATON_PORT (default 7420),
+BATON_LEASE_TTL (session lease seconds, default 600), BATON_METRICS_TOKEN (enables /metrics),
+BATON_EMBEDDING (fastembed|transformers|api: semantic search, 384 dimensions),
+BATON_BLOB_KEY / BATON_BLOB_KEYS_OLD (AES-256-GCM for snapshot blobs at rest), BATON_TRUST_PROXY=1 (behind Caddy), BATON_BLOB_DIR (large snapshot blobs, default ./data/blobs)`;
 
 type Role = 'owner' | 'admin' | 'member';
 
@@ -77,8 +77,8 @@ function parseRole(value: string | undefined): Role {
 }
 
 async function withDatabase<T>(fn: (db: Database) => Promise<T>): Promise<T> {
-  const url = process.env.PMI_DATABASE_URL;
-  if (!url) throw new Error('PMI_DATABASE_URL is not set');
+  const url = process.env.BATON_DATABASE_URL;
+  if (!url) throw new Error('BATON_DATABASE_URL is not set');
   const db = await openDatabase(url);
   try {
     return await fn(db);
@@ -117,36 +117,36 @@ export async function runServerCli(argv: string[]): Promise<number> {
       return 0;
     }
     case 'serve': {
-      const url = process.env.PMI_DATABASE_URL;
-      if (!url) throw new Error('PMI_DATABASE_URL is not set');
+      const url = process.env.BATON_DATABASE_URL;
+      if (!url) throw new Error('BATON_DATABASE_URL is not set');
       const db = await openDatabase(url);
       if (!values['no-migrate']) await migrate(db);
-      const host = values.host ?? process.env.PMI_HOST ?? '127.0.0.1';
-      const port = Number(values.port ?? process.env.PMI_PORT ?? 7420);
+      const host = values.host ?? process.env.BATON_HOST ?? '127.0.0.1';
+      const port = Number(values.port ?? process.env.BATON_PORT ?? 7420);
       const embeddings = await loadServerEmbeddings();
       const server = createCentralServer({ db, version: VERSION, embeddings });
       if (embeddings) {
         // Fill vectors for new and edited memories in the background.
         const embedJob = setInterval(() => {
-          embedPending(db, embeddings).catch((error: Error) => console.error(`[pmi-server] embedding failed: ${error.message}`));
+          embedPending(db, embeddings).catch((error: Error) => console.error(`[baton-server] embedding failed: ${error.message}`));
         }, 10_000);
         embedJob.unref();
       }
       // Sessions whose lease ran out become resumable even if nobody asks.
       const leaseJob = setInterval(() => {
-        expireLeases(db).catch((error: Error) => console.error(`[pmi-server] lease expiry failed: ${error.message}`));
+        expireLeases(db).catch((error: Error) => console.error(`[baton-server] lease expiry failed: ${error.message}`));
       }, 30_000);
       leaseJob.unref();
       // Snapshot retention and blob GC (WORKSPACE_RECOVERY.md §7) every 6 hours.
-      const blobStorage = new ServerBlobStorage(process.env.PMI_BLOB_DIR ?? path.resolve('data', 'blobs'));
+      const blobStorage = new ServerBlobStorage(process.env.BATON_BLOB_DIR ?? path.resolve('data', 'blobs'));
       const retentionJob = setInterval(() => {
         applyRetention(db, blobStorage)
           .then((report) => console.log(JSON.stringify({ at: new Date().toISOString(), msg: 'snapshot retention', ...report })))
-          .catch((error: Error) => console.error(`[pmi-server] snapshot retention failed: ${error.message}`));
+          .catch((error: Error) => console.error(`[baton-server] snapshot retention failed: ${error.message}`));
       }, 6 * 3_600_000);
       retentionJob.unref();
       await new Promise<void>((resolve) => server.listen(port, host, resolve));
-      console.log(JSON.stringify({ at: new Date().toISOString(), msg: 'pmi-server listening', host, port, version: VERSION }));
+      console.log(JSON.stringify({ at: new Date().toISOString(), msg: 'baton-server listening', host, port, version: VERSION }));
       await new Promise<void>((resolve) => {
         const stop = () => server.close(() => resolve());
         process.once('SIGTERM', stop);
@@ -157,14 +157,14 @@ export async function runServerCli(argv: string[]): Promise<number> {
     }
     case 'create-org': {
       const [slug] = rest;
-      if (!slug) throw new Error('usage: pmi-server create-org <slug> [--name N]');
+      if (!slug) throw new Error('usage: baton-server create-org <slug> [--name N]');
       const org = await withDatabase((db) => createOrganization(db, slug, values.name ?? slug));
       console.log(`Organization ${org.slug} (${org.id})`);
       return 0;
     }
     case 'create-user': {
       const [email] = rest;
-      if (!email) throw new Error('usage: pmi-server create-user <email> [--name N] [--org SLUG] [--role R]');
+      if (!email) throw new Error('usage: baton-server create-user <email> [--name N] [--org SLUG] [--role R]');
       const role = parseRole(values.role);
       const user = await withDatabase((db) => db.transaction((tx) =>
         createUser(tx, { email, displayName: values.name ?? email, orgSlug: values.org, role })));
@@ -173,7 +173,7 @@ export async function runServerCli(argv: string[]): Promise<number> {
     }
     case 'add-member': {
       const [org, email] = rest;
-      if (!org || !email) throw new Error('usage: pmi-server add-member <org> <email> [--role R]');
+      if (!org || !email) throw new Error('usage: baton-server add-member <org> <email> [--role R]');
       const role = parseRole(values.role);
       await withDatabase((db) => db.transaction(async (tx) => {
         const [user] = await tx.query<{ id: string }>('SELECT id FROM core.users WHERE email = $1', [email]);
@@ -185,7 +185,7 @@ export async function runServerCli(argv: string[]): Promise<number> {
     }
     case 'issue-token': {
       const [email] = rest;
-      if (!email) throw new Error('usage: pmi-server issue-token <email> [--name N] [--days D]');
+      if (!email) throw new Error('usage: baton-server issue-token <email> [--name N] [--days D]');
       const days = values.days ? Number(values.days) : undefined;
       if (days !== undefined && (!Number.isFinite(days) || days <= 0)) throw new Error('--days must be a positive number');
       const expiresAt = days ? new Date(Date.now() + days * 86_400_000) : undefined;
@@ -196,14 +196,14 @@ export async function runServerCli(argv: string[]): Promise<number> {
     }
     case 'revoke-token': {
       const [id] = rest;
-      if (!id) throw new Error('usage: pmi-server revoke-token <token-id>');
+      if (!id) throw new Error('usage: baton-server revoke-token <token-id>');
       const revoked = await withDatabase((db) => revokeToken(db, id));
       console.log(revoked ? `Revoked ${id}` : `No active token ${id}`);
       return revoked ? 0 : 1;
     }
     case 'list-tokens': {
       const [email] = rest;
-      if (!email) throw new Error('usage: pmi-server list-tokens <email>');
+      if (!email) throw new Error('usage: baton-server list-tokens <email>');
       const rows = await withDatabase((db) => db.query<{ id: string; name: string; created_at: string; expires_at: string | null; revoked_at: string | null; last_used_at: string | null }>(
         `SELECT t.id, t.name, t.created_at, t.expires_at, t.revoked_at, t.last_used_at FROM core.api_tokens t JOIN core.users u ON u.id = t.user_id
           WHERE u.email = $1 ORDER BY t.created_at`, [email]));
@@ -215,30 +215,30 @@ export async function runServerCli(argv: string[]): Promise<number> {
       return 0;
     }
     case 'verify-blobs': {
-      const report = await withDatabase((db) => new ServerBlobStorage(process.env.PMI_BLOB_DIR ?? path.resolve('data', 'blobs')).verifyAll(db));
+      const report = await withDatabase((db) => new ServerBlobStorage(process.env.BATON_BLOB_DIR ?? path.resolve('data', 'blobs')).verifyAll(db));
       console.log(`Checked ${report.checked} blob(s); ${report.failed.length} failed${report.failed.length ? `: ${report.failed.join(', ')}` : ''}`);
       return report.failed.length ? 1 : 0;
     }
     case 'reencrypt-blobs': {
-      const report = await withDatabase((db) => new ServerBlobStorage(process.env.PMI_BLOB_DIR ?? path.resolve('data', 'blobs')).reencryptAll(db));
+      const report = await withDatabase((db) => new ServerBlobStorage(process.env.BATON_BLOB_DIR ?? path.resolve('data', 'blobs')).reencryptAll(db));
       console.log(`Re-encrypted ${report.rewritten} blob(s) with the current key; ${report.failed.length} failed${report.failed.length ? `: ${report.failed.join(', ')}` : ''}`);
       return report.failed.length ? 1 : 0;
     }
     case 'gc': {
-      const report = await withDatabase((db) => applyRetention(db, new ServerBlobStorage(process.env.PMI_BLOB_DIR ?? path.resolve('data', 'blobs'))));
+      const report = await withDatabase((db) => applyRetention(db, new ServerBlobStorage(process.env.BATON_BLOB_DIR ?? path.resolve('data', 'blobs'))));
       console.log(`Removed ${report.snapshots} snapshot(s), ${report.projectBlobs} unused project blob claim(s), ${report.blobs} blob(s)`);
       return 0;
     }
     case 'create-team': {
       const [org, name] = rest;
-      if (!org || !name) throw new Error('usage: pmi-server create-team <org> <name>');
+      if (!org || !name) throw new Error('usage: baton-server create-team <org> <name>');
       const team = await withDatabase((db) => db.transaction((tx) => createTeam(tx, org, name)));
       console.log(`Team ${team.name} (${team.id})`);
       return 0;
     }
     case 'add-team-member': {
       const [org, teamName, email] = rest;
-      if (!org || !teamName || !email) throw new Error('usage: pmi-server add-team-member <org> <team> <email>');
+      if (!org || !teamName || !email) throw new Error('usage: baton-server add-team-member <org> <team> <email>');
       await withDatabase((db) => db.transaction(async (tx) => {
         const team = await findTeam(tx, org, teamName);
         const user = await findUserByEmail(tx, email);
@@ -253,7 +253,7 @@ export async function runServerCli(argv: string[]): Promise<number> {
       const [target] = rest;
       const [org, slug] = (target ?? '').split('/');
       if (!org || !slug || Boolean(values.user) === Boolean(values.team) || !values.role) {
-        throw new Error('usage: pmi-server grant <org>/<project> (--user EMAIL | --team NAME) --role maintainer|developer|viewer|none');
+        throw new Error('usage: baton-server grant <org>/<project> (--user EMAIL | --team NAME) --role maintainer|developer|viewer|none');
       }
       if (!['maintainer', 'developer', 'viewer', 'none'].includes(values.role)) throw new Error('--role must be maintainer, developer, viewer or none');
       const role = values.role === 'none' ? null : values.role as GrantRole;
@@ -278,32 +278,32 @@ export async function runServerCli(argv: string[]): Promise<number> {
 }
 
 /**
- * Semantic search uses the Memorix embedding providers (MEMORIX_EMBEDDING=
+ * Semantic search uses the Baton embedding providers (BATON_EMBEDDING=
  * fastembed|transformers|api). The column is vector(384); another size is
  * reported and search stays keyword-only rather than failing.
  */
 async function loadServerEmbeddings(): Promise<ServerEmbeddings | null> {
-  const mode = process.env.MEMORIX_EMBEDDING?.trim();
+  const mode = process.env.BATON_EMBEDDING?.trim();
   if (!mode || mode === 'off') return null;
   const { getEmbeddingProvider } = await import('../../embedding/provider.js');
   const provider = await getEmbeddingProvider();
   if (!provider) {
-    console.error('[pmi-server] MEMORIX_EMBEDDING is set but no embedding provider is available; search is keyword-only');
+    console.error('[baton-server] BATON_EMBEDDING is set but no embedding provider is available; search is keyword-only');
     return null;
   }
   if (provider.dimensions !== EMBEDDING_DIMENSIONS) {
-    console.error(`[pmi-server] embedding provider ${provider.name} has ${provider.dimensions} dimensions, the schema expects ${EMBEDDING_DIMENSIONS}; search is keyword-only`);
+    console.error(`[baton-server] embedding provider ${provider.name} has ${provider.dimensions} dimensions, the schema expects ${EMBEDDING_DIMENSIONS}; search is keyword-only`);
     return null;
   }
   return { name: provider.name, dimensions: provider.dimensions, embedBatch: (texts) => provider.embedBatch(texts) };
 }
 
-const invokedDirectly = process.argv[1] && /pmi-server(\.js)?$|central[\\/]main\.(js|ts)$/.test(process.argv[1]);
+const invokedDirectly = process.argv[1] && /baton-server(\.js)?$|central[\\/]main\.(js|ts)$/.test(process.argv[1]);
 if (invokedDirectly) {
   runServerCli(process.argv.slice(2)).then(
     (code) => { process.exitCode = code; },
     (error: unknown) => {
-      console.error(`[pmi-server] ${error instanceof HttpError || error instanceof Error ? error.message : String(error)}`);
+      console.error(`[baton-server] ${error instanceof HttpError || error instanceof Error ? error.message : String(error)}`);
       process.exitCode = 1;
     },
   );

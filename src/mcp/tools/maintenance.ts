@@ -1,6 +1,6 @@
 /**
- * Memory maintenance tools inherited from Memorix: memorix_audit_project, memorix_retention,
- * memorix_formation_metrics, memorix_transfer.
+ * Memory maintenance tools inherited from Baton: baton_audit_project, baton_retention,
+ * baton_formation_metrics, baton_transfer.
  *
  * Split out of src/server.ts without behaviour changes; connection state comes
  * from `ServerToolContext`.
@@ -17,20 +17,20 @@ import type { ServerToolContext } from './server-context.js';
 
 export function registerMaintenanceTools(server: McpServer, ctx: ServerToolContext): void {
   /**
-   * memorix_audit_project — Scan for misattributed observations
+   * baton_audit_project — Scan for misattributed observations
    *
    * Read-only audit: identifies observations in the current project whose
    * entityName is well-known in a different project but absent here.
-   * Use the results to decide which observations to archive with memorix_resolve.
+   * Use the results to decide which observations to archive with baton_resolve.
    */
   server.registerTool(
-    'memorix_audit_project',
+    'baton_audit_project',
     {
       title: 'Audit Project Attribution',
       description:
         'Scan the current project for observations that may have been written to the wrong project bucket. ' +
         'Identifies observations whose entityName appears exclusively in a different project. ' +
-        'Read-only — no data is changed. Use memorix_resolve to archive confirmed mis-attributed observations.',
+        'Read-only — no data is changed. Use baton_resolve to archive confirmed mis-attributed observations.',
       inputSchema: {
         threshold: z.number().int().min(1).optional().describe(
           'Minimum occurrences of an entityName in another project to flag it as suspicious (default: 2)',
@@ -87,8 +87,8 @@ export function registerMaintenanceTools(server: McpServer, ctx: ServerToolConte
       lines.push('');
       lines.push('### Suggested Actions');
       lines.push(`Suggested IDs: ${auditSummary}`);
-      lines.push('- Archive confirmed mis-attributed observations: use `memorix_resolve` with the specific IDs above and `status: "archived"`.');
-      lines.push('- Review first with `memorix_detail` if unsure.');
+      lines.push('- Archive confirmed mis-attributed observations: use `baton_resolve` with the specific IDs above and `status: "archived"`.');
+      lines.push('- Review first with `baton_detail` if unsure.');
 
       return {
         content: [{ type: 'text' as const, text: lines.join('\n') }],
@@ -97,17 +97,17 @@ export function registerMaintenanceTools(server: McpServer, ctx: ServerToolConte
   );
 
   // ================================================================
-  // Memorix Retention & Decay Tools (inspired by mcp-memory-service + MemCP)
+  // Baton Retention & Decay Tools (inspired by mcp-memory-service + MemCP)
   // ================================================================
 
   /**
-   * memorix_retention — Memory retention status
+   * baton_retention — Memory retention status
    *
    * Shows which observations are active, stale, or candidates for archiving.
    * Uses exponential decay scoring from mcp-memory-service.
    */
   server.registerTool(
-    'memorix_retention',
+    'baton_retention',
     {
       title: 'Memory Retention Status & Archive',
       description:
@@ -126,7 +126,7 @@ export function registerMaintenanceTools(server: McpServer, ctx: ServerToolConte
       const { getDb } = await import('../../store/orama-store.js');
       const { search } = await import('@orama/orama');
 
-      // Shared: build MemorixDocument[] from in-memory observations
+      // Shared: build BatonDocument[] from in-memory observations
       const { getAllObservations, resolveObservations } = await import('../../memory/observations.js');
       const reader = ctx.getObservationReader();
       const allObs = await withFreshIndex(() => filterReadableObservations(
@@ -145,7 +145,7 @@ export function registerMaintenanceTools(server: McpServer, ctx: ServerToolConte
           limit: Math.max(1, allObs.length),
         });
         for (const hit of accessResults.hits) {
-          const doc = hit.document as unknown as import('../../types.js').MemorixDocument;
+          const doc = hit.document as unknown as import('../../types.js').BatonDocument;
           accessMap.set(doc.observationId, {
             accessCount: doc.accessCount ?? 0,
             lastAccessedAt: doc.lastAccessedAt ?? '',
@@ -156,7 +156,7 @@ export function registerMaintenanceTools(server: McpServer, ctx: ServerToolConte
         // less precise immunity/reporting.
       }
 
-      const docs: import('../../types.js').MemorixDocument[] = allObs.map(obs => ({
+      const docs: import('../../types.js').BatonDocument[] = allObs.map(obs => ({
         id: `obs-${obs.id}`,
         observationId: obs.id,
         entityName: obs.entityName,
@@ -236,8 +236,8 @@ export function registerMaintenanceTools(server: McpServer, ctx: ServerToolConte
         staleLines.push('');
         staleLines.push('### Suggested Actions');
         staleLines.push(`Suggested IDs: [${staleIds.join(', ')}]`);
-        staleLines.push(`- Archive stale observations: \`memorix_resolve\` with \`ids: [${staleIds.join(', ')}]\` and \`status: "archived"\``);
-        staleLines.push('- Or review individually with `memorix_detail` before deciding.');
+        staleLines.push(`- Archive stale observations: \`baton_resolve\` with \`ids: [${staleIds.join(', ')}]\` and \`status: "archived"\``);
+        staleLines.push('- Or review individually with `baton_detail` before deciding.');
 
         return {
           content: [{ type: 'text' as const, text: staleLines.join('\n') }],
@@ -290,12 +290,12 @@ export function registerMaintenanceTools(server: McpServer, ctx: ServerToolConte
         const candidateIds = candidates.map(c => c.observationId);
         lines.push('');
         lines.push(`Candidate IDs: [${candidateIds.slice(0, 20).join(', ')}]${candidateIds.length > 20 ? ` … (${candidateIds.length} total)` : ''}`);
-        lines.push(`> [TIP] Use \`memorix_retention\` with \`action: "archive"\` to move all, or \`memorix_resolve\` with specific IDs.`);
+        lines.push(`> [TIP] Use \`baton_retention\` with \`action: "archive"\` to move all, or \`baton_resolve\` with specific IDs.`);
         lines.push('');
       }
 
       if (summary.stale > 0) {
-        lines.push(`> [TASK] ${summary.stale} stale observation(s) — use \`memorix_retention\` with \`action: "stale"\` for full details.`);
+        lines.push(`> [TASK] ${summary.stale} stale observation(s) — use \`baton_retention\` with \`action: "stale"\` for full details.`);
         lines.push('');
       }
 
@@ -317,14 +317,14 @@ export function registerMaintenanceTools(server: McpServer, ctx: ServerToolConte
   );
 
   /**
-   * memorix_formation_metrics — Formation Pipeline shadow mode metrics
+   * baton_formation_metrics — Formation Pipeline shadow mode metrics
    *
    * Shows aggregated metrics from the Memory Formation Pipeline running
    * in shadow mode. Useful for evaluating pipeline quality before
    * switching from shadow to active mode.
    */
   server.registerTool(
-    'memorix_formation_metrics',
+    'baton_formation_metrics',
     {
       title: 'Formation Pipeline Metrics',
       description:
@@ -415,10 +415,10 @@ export function registerMaintenanceTools(server: McpServer, ctx: ServerToolConte
   // ============================================================
 
   /**
-   * memorix_transfer — Export or import project memories
+   * baton_transfer — Export or import project memories
    */
   server.registerTool(
-    'memorix_transfer',
+    'baton_transfer',
     {
       title: 'Transfer Memories',
       description:

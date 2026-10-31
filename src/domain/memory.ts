@@ -1,8 +1,8 @@
 /**
- * PMI memory domain model — categories, confidence, lifecycle status and the
+ * Baton memory domain model — categories, confidence, lifecycle status and the
  * rules that move a memory between them. Pure functions only: the SQLite
  * client, the central server and the MCP tools all call into this module so a
- * transition allowed in one place is allowed everywhere (docs/PMI/ARCHITECTURE.md §6).
+ * transition allowed in one place is allowed everywhere (docs/baton/ARCHITECTURE.md §6).
  */
 import type { Observation, ObservationType } from '../types.js';
 
@@ -66,7 +66,7 @@ const TYPE_CLASSIFICATION: Record<Exclude<ObservationType, 'what-changed'>, Clas
 };
 
 /**
- * Default classification of a Memorix observation (DATABASE.md §5). Nothing is
+ * Default classification of a Baton observation (DATABASE.md §5). Nothing is
  * ever classified as `confirmed` here: confirmation is an explicit human act.
  */
 export function classifyObservationType(
@@ -135,7 +135,7 @@ export function canTransitionStatus(from: MemoryStatus, to: MemoryStatus, actor:
 }
 
 /**
- * Map Memorix lifecycle status onto PMI status. `needs_review` comes from the
+ * Map Baton lifecycle status onto Baton status. `needs_review` comes from the
  * observation's `review` mark (set by git analysis), not from `status`.
  */
 export function toMemoryStatus(status: string | undefined | null, review?: unknown): MemoryStatus {

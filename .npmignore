@@ -3,7 +3,7 @@
 # The .gitignore excludes dist/ from version control, but .npmignore overrides that for npm pack.
 
 node_modules/
-.memorix-data/
+.baton-data/
 local_cache/
 demo/
 image/
@@ -31,9 +31,9 @@ Thumbs.db
 .codex/
 .cursor/
 .kiro/
-.memorix/
+.baton/
 .windsurf/hooks.json
-.windsurf/rules/memorix.md
+.windsurf/rules/baton.md
 .github/copilot-instructions.md
 AGENTS.md
 test-*.mjs

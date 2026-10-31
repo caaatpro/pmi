@@ -47,12 +47,12 @@ function startServer(projectRoot, dataDir) {
       ...process.env,
       HOME: path.dirname(dataDir),
       USERPROFILE: path.dirname(dataDir),
-      MEMORIX_DATA_DIR: dataDir,
-      MEMORIX_EMBEDDING: 'off',
-      MEMORIX_LLM_API_KEY: '',
+      BATON_DATA_DIR: dataDir,
+      BATON_EMBEDDING: 'off',
+      BATON_LLM_API_KEY: '',
       OPENAI_API_KEY: '',
-      MEMORIX_LLM_PROVIDER: '',
-      MEMORIX_LLM_MODEL: '',
+      BATON_LLM_PROVIDER: '',
+      BATON_LLM_MODEL: '',
       NO_COLOR: '1',
     },
     stdio: ['pipe', 'pipe', 'pipe'],
@@ -115,16 +115,16 @@ function startServer(projectRoot, dataDir) {
 
 async function main() {
   assert.equal(await import('node:fs/promises').then(() => true), true)
-  const tempBase = process.env.MEMORIX_TEST_TMPDIR?.trim() || path.join(root, '.tmp-memorix-smoke')
+  const tempBase = process.env.BATON_TEST_TMPDIR?.trim() || path.join(root, '.tmp-baton-smoke')
   await mkdir(tempBase, { recursive: true })
-  const tempRoot = await mkdtemp(path.join(tempBase, 'memorix-mcp-stdio-smoke-'))
+  const tempRoot = await mkdtemp(path.join(tempBase, 'baton-mcp-stdio-smoke-'))
   const projectRoot = path.join(tempRoot, 'project')
   const dataDir = path.join(tempRoot, 'data')
   await mkdir(projectRoot, { recursive: true })
   await mkdir(dataDir, { recursive: true })
   execFileSync('git', ['init'], { cwd: projectRoot, stdio: 'ignore', windowsHide: true })
 
-  if (!process.env.CI && !process.env.MEMORIX_SMOKE_SKIP_BUILD_CHECK && !await import('node:fs').then(({ existsSync }) => existsSync(distCli))) {
+  if (!process.env.CI && !process.env.BATON_SMOKE_SKIP_BUILD_CHECK && !await import('node:fs').then(({ existsSync }) => existsSync(distCli))) {
     throw new Error(`built CLI not found at ${distCli}; run npm run build first`)
   }
 
@@ -136,7 +136,7 @@ async function main() {
     assert.ok(server.elapsed() <= timeoutMs, `discover responded after ${server.elapsed()}ms`)
     assert.equal(discovery.error, undefined)
     assert.equal(discovery.result.resultType, 'complete')
-    assert.deepEqual(discovery.result._meta['io.modelcontextprotocol/serverInfo'].name, 'memorix')
+    assert.deepEqual(discovery.result._meta['io.modelcontextprotocol/serverInfo'].name, 'baton')
     assert.deepEqual(discovery.result.supportedVersions, ['2025-11-25', '2024-11-05'])
 
     const listId = 'smoke-list'
@@ -147,7 +147,7 @@ async function main() {
       jsonrpc: '2.0',
       id: callId,
       method: 'tools/call',
-      params: { name: 'memorix_codegraph_status', arguments: {} },
+      params: { name: 'baton_codegraph_status', arguments: {} },
     })
     server.send({
       jsonrpc: '2.0',
@@ -156,7 +156,7 @@ async function main() {
       params: {
         protocolVersion: '2025-11-25',
         capabilities: {},
-        clientInfo: { name: 'memorix-stdio-smoke', version: '1' },
+        clientInfo: { name: 'baton-stdio-smoke', version: '1' },
       },
     })
 
@@ -166,7 +166,7 @@ async function main() {
       server.wait(initializeId),
     ])
     assert.equal(list.error, undefined)
-    assert.ok(list.result.tools.some((tool) => tool.name === 'memorix_codegraph_status'))
+    assert.ok(list.result.tools.some((tool) => tool.name === 'baton_codegraph_status'))
     assert.equal(call.error, undefined)
     assert.equal(call.result.content[0].type, 'text')
     assert.equal(initialize.error, undefined)

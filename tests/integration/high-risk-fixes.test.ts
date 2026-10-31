@@ -26,14 +26,14 @@ describe('CORS cross-origin model', () => {
   let httpServer: any;
 
   beforeAll(async () => {
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-cors-test-'));
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-cors-test-'));
     projectDir = path.join(tempDir, 'my-project');
     await fs.mkdir(projectDir, { recursive: true });
     await fs.mkdir(path.join(projectDir, '.git'), { recursive: true });
     await fs.writeFile(path.join(projectDir, '.git', 'config'),
       '[remote "origin"]\n\turl = https://github.com/test/cors-project.git\n');
 
-    const dataDir = path.join(tempDir, '.memorix', 'data');
+    const dataDir = path.join(tempDir, '.baton', 'data');
     await fs.mkdir(dataDir, { recursive: true });
     await fs.writeFile(path.join(dataDir, 'observations.json'), '[]');
     await fs.writeFile(path.join(dataDir, 'counter.json'), '{"nextId": 1}');
@@ -122,7 +122,7 @@ describe('Observations concurrent write race', () => {
   let testDir: string;
 
   beforeEach(async () => {
-    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-concurrent-'));
+    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-concurrent-'));
     const { resetDb } = await import('../../src/store/orama-store.js');
     await resetDb();
     const { initObservations } = await import('../../src/memory/observations.js');
@@ -188,7 +188,7 @@ describe('Timeline project scope', () => {
   const PROJECT_B = 'test/timeline-b';
 
   beforeEach(async () => {
-    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-timeline-'));
+    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-timeline-'));
     const { resetDb } = await import('../../src/store/orama-store.js');
     await resetDb();
     const { initObservations, storeObservation } = await import('../../src/memory/observations.js');
@@ -241,7 +241,7 @@ describe('Graph read tools project scope', () => {
   const PROJECT_B = 'test/graph-read-b';
 
   beforeEach(async () => {
-    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-graph-read-'));
+    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-graph-read-'));
     const { resetDb } = await import('../../src/store/orama-store.js');
     await resetDb();
     const { initObservations, storeObservation } = await import('../../src/memory/observations.js');
@@ -273,11 +273,11 @@ describe('Status project count under flat storage', () => {
   let testDir: string;
 
   beforeEach(async () => {
-    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-status-'));
+    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-status-'));
   });
 
   it('counts only the current project observations, not global', async () => {
-    const dataDir = path.join(testDir, '.memorix', 'data');
+    const dataDir = path.join(testDir, '.baton', 'data');
     await fs.mkdir(dataDir, { recursive: true });
 
     // Seed flat storage with observations from two projects

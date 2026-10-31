@@ -1,5 +1,5 @@
 /**
- * CLI Command: memorix purge
+ * CLI Command: baton purge
  *
  * Retire memories from retrieval. Project-scoped by default; --all covers
  * every project. Observations and long-term records are archived (never

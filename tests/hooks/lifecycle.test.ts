@@ -10,24 +10,24 @@ import {
 } from '../../src/hooks/lifecycle.js';
 
 describe('hook process lifecycle', () => {
-  const originalTimeout = process.env.MEMORIX_HOOK_TIMEOUT_MS;
-  const originalStdinTimeout = process.env.MEMORIX_HOOK_STDIN_TIMEOUT_MS;
+  const originalTimeout = process.env.BATON_HOOK_TIMEOUT_MS;
+  const originalStdinTimeout = process.env.BATON_HOOK_STDIN_TIMEOUT_MS;
 
   afterEach(() => {
-    if (originalTimeout === undefined) delete process.env.MEMORIX_HOOK_TIMEOUT_MS;
-    else process.env.MEMORIX_HOOK_TIMEOUT_MS = originalTimeout;
-    if (originalStdinTimeout === undefined) delete process.env.MEMORIX_HOOK_STDIN_TIMEOUT_MS;
-    else process.env.MEMORIX_HOOK_STDIN_TIMEOUT_MS = originalStdinTimeout;
+    if (originalTimeout === undefined) delete process.env.BATON_HOOK_TIMEOUT_MS;
+    else process.env.BATON_HOOK_TIMEOUT_MS = originalTimeout;
+    if (originalStdinTimeout === undefined) delete process.env.BATON_HOOK_STDIN_TIMEOUT_MS;
+    else process.env.BATON_HOOK_STDIN_TIMEOUT_MS = originalStdinTimeout;
   });
 
   it('bounds the wall-clock budget and keeps it env-overridable', () => {
     expect(resolveHookTimeoutMs({})).toBe(DEFAULT_HOOK_TIMEOUT_MS);
     expect(DEFAULT_HOOK_TIMEOUT_MS).toBeGreaterThanOrEqual(15_000);
     expect(DEFAULT_HOOK_TIMEOUT_MS).toBeLessThanOrEqual(30_000);
-    expect(resolveHookTimeoutMs({ MEMORIX_HOOK_TIMEOUT_MS: '8000' })).toBe(8_000);
-    expect(resolveHookTimeoutMs({ MEMORIX_HOOK_TIMEOUT_MS: 'nope' })).toBe(DEFAULT_HOOK_TIMEOUT_MS);
+    expect(resolveHookTimeoutMs({ BATON_HOOK_TIMEOUT_MS: '8000' })).toBe(8_000);
+    expect(resolveHookTimeoutMs({ BATON_HOOK_TIMEOUT_MS: 'nope' })).toBe(DEFAULT_HOOK_TIMEOUT_MS);
     expect(resolveHookStdinTimeoutMs({})).toBe(3_000);
-    expect(resolveHookStdinTimeoutMs({ MEMORIX_HOOK_STDIN_TIMEOUT_MS: '500' })).toBe(500);
+    expect(resolveHookStdinTimeoutMs({ BATON_HOOK_STDIN_TIMEOUT_MS: '500' })).toBe(500);
   });
 
   it('returns stdin on EOF and does not wait for a producer that already finished', async () => {

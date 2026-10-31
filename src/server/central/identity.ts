@@ -1,7 +1,7 @@
 /**
  * Organizations, users, teams, API tokens, projects and grants on the central
  * server, plus `authorize()` — the single service-layer authorization point
- * (docs/PMI/DATABASE.md §4).
+ * (docs/baton/DATABASE.md §4).
  *
  * Effective project role (computed in SQL by core.project_role_of, the same
  * function row-level security uses): organization owners/admins are `admin`
@@ -12,7 +12,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import type { Queryable } from './db.js';
 
-export const TOKEN_PREFIX = 'pmi_pat_';
+export const TOKEN_PREFIX = 'baton_pat_';
 
 export class HttpError extends Error {
   constructor(readonly status: number, readonly code: string, message: string, readonly details?: unknown) {
@@ -322,11 +322,11 @@ export interface ProjectCandidate {
 }
 
 /**
- * Find the project a working copy belongs to, by Memorix project id or by the
- * repository root commit; optionally create it. Used by `pmi project link`.
+ * Find the project a working copy belongs to, by Baton project id or by the
+ * repository root commit; optionally create it. Used by `baton project link`.
  *
  * A fork shares the root commit with its upstream. The project replicating
- * this exact Memorix id wins; a root-commit-only match is refused (or, with
+ * this exact Baton id wins; a root-commit-only match is refused (or, with
  * `create`, the fork gets its own project). When several projects replicate
  * the id, the caller picks one with `project`, only among projects it sees.
  */
@@ -360,7 +360,7 @@ export async function resolveProject(
     chosen = exact[0];
   }
   if (chosen && !chosen.legacyProjectIds.includes(input.legacyProjectId)) {
-    // Sync rows carry the Memorix project id; mixing two ids in one project
+    // Sync rows carry the Baton project id; mixing two ids in one project
     // would split its memory silently.
     throw new HttpError(409, 'identity_mismatch',
       `project "${chosen.slug}" replicates ${chosen.legacyProjectIds.join(', ')}, but the local project id is ${input.legacyProjectId}`,

@@ -1,0 +1,22 @@
+{
+  "name": "baton-omp-package",
+  "version": "1.10.2",
+  "description": "Baton shared workspace memory package for Oh-my-Pi.",
+  "license": "Apache-2.0",
+  "keywords": [
+    "oh-my-pi",
+    "omp-plugin",
+    "baton",
+    "agent-memory",
+    "coding-agent"
+  ],
+  "type": "module",
+  "peerDependencies": {
+    "oh-my-pi": "*"
+  },
+  "omp": {
+    "extensions": [
+      "./extensions/baton.js"
+    ]
+  }
+}

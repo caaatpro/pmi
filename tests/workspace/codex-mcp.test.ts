@@ -10,15 +10,15 @@ describe('CodexMCPAdapter', () => {
     describe('parse', () => {
         it('should parse TOML stdio config', () => {
             const toml = `
-[mcp_servers.memorix]
+[mcp_servers.baton]
 command = "npx"
-args = ["-y", "memorix", "serve"]
+args = ["-y", "baton", "serve"]
 `;
             const servers = adapter.parse(toml);
             expect(servers).toHaveLength(1);
-            expect(servers[0].name).toBe('memorix');
+            expect(servers[0].name).toBe('baton');
             expect(servers[0].command).toBe('npx');
-            expect(servers[0].args).toEqual(['-y', 'memorix', 'serve']);
+            expect(servers[0].args).toEqual(['-y', 'baton', 'serve']);
         });
 
         it('should parse TOML with env block', () => {
@@ -94,11 +94,11 @@ args = []
     describe('generate', () => {
         it('should generate valid TOML for stdio servers', () => {
             const output = adapter.generate([
-                { name: 'memorix', command: 'npx', args: ['-y', 'memorix', 'serve'] },
+                { name: 'baton', command: 'npx', args: ['-y', 'baton', 'serve'] },
             ]);
-            expect(output).toContain('[mcp_servers.memorix]');
+            expect(output).toContain('[mcp_servers.baton]');
             expect(output).toContain('command = "npx"');
-            expect(output).toContain('args = ["-y", "memorix", "serve"]');
+            expect(output).toContain('args = ["-y", "baton", "serve"]');
         });
 
         it('should generate TOML for HTTP servers with url', () => {
@@ -135,19 +135,19 @@ args = []
     describe('round-trip', () => {
         it('should survive parse → generate → parse for stdio', () => {
             const original = `
-[mcp_servers.memorix]
+[mcp_servers.baton]
 command = "npx"
-args = ["-y", "memorix", "serve"]
+args = ["-y", "baton", "serve"]
 
-[mcp_servers.memorix.env]
+[mcp_servers.baton.env]
 DEBUG = "true"
 `;
             const servers = adapter.parse(original);
             const generated = adapter.generate(servers);
             const reparsed = adapter.parse(generated);
-            expect(reparsed[0].name).toBe('memorix');
+            expect(reparsed[0].name).toBe('baton');
             expect(reparsed[0].command).toBe('npx');
-            expect(reparsed[0].args).toEqual(['-y', 'memorix', 'serve']);
+            expect(reparsed[0].args).toEqual(['-y', 'baton', 'serve']);
             expect(reparsed[0].env).toEqual({ DEBUG: 'true' });
         });
 

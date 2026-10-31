@@ -40,7 +40,7 @@ vi.mock('../../src/rules/syncer.js', () => ({
 }));
 
 vi.mock('../../src/store/persistence.js', () => ({
-  getProjectDataDir: vi.fn(async () => 'E:\\repo\\demo\\.memorix'),
+  getProjectDataDir: vi.fn(async () => 'E:\\repo\\demo\\.baton'),
 }));
 
 vi.mock('../../src/embedding/provider.js', () => ({
@@ -61,17 +61,17 @@ vi.mock('../../src/git/hooks-path.js', () => ({
   resolveHooksDir: vi.fn(() => null),
 }));
 
-describe('memorix config commands', () => {
+describe('baton config commands', () => {
   afterEach(() => {
-    delete process.env.MEMORIX_AGENT_MODEL;
-    delete process.env.MEMORIX_AGENT_API_KEY;
-    delete process.env.MEMORIX_AGENT_BASE_URL;
-    delete process.env.MEMORIX_LLM_API_KEY;
-    delete process.env.MEMORIX_LLM_MODEL;
-    delete process.env.MEMORIX_LLM_BASE_URL;
-    delete process.env.MEMORIX_EMBEDDING_API_KEY;
-    delete process.env.MEMORIX_EMBEDDING_MODEL;
-    delete process.env.MEMORIX_EMBEDDING_BASE_URL;
+    delete process.env.BATON_AGENT_MODEL;
+    delete process.env.BATON_AGENT_API_KEY;
+    delete process.env.BATON_AGENT_BASE_URL;
+    delete process.env.BATON_LLM_API_KEY;
+    delete process.env.BATON_LLM_MODEL;
+    delete process.env.BATON_LLM_BASE_URL;
+    delete process.env.BATON_EMBEDDING_API_KEY;
+    delete process.env.BATON_EMBEDDING_MODEL;
+    delete process.env.BATON_EMBEDDING_BASE_URL;
     if (tempDir) {
       rmSync(tempDir, { recursive: true, force: true });
       tempDir = undefined;
@@ -88,16 +88,16 @@ describe('memorix config commands', () => {
 
     expect(noteMock).toHaveBeenCalledWith(
       expect.stringContaining('config.toml'),
-      'Memorix config',
+      'Baton config',
     );
     expect(noteMock).toHaveBeenCalledWith(
-      expect.stringContaining('memorix.toml'),
-      'Memorix config',
+      expect.stringContaining('baton.toml'),
+      'Baton config',
     );
   });
 
   it('prints resolved config values through dotted keys', async () => {
-    process.env.MEMORIX_AGENT_MODEL = 'test-model';
+    process.env.BATON_AGENT_MODEL = 'test-model';
     const command = (await import('../../src/cli/commands/config-get.js')).default;
 
     await command.run?.({ args: { key: 'agent.model' }, rawArgs: ['agent.model'], cmd: command } as any);
@@ -106,11 +106,11 @@ describe('memorix config commands', () => {
   });
 
   it('accepts TOML-style snake_case dotted keys for resolved config values', async () => {
-    tempDir = mkdtempSync(join(process.env.TEMP ?? process.cwd(), 'memorix-config-get-snake-'));
+    tempDir = mkdtempSync(join(process.env.TEMP ?? process.cwd(), 'baton-config-get-snake-'));
     const homeDir = join(tempDir, 'home');
-    mkdirSync(join(homeDir, '.memorix'), { recursive: true });
+    mkdirSync(join(homeDir, '.baton'), { recursive: true });
     homedirMock.mockReturnValue(homeDir);
-    writeFileSync(join(homeDir, '.memorix', 'config.toml'), [
+    writeFileSync(join(homeDir, '.baton', 'config.toml'), [
       '[codegraph]',
       'exclude_patterns = ["vendor/**", "generated/**"]',
     ].join('\n'), 'utf8');
@@ -126,8 +126,8 @@ describe('memorix config commands', () => {
   });
 
   it('redacts only sensitive config keys when printing dotted values', async () => {
-    process.env.MEMORIX_EMBEDDING_MODEL = 'text-embedding-v4';
-    process.env.MEMORIX_EMBEDDING_API_KEY = 'embedding-test-secret';
+    process.env.BATON_EMBEDDING_MODEL = 'text-embedding-v4';
+    process.env.BATON_EMBEDDING_API_KEY = 'embedding-test-secret';
     const command = (await import('../../src/cli/commands/config-get.js')).default;
 
     await command.run?.({ args: { key: 'embedding.model' }, rawArgs: ['embedding.model'], cmd: command } as any);
@@ -146,8 +146,8 @@ describe('memorix config commands', () => {
       rootPath: 'E:\\repo\\demo',
       gitRemote: null,
     });
-    process.env.MEMORIX_AGENT_MODEL = 'status-model';
-    process.env.MEMORIX_AGENT_API_KEY = 'status-secret-key';
+    process.env.BATON_AGENT_MODEL = 'status-model';
+    process.env.BATON_AGENT_API_KEY = 'status-secret-key';
     const command = (await import('../../src/cli/commands/status.js')).default;
 
     await command.run?.({ args: {}, rawArgs: [], cmd: command } as any);
@@ -168,7 +168,7 @@ describe('memorix config commands', () => {
       rootPath: 'E:\\repo\\demo',
       gitRemote: null,
     });
-    process.env.MEMORIX_AGENT_API_KEY = 'status-secret-key';
+    process.env.BATON_AGENT_API_KEY = 'status-secret-key';
     const consoleLog = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     const command = (await import('../../src/cli/commands/status.js')).default;
 
@@ -188,11 +188,11 @@ describe('memorix config commands', () => {
     consoleLog.mockRestore();
   });
 
-  it('migrates legacy YAML into project memorix.toml without deleting legacy files or env secrets', async () => {
-    tempDir = mkdtempSync(join(process.env.TEMP ?? process.cwd(), 'memorix-config-migrate-'));
+  it('migrates legacy YAML into project baton.toml without deleting legacy files or env secrets', async () => {
+    tempDir = mkdtempSync(join(process.env.TEMP ?? process.cwd(), 'baton-config-migrate-'));
     const homeDir = join(tempDir, 'home');
     const projectDir = join(tempDir, 'project');
-    mkdirSync(join(homeDir, '.memorix'), { recursive: true });
+    mkdirSync(join(homeDir, '.baton'), { recursive: true });
     mkdirSync(projectDir, { recursive: true });
     homedirMock.mockReturnValue(homeDir);
     detectProjectMock.mockReturnValue({
@@ -201,7 +201,7 @@ describe('memorix config commands', () => {
       rootPath: projectDir,
       gitRemote: null,
     });
-    writeFileSync(join(projectDir, 'memorix.yml'), [
+    writeFileSync(join(projectDir, 'baton.yml'), [
       'llm:',
       '  provider: deepseek',
       '  model: deepseek-chat',
@@ -214,14 +214,14 @@ describe('memorix config commands', () => {
       'behavior:',
       '  sessionInject: minimal',
     ].join('\n'), 'utf8');
-    process.env.MEMORIX_LLM_API_KEY = 'env-secret-key-that-must-not-be-written';
+    process.env.BATON_LLM_API_KEY = 'env-secret-key-that-must-not-be-written';
     const command = (await import('../../src/cli/commands/config-migrate.js')).default;
 
     await command.run?.({ args: {}, rawArgs: [], cmd: command } as any);
 
-    const target = join(projectDir, 'memorix.toml');
+    const target = join(projectDir, 'baton.toml');
     expect(existsSync(target)).toBe(true);
-    expect(existsSync(join(projectDir, 'memorix.yml'))).toBe(true);
+    expect(existsSync(join(projectDir, 'baton.yml'))).toBe(true);
     const content = readFileSync(target, 'utf8');
     expect(content).toContain('[memory.llm]');
     expect(content).toContain('provider = "deepseek"');
@@ -233,25 +233,25 @@ describe('memorix config commands', () => {
   });
 
   it('migrates environment-backed secrets into global config.toml only', async () => {
-    tempDir = mkdtempSync(join(process.env.TEMP ?? process.cwd(), 'memorix-config-global-migrate-'));
+    tempDir = mkdtempSync(join(process.env.TEMP ?? process.cwd(), 'baton-config-global-migrate-'));
     const homeDir = join(tempDir, 'home');
-    mkdirSync(join(homeDir, '.memorix'), { recursive: true });
+    mkdirSync(join(homeDir, '.baton'), { recursive: true });
     homedirMock.mockReturnValue(homeDir);
     detectProjectMock.mockReturnValue(null);
-    process.env.MEMORIX_AGENT_MODEL = 'agent-test-model';
-    process.env.MEMORIX_AGENT_BASE_URL = 'https://agent.example/v1';
-    process.env.MEMORIX_AGENT_API_KEY = 'agent-test-secret';
-    process.env.MEMORIX_LLM_MODEL = 'memory-test-model';
-    process.env.MEMORIX_LLM_BASE_URL = 'https://memory.example/v1';
-    process.env.MEMORIX_LLM_API_KEY = 'memory-test-secret';
-    process.env.MEMORIX_EMBEDDING_MODEL = 'embed-test-model';
-    process.env.MEMORIX_EMBEDDING_BASE_URL = 'https://embed.example/v1';
-    process.env.MEMORIX_EMBEDDING_API_KEY = 'embedding-test-secret';
+    process.env.BATON_AGENT_MODEL = 'agent-test-model';
+    process.env.BATON_AGENT_BASE_URL = 'https://agent.example/v1';
+    process.env.BATON_AGENT_API_KEY = 'agent-test-secret';
+    process.env.BATON_LLM_MODEL = 'memory-test-model';
+    process.env.BATON_LLM_BASE_URL = 'https://memory.example/v1';
+    process.env.BATON_LLM_API_KEY = 'memory-test-secret';
+    process.env.BATON_EMBEDDING_MODEL = 'embed-test-model';
+    process.env.BATON_EMBEDDING_BASE_URL = 'https://embed.example/v1';
+    process.env.BATON_EMBEDDING_API_KEY = 'embedding-test-secret';
     const command = (await import('../../src/cli/commands/config-migrate.js')).default;
 
     await command.run?.({ args: { global: true }, rawArgs: ['--global'], cmd: command } as any);
 
-    const target = join(homeDir, '.memorix', 'config.toml');
+    const target = join(homeDir, '.baton', 'config.toml');
     expect(existsSync(target)).toBe(true);
     const content = readFileSync(target, 'utf8');
     expect(content).toContain('[agent]');

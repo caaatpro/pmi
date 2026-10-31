@@ -15,11 +15,11 @@ import {
   getRetentionSummary,
   explainRetention,
 } from '../../src/memory/retention.js';
-import type { MemorixDocument } from '../../src/types.js';
+import type { BatonDocument } from '../../src/types.js';
 
 // ── Helpers ──
 
-function makeDoc(overrides: Partial<MemorixDocument> = {}): MemorixDocument {
+function makeDoc(overrides: Partial<BatonDocument> = {}): BatonDocument {
   return {
     id: 'obs-1',
     observationId: 1,
@@ -49,9 +49,9 @@ function daysAgo(days: number): string {
   return d.toISOString();
 }
 
-// ── Stale output builder (mirrors server.ts memorix_retention action="stale") ──
+// ── Stale output builder (mirrors server.ts baton_retention action="stale") ──
 
-function buildStaleOutput(staleDocs: MemorixDocument[]): string {
+function buildStaleOutput(staleDocs: BatonDocument[]): string {
   if (staleDocs.length === 0) {
     return '✅ No stale observations. All active memories are within 50% of their retention period.';
   }
@@ -77,15 +77,15 @@ function buildStaleOutput(staleDocs: MemorixDocument[]): string {
   staleLines.push('');
   staleLines.push('### Suggested Actions');
   staleLines.push(`Suggested IDs: [${staleIds.join(', ')}]`);
-  staleLines.push(`- Archive stale observations: \`memorix_resolve\` with \`ids: [${staleIds.join(', ')}]\` and \`status: "archived"\``);
-  staleLines.push('- Or review individually with `memorix_detail` before deciding.');
+  staleLines.push(`- Archive stale observations: \`baton_resolve\` with \`ids: [${staleIds.join(', ')}]\` and \`status: "archived"\``);
+  staleLines.push('- Or review individually with `baton_detail` before deciding.');
 
   return staleLines.join('\n');
 }
 
-// ── Report output builder (mirrors server.ts memorix_retention action="report") ──
+// ── Report output builder (mirrors server.ts baton_retention action="report") ──
 
-function buildReportOutput(docs: MemorixDocument[]): string {
+function buildReportOutput(docs: BatonDocument[]): string {
   const summary = getRetentionSummary(docs);
   const candidates = getArchiveCandidates(docs);
 
@@ -107,13 +107,13 @@ function buildReportOutput(docs: MemorixDocument[]): string {
     const candidateIds = candidates.map(c => c.observationId);
     lines.push('');
     lines.push(`Candidate IDs: [${candidateIds.slice(0, 20).join(', ')}]${candidateIds.length > 20 ? ` … (${candidateIds.length} total)` : ''}`);
-    lines.push(`> 💡 Use \`memorix_retention\` with \`action: "archive"\` to move all, or \`memorix_resolve\` with specific IDs.`);
+    lines.push(`> 💡 Use \`baton_retention\` with \`action: "archive"\` to move all, or \`baton_resolve\` with specific IDs.`);
   }
 
   return lines.join('\n');
 }
 
-// ── Audit output builder (mirrors server.ts memorix_audit_project) ──
+// ── Audit output builder (mirrors server.ts baton_audit_project) ──
 
 interface MockAuditEntry {
   id: number;
@@ -151,13 +151,13 @@ function buildAuditOutput(entries: MockAuditEntry[], projectId: string): string 
   lines.push('');
   lines.push('### Suggested Actions');
   lines.push(`Suggested IDs: ${auditSummary}`);
-  lines.push('- Archive confirmed mis-attributed observations: use `memorix_resolve` with the specific IDs above and `status: "archived"`.');
-  lines.push('- Review first with `memorix_detail` if unsure.');
+  lines.push('- Archive confirmed mis-attributed observations: use `baton_resolve` with the specific IDs above and `status: "archived"`.');
+  lines.push('- Review first with `baton_detail` if unsure.');
 
   return lines.join('\n');
 }
 
-// ── Resolve output builder (mirrors server.ts memorix_resolve) ──
+// ── Resolve output builder (mirrors server.ts baton_resolve) ──
 
 function buildResolveOutput(resolved: number[], notFound: number[]): string {
   const parts: string[] = [];
@@ -168,7 +168,7 @@ function buildResolveOutput(resolved: number[], notFound: number[]): string {
     parts.push(`⚠️ Not found: #${notFound.join(', #')}`);
   }
   parts.push('\nResolved memories are hidden from default search. Use status="all" to include them.');
-  parts.push('📊 Run `memorix_retention` with `action: "report"` to check remaining cleanup status.');
+  parts.push('📊 Run `baton_retention` with `action: "report"` to check remaining cleanup status.');
   return parts.join('\n');
 }
 
@@ -176,7 +176,7 @@ function buildResolveOutput(resolved: number[], notFound: number[]): string {
 
 describe('Phase 11: Cleanup Remediation Loop', () => {
 
-  describe('memorix_retention action="stale" output', () => {
+  describe('baton_retention action="stale" output', () => {
     it('should include Suggested IDs block with observation IDs', () => {
       // what-changed type has 30d retention, so 20d old = stale (>50%)
       const staleDocs = [
@@ -190,9 +190,9 @@ describe('Phase 11: Cleanup Remediation Loop', () => {
       const output = buildStaleOutput(staleDocs);
       expect(output).toContain('Suggested IDs: [42, 78]');
       expect(output).toContain('### Suggested Actions');
-      expect(output).toContain('memorix_resolve');
+      expect(output).toContain('baton_resolve');
       expect(output).toContain('status: "archived"');
-      expect(output).toContain('memorix_detail');
+      expect(output).toContain('baton_detail');
     });
 
     it('should not include actionable block when no stale observations', () => {
@@ -203,7 +203,7 @@ describe('Phase 11: Cleanup Remediation Loop', () => {
     });
   });
 
-  describe('memorix_retention action="report" output', () => {
+  describe('baton_retention action="report" output', () => {
     it('should include Candidate IDs summary for archive candidates', () => {
       // what-changed type = 30d retention, 35d old = archive-candidate (>100%)
       const docs = [
@@ -217,7 +217,7 @@ describe('Phase 11: Cleanup Remediation Loop', () => {
 
       const output = buildReportOutput(docs);
       expect(output).toContain('Candidate IDs: [12, 34]');
-      expect(output).toContain('memorix_resolve');
+      expect(output).toContain('baton_resolve');
     });
 
     it('should not include Candidate IDs when no archive candidates', () => {
@@ -238,7 +238,7 @@ describe('Phase 11: Cleanup Remediation Loop', () => {
     });
   });
 
-  describe('memorix_audit_project output', () => {
+  describe('baton_audit_project output', () => {
     it('should include Suggested IDs block with audit entry IDs', () => {
       const entries: MockAuditEntry[] = [
         { id: 23, entityName: 'wrong-entity', title: 'Misplaced obs', source: 'agent', likelyBelongsTo: 'other-project', count: 5, confidence: 'high' },
@@ -247,9 +247,9 @@ describe('Phase 11: Cleanup Remediation Loop', () => {
       const output = buildAuditOutput(entries, 'my-project');
       expect(output).toContain('Suggested IDs: [23, 45]');
       expect(output).toContain('### Suggested Actions');
-      expect(output).toContain('memorix_resolve');
+      expect(output).toContain('baton_resolve');
       expect(output).toContain('status: "archived"');
-      expect(output).toContain('memorix_detail');
+      expect(output).toContain('baton_detail');
     });
 
     it('should cap Suggested IDs display for large audit result sets', () => {
@@ -276,11 +276,11 @@ describe('Phase 11: Cleanup Remediation Loop', () => {
     });
   });
 
-  describe('memorix_resolve output', () => {
+  describe('baton_resolve output', () => {
     it('should include remediation loop hint back to retention report', () => {
       const output = buildResolveOutput([42, 78], []);
       expect(output).toContain('Resolved 2 observation(s)');
-      expect(output).toContain('memorix_retention');
+      expect(output).toContain('baton_retention');
       expect(output).toContain('action: "report"');
       expect(output).toContain('remaining cleanup status');
     });
@@ -288,7 +288,7 @@ describe('Phase 11: Cleanup Remediation Loop', () => {
     it('should include remediation hint even when some IDs not found', () => {
       const output = buildResolveOutput([42], [99]);
       expect(output).toContain('Not found: #99');
-      expect(output).toContain('memorix_retention');
+      expect(output).toContain('baton_retention');
     });
   });
 });

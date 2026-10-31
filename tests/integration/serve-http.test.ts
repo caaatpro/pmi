@@ -49,7 +49,7 @@ let StreamableHTTPServerTransport: any;
 let StreamableHTTPClientTransport: any;
 let Client: any;
 let isInitializeRequest: any;
-let createMemorixServer: any;
+let createBatonServer: any;
 let createProjectBindingController: any;
 let initTeamStore: any;
 let CallToolResultSchema: any;
@@ -144,7 +144,7 @@ async function initSession(): Promise<string> {
 }
 
 beforeAll(async () => {
-  tempHomeDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-http-home-'));
+  tempHomeDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-http-home-'));
   process.env.HOME = tempHomeDir;
   process.env.USERPROFILE = tempHomeDir;
   process.env.HOMEPATH = tempHomeDir;
@@ -161,21 +161,21 @@ beforeAll(async () => {
   CallToolResultSchema = typesMod.CallToolResultSchema;
   ListRootsRequestSchema = typesMod.ListRootsRequestSchema;
   const serverMod = await import('../../src/server.js');
-  createMemorixServer = serverMod.createMemorixServer;
+  createBatonServer = serverMod.createBatonServer;
   const bindingMod = await import('../../src/server/request-context.js');
   createProjectBindingController = bindingMod.createProjectBindingController;
   const teamMod = await import('../../src/team/team-store.js');
   initTeamStore = teamMod.initTeamStore;
 
   // Create temp directory for test project
-  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-http-test-'));
+  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-http-test-'));
   projectADir = path.join(testDir, 'project-a');
   projectBDir = path.join(testDir, 'project-b');
   await fs.mkdir(projectADir, { recursive: true });
   await fs.mkdir(projectBDir, { recursive: true });
   await createFakeGitRepo(projectADir, 'https://github.com/AVIDS2/http-project-a.git');
   await createFakeGitRepo(projectBDir, 'https://github.com/AVIDS2/http-project-b.git');
-  const sharedTeamStore = await initTeamStore(path.join(tempHomeDir, '.memorix', 'data'));
+  const sharedTeamStore = await initTeamStore(path.join(tempHomeDir, '.baton', 'data'));
 
   // Start test HTTP server (same logic as serve-http.ts)
   httpServer = createServer(async (req, res) => {
@@ -221,7 +221,7 @@ beforeAll(async () => {
             handleTransportClose();
           };
           const binding = createProjectBindingController(testDir);
-          const { server, switchProject, handleTransportClose: onTransportClose } = await createMemorixServer(
+          const { server, switchProject, handleTransportClose: onTransportClose } = await createBatonServer(
             testDir,
             undefined,
             { teamStore: sharedTeamStore },
@@ -359,7 +359,7 @@ describe('HTTP Transport', () => {
     }
   });
 
-  it('should list all Memorix tools via an initialized session', async () => {
+  it('should list all Baton tools via an initialized session', async () => {
     const sid = await initSession();
 
     const res = await mcpPost({ jsonrpc: '2.0', method: 'tools/list', id: 2 }, sid);
@@ -367,10 +367,10 @@ describe('HTTP Transport', () => {
     expect(res.status).toBe(200);
     expect(res.json?.result?.tools).toBeDefined();
     const toolNames = res.json.result.tools.map((t: any) => t.name);
-    expect(toolNames).toContain('memorix_store');
-    expect(toolNames).toContain('memorix_search');
-    expect(toolNames).toContain('memorix_detail');
-    expect(toolNames).toContain('memorix_graph_context');
+    expect(toolNames).toContain('baton_store');
+    expect(toolNames).toContain('baton_search');
+    expect(toolNames).toContain('baton_detail');
+    expect(toolNames).toContain('baton_graph_context');
     expect(toolNames.length).toBeGreaterThanOrEqual(20);
   });
 
@@ -426,7 +426,7 @@ describe('HTTP Transport', () => {
             const result = await client.request({
               method: 'tools/call',
               params: {
-                name: 'memorix_session_start',
+                name: 'baton_session_start',
                 arguments: { agent },
               },
             }, CallToolResultSchema);
@@ -459,7 +459,7 @@ describe('HTTP Transport', () => {
       jsonrpc: '2.0',
       method: 'tools/call',
       params: {
-        name: 'memorix_session_start',
+        name: 'baton_session_start',
         arguments: {},
       },
       id: 99,
@@ -481,7 +481,7 @@ describe('HTTP Transport', () => {
       jsonrpc: '2.0',
       method: 'tools/call',
       params: {
-        name: 'memorix_session_start',
+        name: 'baton_session_start',
         arguments: { agent: 'test-explicit', projectRoot: projectADir },
       },
       id: 100,
@@ -514,7 +514,7 @@ describe('HTTP Transport', () => {
       jsonrpc: '2.0',
       method: 'tools/call',
       params: {
-        name: 'memorix_session_start',
+        name: 'baton_session_start',
         arguments: { agent: 'team-opt-in', agentType: 'windsurf', projectRoot: projectADir },
       },
       id: 110,
@@ -542,7 +542,7 @@ describe('HTTP Transport', () => {
       jsonrpc: '2.0',
       method: 'tools/call',
       params: {
-        name: 'memorix_session_start',
+        name: 'baton_session_start',
         arguments: {
           agent: 'team-opt-in',
           agentType: 'windsurf',
@@ -582,7 +582,7 @@ describe('HTTP Transport', () => {
       jsonrpc: '2.0',
       method: 'tools/call',
       params: {
-        name: 'memorix_session_start',
+        name: 'baton_session_start',
         arguments: { agent: 'parallel-a', projectRoot: projectADir },
       },
       id: 201,
@@ -593,7 +593,7 @@ describe('HTTP Transport', () => {
       jsonrpc: '2.0',
       method: 'tools/call',
       params: {
-        name: 'memorix_session_start',
+        name: 'baton_session_start',
         arguments: { agent: 'parallel-b', projectRoot: projectBDir },
       },
       id: 202,
@@ -626,7 +626,7 @@ describe('HTTP Transport', () => {
       jsonrpc: '2.0',
       method: 'tools/call',
       params: {
-        name: 'memorix_session_start',
+        name: 'baton_session_start',
         arguments: { agent: 'test-nogit', projectRoot: noGitDir },
       },
       id: 300,
@@ -639,7 +639,7 @@ describe('HTTP Transport', () => {
     expect(text).toContain('No git repository found');
   });
 
-  it('should use bound project context for memorix_store after session_start', async () => {
+  it('should use bound project context for baton_store after session_start', async () => {
     const sessionId = await initSession();
 
     // Bind to project A
@@ -647,7 +647,7 @@ describe('HTTP Transport', () => {
       jsonrpc: '2.0',
       method: 'tools/call',
       params: {
-        name: 'memorix_session_start',
+        name: 'baton_session_start',
         arguments: { agent: 'store-test', projectRoot: projectADir },
       },
       id: 401,
@@ -658,7 +658,7 @@ describe('HTTP Transport', () => {
       jsonrpc: '2.0',
       method: 'tools/call',
       params: {
-        name: 'memorix_store',
+        name: 'baton_store',
         arguments: {
           entityName: 'http-bind-test',
           type: 'discovery',
@@ -679,7 +679,7 @@ describe('HTTP Transport', () => {
       jsonrpc: '2.0',
       method: 'tools/call',
       params: {
-        name: 'memorix_search',
+        name: 'baton_search',
         arguments: { query: 'HTTP binding test' },
       },
       id: 403,
@@ -698,7 +698,7 @@ describe('HTTP Transport', () => {
       jsonrpc: '2.0',
       method: 'tools/call',
       params: {
-        name: 'memorix_session_start',
+        name: 'baton_session_start',
         arguments: { agent: 'close-cleanup-test', projectRoot: projectADir, joinTeam: true },
       },
       id: 450,
@@ -740,7 +740,7 @@ describe('HTTP Transport', () => {
       jsonrpc: '2.0',
       method: 'tools/call',
       params: {
-        name: 'memorix_session_start',
+        name: 'baton_session_start',
         arguments: { agent: 'close-cleanup-observer', projectRoot: projectADir },
       },
       id: 452,
@@ -767,7 +767,7 @@ describe('HTTP Transport', () => {
       jsonrpc: '2.0',
       method: 'tools/call',
       params: {
-        name: 'memorix_session_start',
+        name: 'baton_session_start',
         arguments: { agent: 'manual-join-session', projectRoot: projectADir },
       },
       id: 454,
@@ -813,7 +813,7 @@ describe('HTTP Transport', () => {
       jsonrpc: '2.0',
       method: 'tools/call',
       params: {
-        name: 'memorix_session_start',
+        name: 'baton_session_start',
         arguments: { agent: 'manual-join-observer', projectRoot: projectADir, joinTeam: true },
       },
       id: 456,
@@ -841,7 +841,7 @@ describe('HTTP Transport', () => {
       jsonrpc: '2.0',
       method: 'tools/call',
       params: {
-        name: 'memorix_session_start',
+        name: 'baton_session_start',
         arguments: { agent: 'rebind-test', projectRoot: projectADir },
       },
       id: 601,
@@ -859,7 +859,7 @@ describe('HTTP Transport', () => {
       jsonrpc: '2.0',
       method: 'tools/call',
       params: {
-        name: 'memorix_session_start',
+        name: 'baton_session_start',
         arguments: { agent: 'rebind-test', projectRoot: noGitDir },
       },
       id: 602,
@@ -894,7 +894,7 @@ describe('HTTP Transport', () => {
       const bindRes = await client.request({
         method: 'tools/call',
         params: {
-          name: 'memorix_session_start',
+          name: 'baton_session_start',
           arguments: { agent: 'roots-override-test', projectRoot: projectADir },
         },
       }, CallToolResultSchema);
@@ -911,7 +911,7 @@ describe('HTTP Transport', () => {
       const verifyRes = await client.request({
         method: 'tools/call',
         params: {
-          name: 'memorix_session_start',
+          name: 'baton_session_start',
           arguments: { agent: 'roots-override-verify' },
         },
       }, CallToolResultSchema);
@@ -938,7 +938,7 @@ describe('HTTP Transport', () => {
       jsonrpc: '2.0',
       method: 'tools/call',
       params: {
-        name: 'memorix_session_start',
+        name: 'baton_session_start',
         arguments: { agent: 'alias-rebind', projectRoot: projectADir },
       },
       id: 701,
@@ -954,7 +954,7 @@ describe('HTTP Transport', () => {
       jsonrpc: '2.0',
       method: 'tools/call',
       params: {
-        name: 'memorix_session_start',
+        name: 'baton_session_start',
         arguments: { agent: 'alias-rebind', projectRoot: projectAAliasDir },
       },
       id: 702,

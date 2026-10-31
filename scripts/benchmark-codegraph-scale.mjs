@@ -34,7 +34,7 @@ function run(args, cwd, extraEnv = {}) {
       cwd,
       shell: false,
       windowsHide: true,
-      env: { ...process.env, MEMORIX_EMBEDDING: 'off', ...extraEnv },
+      env: { ...process.env, BATON_EMBEDDING: 'off', ...extraEnv },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let stdout = '';
@@ -44,13 +44,13 @@ function run(args, cwd, extraEnv = {}) {
     child.on('error', reject);
     child.on('close', code => {
       if (code !== 0) {
-        reject(new Error(`memorix ${args.join(' ')} exited ${code}: ${stderr.trim() || stdout.trim()}`));
+        reject(new Error(`baton ${args.join(' ')} exited ${code}: ${stderr.trim() || stdout.trim()}`));
         return;
       }
       try {
         resolveRun({ elapsedMs: Math.round(performance.now() - started), value: JSON.parse(stdout) });
       } catch (error) {
-        reject(new Error(`memorix returned invalid JSON: ${error instanceof Error ? error.message : String(error)}`));
+        reject(new Error(`baton returned invalid JSON: ${error instanceof Error ? error.message : String(error)}`));
       }
     });
   });
@@ -59,14 +59,14 @@ function run(args, cwd, extraEnv = {}) {
 async function main() {
   const parent = option('--tmp-root');
   if (!parent) {
-    console.error('Usage: node scripts/benchmark-codegraph-scale.mjs --tmp-root E:\\tmp\\memorix-bench [--files 10000] [--symbols-per-file 10]');
+    console.error('Usage: node scripts/benchmark-codegraph-scale.mjs --tmp-root E:\\tmp\\baton-bench [--files 10000] [--symbols-per-file 10]');
     process.exitCode = 2;
     return;
   }
   const parentRoot = resolve(parent);
   const fileCount = positive('--files', 10_000);
   const symbolsPerFile = positive('--symbols-per-file', 10);
-  const projectRoot = await mkdtemp(join(parentRoot, 'memorix-codegraph-scale-'));
+  const projectRoot = await mkdtemp(join(parentRoot, 'baton-codegraph-scale-'));
   const gitConfig = join(projectRoot, '.gitconfig');
   const gitEnv = { GIT_CONFIG_GLOBAL: gitConfig };
   try {

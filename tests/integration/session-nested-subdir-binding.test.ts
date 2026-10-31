@@ -17,7 +17,7 @@ vi.mock('../../src/llm/provider.js', () => ({
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { createMemorixServer } from '../../src/server.js';
+import { createBatonServer } from '../../src/server.js';
 import { resetDb } from '../../src/store/orama-store.js';
 
 let tempHome: string;
@@ -44,7 +44,7 @@ function getText(result: any): string {
 }
 
 beforeEach(async () => {
-  tempHome = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-nested-home-'));
+  tempHome = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-nested-home-'));
   process.env.HOME = tempHome;
   process.env.USERPROFILE = tempHome;
   await resetDb();
@@ -55,9 +55,9 @@ afterEach(() => {
   process.env.USERPROFILE = originalUserProfile;
 });
 
-describe('memorix_session_start nested-subdir binding', () => {
+describe('baton_session_start nested-subdir binding', () => {
   it('keeps the parent repo bound when projectRoot is already the current project', async () => {
-    const work = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-nested-work-'));
+    const work = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-nested-work-'));
     const parent = path.join(work, 'parent');
     await fs.mkdir(parent, { recursive: true });
     await createFakeGitRepo(parent, 'https://github.com/AVIDS2/parent-repo.git');
@@ -66,8 +66,8 @@ describe('memorix_session_start nested-subdir binding', () => {
     await fs.mkdir(nested, { recursive: true });
     await createFakeGitRepo(nested);
 
-    const { server } = await createMemorixServer(parent);
-    const sessionStart = getHandler(server as any, 'memorix_session_start');
+    const { server } = await createBatonServer(parent);
+    const sessionStart = getHandler(server as any, 'baton_session_start');
     const text = getText(await sessionStart({ projectRoot: parent, agent: 'cc' }));
 
     expect(text).toContain('AVIDS2/parent-repo');

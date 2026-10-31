@@ -18,8 +18,8 @@ import { resetDb } from '../../src/store/orama-store.js';
 
 const REPEATS = 15;
 const originalCwd = process.cwd();
-const originalDataDir = process.env.MEMORIX_DATA_DIR;
-const originalEmbedding = process.env.MEMORIX_EMBEDDING;
+const originalDataDir = process.env.BATON_DATA_DIR;
+const originalEmbedding = process.env.BATON_EMBEDDING;
 let root = '';
 let project = '';
 
@@ -42,24 +42,24 @@ async function runCommand(command: any, args: Record<string, unknown>) {
 
 describe('CLI repeat stress exam', () => {
   beforeEach(() => {
-    root = mkdtempSync(path.join(tmpdir(), 'memorix-stress-cli-'));
+    root = mkdtempSync(path.join(tmpdir(), 'baton-stress-cli-'));
     project = path.join(root, 'project');
     mkdirSync(project, { recursive: true });
     writeFileSync(path.join(project, 'README.md'), '# test\n', 'utf8');
     execSync('git init', { cwd: project, stdio: 'ignore' });
     execSync('git config user.email test@example.com', { cwd: project, stdio: 'ignore' });
-    execSync('git config user.name "Memorix Test"', { cwd: project, stdio: 'ignore' });
+    execSync('git config user.name "Baton Test"', { cwd: project, stdio: 'ignore' });
     process.chdir(project);
-    process.env.MEMORIX_DATA_DIR = path.join(root, 'data');
-    process.env.MEMORIX_EMBEDDING = 'off';
+    process.env.BATON_DATA_DIR = path.join(root, 'data');
+    process.env.BATON_EMBEDDING = 'off';
   });
 
   afterEach(async () => {
     process.chdir(originalCwd);
-    if (originalDataDir === undefined) delete process.env.MEMORIX_DATA_DIR;
-    else process.env.MEMORIX_DATA_DIR = originalDataDir;
-    if (originalEmbedding === undefined) delete process.env.MEMORIX_EMBEDDING;
-    else process.env.MEMORIX_EMBEDDING = originalEmbedding;
+    if (originalDataDir === undefined) delete process.env.BATON_DATA_DIR;
+    else process.env.BATON_DATA_DIR = originalDataDir;
+    if (originalEmbedding === undefined) delete process.env.BATON_EMBEDDING;
+    else process.env.BATON_EMBEDDING = originalEmbedding;
     resetObservationStore();
     resetSessionStore();
     resetTeamStore();

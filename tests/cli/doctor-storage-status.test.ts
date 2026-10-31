@@ -49,7 +49,7 @@ async function runDoctor(): Promise<Record<string, unknown>> {
  */
 describe('doctor storage status', () => {
   it('reports a failure when the observation store cannot be opened', async () => {
-    tempDir = mkdtempSync(join(os.tmpdir(), 'memorix-doctor-'));
+    tempDir = mkdtempSync(join(os.tmpdir(), 'baton-doctor-'));
     detectProjectMock.mockReturnValue({
       project: {
         id: 'local/probe',
@@ -68,7 +68,7 @@ describe('doctor storage status', () => {
   });
 
   it('reports a failure when the store falls back to the degraded backend', async () => {
-    tempDir = mkdtempSync(join(os.tmpdir(), 'memorix-doctor-'));
+    tempDir = mkdtempSync(join(os.tmpdir(), 'baton-doctor-'));
     detectProjectMock.mockReturnValue({
       project: {
         id: 'local/probe',

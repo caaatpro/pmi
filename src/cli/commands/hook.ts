@@ -1,19 +1,19 @@
 /**
- * CLI Command: memorix hook
+ * CLI Command: baton hook
  *
  * Entry point called by agent hooks via stdin/stdout.
  * Reads agent's JSON from stdin, normalizes, auto-stores, outputs response.
  *
- * This command is short-lived. A leftover `memorix hook` process is a bug:
+ * This command is short-lived. A leftover `baton hook` process is a bug:
  * hosts invoke it on every event, and hung copies exhaust RAM.
  *
  * Usage (called by agent hook configs, not by users directly):
- *   memorix hook
+ *   baton hook
  *
  * Env:
- *   MEMORIX_HOOK_TIMEOUT_MS — wall-clock budget (default 20000)
- *   MEMORIX_HOOK_STDIN_TIMEOUT_MS — stdin idle budget (default 3000)
- *   MEMORIX_HOOK_HEAP_MB — V8 heap for this command only (default 512)
+ *   BATON_HOOK_TIMEOUT_MS — wall-clock budget (default 20000)
+ *   BATON_HOOK_STDIN_TIMEOUT_MS — stdin idle budget (default 3000)
+ *   BATON_HOOK_HEAP_MB — V8 heap for this command only (default 512)
  */
 
 import { defineCommand } from 'citty';

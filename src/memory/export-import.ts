@@ -1,7 +1,7 @@
 /**
  * Export/Import Engine
  *
- * Enables coordination continuity by exporting and importing Memorix data.
+ * Enables coordination continuity by exporting and importing Baton data.
  *
  * Export formats:
  * - JSON: Full fidelity, machine-readable
@@ -17,7 +17,7 @@ import { getObservationStore } from '../store/obs-store.js';
 import { getSessionStore } from '../store/session-store.js';
 
 /** Export package structure */
-export interface MemorixExport {
+export interface BatonExport {
   version: string;
   exportedAt: string;
   projectId: string;
@@ -43,7 +43,7 @@ export async function exportAsJson(
   projectDir: string,
   projectId: string,
   reader?: ObservationReader,
-): Promise<MemorixExport> {
+): Promise<BatonExport> {
   const store = getObservationStore();
   const allObs = await store.loadAll();
   const allSessions = await getSessionStore().loadAll();
@@ -87,7 +87,7 @@ export async function exportAsMarkdown(
   const data = await exportAsJson(projectDir, projectId, reader);
   const lines: string[] = [];
 
-  lines.push(`# Memorix Export: ${projectId}`);
+  lines.push(`# Baton Export: ${projectId}`);
   lines.push(`Exported: ${data.exportedAt}`);
   lines.push(`Observations: ${data.stats.observationCount} | Sessions: ${data.stats.sessionCount}`);
   lines.push('');
@@ -156,7 +156,7 @@ export async function exportAsMarkdown(
  */
 export async function importFromJson(
   projectDir: string,
-  data: MemorixExport,
+  data: BatonExport,
 ): Promise<{ observationsImported: number; sessionsImported: number; skipped: number }> {
   let imported = 0;
   let sessionsImported = 0;

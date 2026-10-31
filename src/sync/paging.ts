@@ -31,7 +31,7 @@ export function decodePageCursor(token: string | undefined): SyncPageCursor | un
     }
     return { deviceId: value.deviceId, sequence };
   } catch {
-    throw new Error('[memorix] sync page token is invalid');
+    throw new Error('[baton] sync page token is invalid');
   }
 }
 

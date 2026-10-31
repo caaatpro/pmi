@@ -2,10 +2,10 @@ import { defineCommand } from 'citty';
 import { getAllObservations } from '../../memory/observations.js';
 import { archiveExpired, explainRetention, getArchiveCandidates, getRetentionSummary, getRetentionZone, rankByRelevance } from '../../memory/retention.js';
 import { filterReadableObservations } from '../../memory/visibility.js';
-import type { MemorixDocument } from '../../types.js';
+import type { BatonDocument } from '../../types.js';
 import { emitError, emitResult, getCliProjectContext } from './operator-shared.js';
 
-function toDocument(obs: Awaited<ReturnType<typeof getAllObservations>>[number]): MemorixDocument {
+function toDocument(obs: Awaited<ReturnType<typeof getAllObservations>>[number]): BatonDocument {
   return {
     id: `obs-${obs.id}`,
     observationId: obs.id,
@@ -98,12 +98,12 @@ export default defineCommand({
         }
 
         default:
-          console.log('Memorix Retention Commands');
+          console.log('Baton Retention Commands');
           console.log('');
           console.log('Usage:');
-          console.log('  memorix retention status');
-          console.log('  memorix retention stale');
-          console.log('  memorix retention archive');
+          console.log('  baton retention status');
+          console.log('  baton retention stale');
+          console.log('  baton retention archive');
       }
     } catch (error) {
       emitError(error instanceof Error ? error.message : String(error), asJson);

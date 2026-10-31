@@ -1,4 +1,4 @@
 /* The header search moves into the burger menu on phones. */
 @media (max-width: 48em) {
-  .pmi-header-search { display: none; }
+  .baton-header-search { display: none; }
 }

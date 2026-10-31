@@ -1,8 +1,8 @@
 /**
- * memorix serve - Start MCP Server on stdio transport.
+ * baton serve - Start MCP Server on stdio transport.
  *
  * The official MCP v2 stdio entry owns modern discovery, per-request metadata,
- * legacy compatibility, and protocol lifecycle. Memorix keeps its startup
+ * legacy compatibility, and protocol lifecycle. Baton keeps its startup
  * gate in front of that entry so early claim-less discovery remains compatible
  * with clients shipped before the 2026 protocol revision.
  */
@@ -17,7 +17,7 @@ import type { ModernMcpBridge } from '../../server/modern-mcp-bridge.js';
 export default defineCommand({
   meta: {
     name: 'serve',
-    description: 'Start Memorix MCP Server on stdio transport',
+    description: 'Start Baton MCP Server on stdio transport',
   },
   args: {
     cwd: {
@@ -54,14 +54,14 @@ export default defineCommand({
       stdout: process.stdout,
       serverInfo: getMcpServerInfo(),
       onError: (error) => {
-        console.error(`[memorix] stdio startup gate error: ${error.message}`);
+        console.error(`[baton] stdio startup gate error: ${error.message}`);
         process.exit(1);
       },
       onEnd: () => {
-        console.error('[memorix] stdin closed - exiting');
+        console.error('[baton] stdin closed - exiting');
         if (stdioHandle) {
           void stdioHandle.close().catch((error) => {
-            console.error(`[memorix] stdio close error: ${error instanceof Error ? error.message : String(error)}`);
+            console.error(`[baton] stdio close error: ${error instanceof Error ? error.message : String(error)}`);
           });
         } else {
           stdinEndedBeforeHandle = true;
@@ -70,13 +70,13 @@ export default defineCommand({
     });
     startupGate.start();
 
-    // Priority: explicit --cwd arg > MEMORIX_PROJECT_ROOT > INIT_CWD > process.cwd().
+    // Priority: explicit --cwd arg > BATON_PROJECT_ROOT > INIT_CWD > process.cwd().
     let safeCwd: string;
     try { safeCwd = process.cwd(); } catch { safeCwd = homedir(); }
     const resolution = resolveServeProject(
       {
         cwdArg: args.cwd,
-        envProjectRoot: process.env.MEMORIX_PROJECT_ROOT,
+        envProjectRoot: process.env.BATON_PROJECT_ROOT,
         initCwd: process.env.INIT_CWD,
         processCwd: safeCwd,
         homeDir: homedir(),
@@ -86,9 +86,9 @@ export default defineCommand({
     for (const message of resolution.messages) console.error(message);
 
     if (!resolution.detectedProject) {
-      console.error(`[memorix] [WARN] ${resolution.error}`);
-      console.error('[memorix] Starting in deferred-binding mode - bind with memorix_session_start(projectRoot=...) when needed.');
-      console.error('[memorix] For non-git directories, use --allow-untracked to enable untracked/ fallback.');
+      console.error(`[baton] [WARN] ${resolution.error}`);
+      console.error('[baton] Starting in deferred-binding mode - bind with baton_session_start(projectRoot=...) when needed.');
+      console.error('[baton] For non-git directories, use --allow-untracked to enable untracked/ fallback.');
     }
 
     const detected = resolution.detectedProject;
@@ -98,7 +98,7 @@ export default defineCommand({
     const allowUntracked = args['allow-untracked'] ?? false;
     const toolProfile = resolveToolProfile({
       explicit: args.mode,
-      envValue: process.env.MEMORIX_MODE,
+      envValue: process.env.BATON_MODE,
       fallback: 'micro',
     });
 
@@ -114,26 +114,26 @@ export default defineCommand({
 
       const tryRootsSwitch = async (): Promise<void> => {
         try {
-          if (bridge.memorix.isExplicitlyBound()) return;
+          if (bridge.baton.isExplicitlyBound()) return;
           const { roots } = await bridge.server.listRoots();
           for (const root of roots ?? []) {
             if (!root.uri.startsWith('file://')) continue;
             const rootPath = mcpFileUriToPath(root.uri);
             if (!rootPath) continue;
 
-            const switched = await bridge.memorix.switchProject(rootPath, 'mcp-roots');
+            const switched = await bridge.baton.switchProject(rootPath, 'mcp-roots');
             if (switched) {
-              console.error(`[memorix] [UPDATED] Project updated via MCP roots: ${rootPath}`);
+              console.error(`[baton] [UPDATED] Project updated via MCP roots: ${rootPath}`);
               return;
             }
             const subGit = findGitInSubdirs(rootPath);
-            if (subGit && await bridge.memorix.switchProject(subGit, 'mcp-roots')) {
-              console.error(`[memorix] [UPDATED] Project updated via MCP roots (subdir): ${subGit}`);
+            if (subGit && await bridge.baton.switchProject(subGit, 'mcp-roots')) {
+              console.error(`[baton] [UPDATED] Project updated via MCP roots (subdir): ${subGit}`);
               return;
             }
           }
         } catch (error) {
-          console.error(`[memorix] MCP roots not available (${error instanceof Error ? error.message : 'unsupported'})`);
+          console.error(`[baton] MCP roots not available (${error instanceof Error ? error.message : 'unsupported'})`);
         }
       };
 
@@ -144,8 +144,8 @@ export default defineCommand({
       });
 
       const deferredInitTimer = setTimeout(() => {
-        bridge.memorix.deferredInit().catch((error) => {
-          console.error(`[memorix] Deferred init error: ${error instanceof Error ? error.message : String(error)}`);
+        bridge.baton.deferredInit().catch((error) => {
+          console.error(`[baton] Deferred init error: ${error instanceof Error ? error.message : String(error)}`);
         });
       }, 5_000);
       deferredInitTimer.unref?.();
@@ -161,16 +161,16 @@ export default defineCommand({
     stdioHandle = serveStdio(createBridge, {
       transport,
       legacy: 'serve',
-      onerror: (error) => console.error(`[memorix] stdio MCP error: ${error.message}`),
+      onerror: (error) => console.error(`[baton] stdio MCP error: ${error.message}`),
     });
     startupGate.markReady();
     if (stdinEndedBeforeHandle) {
       void stdioHandle.close().catch((error) => {
-        console.error(`[memorix] stdio close error: ${error instanceof Error ? error.message : String(error)}`);
+        console.error(`[baton] stdio close error: ${error instanceof Error ? error.message : String(error)}`);
       });
     }
 
-    console.error(`[memorix] MCP Server running on stdio (profile: ${toolProfile}, project: ${detected?.id ?? 'deferred'})`);
-    console.error(`[memorix] Project root: ${detected?.rootPath ?? projectRoot}`);
+    console.error(`[baton] MCP Server running on stdio (profile: ${toolProfile}, project: ${detected?.id ?? 'deferred'})`);
+    console.error(`[baton] Project root: ${detected?.rootPath ?? projectRoot}`);
   },
 });

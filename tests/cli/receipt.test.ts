@@ -41,35 +41,35 @@ async function runCommand(command: any, args: Record<string, unknown>) {
 
 describe('privacy-safe handoff receipt', () => {
   const originalCwd = process.cwd();
-  const originalDataDir = process.env.MEMORIX_DATA_DIR;
-  const originalEmbedding = process.env.MEMORIX_EMBEDDING;
+  const originalDataDir = process.env.BATON_DATA_DIR;
+  const originalEmbedding = process.env.BATON_EMBEDDING;
   let sandboxRoot = '';
   let repoDir = '';
   let dataDir = '';
 
   beforeEach(() => {
-    sandboxRoot = mkdtempSync(path.join(tmpdir(), 'memorix-receipt-'));
+    sandboxRoot = mkdtempSync(path.join(tmpdir(), 'baton-receipt-'));
     repoDir = path.join(sandboxRoot, 'repo');
     dataDir = path.join(sandboxRoot, 'data');
     mkdirSync(repoDir, { recursive: true });
     writeFileSync(path.join(repoDir, 'README.md'), '# receipt test\n', 'utf8');
     execSync('git init', { cwd: repoDir, stdio: 'ignore' });
     process.chdir(repoDir);
-    process.env.MEMORIX_DATA_DIR = dataDir;
-    process.env.MEMORIX_EMBEDDING = 'off';
+    process.env.BATON_DATA_DIR = dataDir;
+    process.env.BATON_EMBEDDING = 'off';
   });
 
   afterEach(async () => {
     process.chdir(originalCwd);
     if (originalDataDir === undefined) {
-      delete process.env.MEMORIX_DATA_DIR;
+      delete process.env.BATON_DATA_DIR;
     } else {
-      process.env.MEMORIX_DATA_DIR = originalDataDir;
+      process.env.BATON_DATA_DIR = originalDataDir;
     }
     if (originalEmbedding === undefined) {
-      delete process.env.MEMORIX_EMBEDDING;
+      delete process.env.BATON_EMBEDDING;
     } else {
-      process.env.MEMORIX_EMBEDDING = originalEmbedding;
+      process.env.BATON_EMBEDDING = originalEmbedding;
     }
     resetObservationStore();
     resetSessionStore();

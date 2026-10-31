@@ -1,8 +1,8 @@
 /**
- * Memorix SDK — Programmatic API for embedding Memorix into your own projects.
+ * Baton SDK — Programmatic API for embedding Baton into your own projects.
  *
  * Usage:
- *   import { createMemoryClient } from 'memorix/sdk';
+ *   import { createMemoryClient } from 'baton/sdk';
  *
  *   const client = await createMemoryClient({ projectRoot: '/path/to/repo' });
  *   await client.store({ entityName: 'auth', type: 'decision', title: '...', narrative: '...' });
@@ -10,9 +10,9 @@
  *   await client.close();
  *
  * For MCP server embedding:
- *   import { createMemorixServer } from 'memorix/sdk';
+ *   import { createBatonServer } from 'baton/sdk';
  *
- *   const { server, projectId } = await createMemorixServer('/path/to/repo');
+ *   const { server, projectId } = await createBatonServer('/path/to/repo');
  *   // Connect to your own transport
  */
 
@@ -37,8 +37,8 @@ import {
 
 // ── Re-exports for convenience ──────────────────────────────────────
 
-export { createMemorixServer } from './server.js';
-export type { CreateMemorixServerOptions } from './server.js';
+export { createBatonServer } from './server.js';
+export type { CreateBatonServerOptions } from './server.js';
 export { detectProject, detectProjectWithDiagnostics } from './project/detector.js';
 export * from './types.js';
 
@@ -107,7 +107,7 @@ let activeSdkDataDir: string | null = null;
 
 /**
  * A lightweight, self-contained memory client for reading and writing
- * Memorix observations without MCP overhead.
+ * Baton observations without MCP overhead.
  *
  * Each client initializes its own SQLite backend and Orama search index,
  * scoped to a single project. It is an unbound project reader by default, so
@@ -144,7 +144,7 @@ export class MemoryClient {
   /** The project root path */
   get projectRoot(): string { return this._projectRoot; }
 
-  /** The Memorix data directory for this project */
+  /** The Baton data directory for this project */
   get dataDir(): string { return this._dataDir; }
 
   /**
@@ -155,7 +155,7 @@ export class MemoryClient {
     const normalizedDataDir = path.resolve(this._dataDir);
     if (activeSdkDataDir && activeSdkDataDir !== normalizedDataDir) {
       throw new Error(
-        '[memorix-sdk] Multiple active clients with different data directories are not supported in one process; use separate processes.',
+        '[baton-sdk] Multiple active clients with different data directories are not supported in one process; use separate processes.',
       );
     }
     // Suppress logs if requested
@@ -189,7 +189,7 @@ export class MemoryClient {
   }
 
   private _ensureOpen(): void {
-    if (this._closed) throw new Error('[memorix-sdk] MemoryClient is closed');
+    if (this._closed) throw new Error('[baton-sdk] MemoryClient is closed');
   }
 
   /**
@@ -329,7 +329,7 @@ export class MemoryClient {
       // best-effort cleanup
     }
     // ObservationStore.close() only detaches from the shared handle.
-    // Release this dataDir so Windows can unlink memorix.db after close().
+    // Release this dataDir so Windows can unlink baton.db after close().
     try {
       const { closeDatabase } = await import('./store/sqlite-db.js');
       closeDatabase(this._dataDir);
@@ -353,7 +353,7 @@ export class MemoryClient {
  *
  * @example
  * ```ts
- * import { createMemoryClient } from 'memorix/sdk';
+ * import { createMemoryClient } from 'baton/sdk';
  *
  * const client = await createMemoryClient({ projectRoot: '/home/user/my-project' });
  *
@@ -380,8 +380,8 @@ export async function createMemoryClient(options: MemoryClientOptions): Promise<
   const project = detect(projectRoot);
   if (!project) {
     throw new Error(
-      `[memorix-sdk] No Git repository found at "${projectRoot}". ` +
-      'Memorix requires a Git-tracked project for identity resolution.',
+      `[baton-sdk] No Git repository found at "${projectRoot}". ` +
+      'Baton requires a Git-tracked project for identity resolution.',
     );
   }
 

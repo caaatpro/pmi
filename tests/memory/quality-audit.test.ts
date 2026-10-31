@@ -14,7 +14,7 @@ function obs(overrides: Partial<Observation>): Observation {
     concepts: ['core'],
     tokens: 50,
     createdAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
-    projectId: 'AVIDS2/memorix',
+    projectId: 'AVIDS2/baton',
     status: 'active',
     source: 'manual',
     sourceDetail: 'explicit',
@@ -83,7 +83,7 @@ describe('auditMemoryQuality', () => {
     ];
 
     const report = auditMemoryQuality(observations, {
-      projectId: 'AVIDS2/memorix',
+      projectId: 'AVIDS2/baton',
       referenceTime: new Date('2026-06-17T00:00:00.000Z'),
     });
 
@@ -97,20 +97,20 @@ describe('auditMemoryQuality', () => {
     expect(report.issues.hookNoise.map((entry) => entry.id)).toContain(3);
     expect(report.issues.orphans.map((entry) => entry.id)).toEqual(expect.arrayContaining([3, 4, 5]));
     expect(report.issues.retentionCandidates.map((entry) => entry.id)).toContain(5);
-    expect(report.recommendations).toContain('Review 1 duplicate cluster(s) with `memorix memory consolidate --action preview`.');
+    expect(report.recommendations).toContain('Review 1 duplicate cluster(s) with `baton memory consolidate --action preview`.');
     expect(observations[2].status).toBe('active');
   });
 
   it('keeps project filtering explicit', () => {
     const report = auditMemoryQuality([
-      obs({ id: 1, projectId: 'AVIDS2/memorix' }),
+      obs({ id: 1, projectId: 'AVIDS2/baton' }),
       obs({ id: 2, projectId: 'other/project' }),
     ], {
-      projectId: 'AVIDS2/memorix',
+      projectId: 'AVIDS2/baton',
       referenceTime: new Date('2026-06-17T00:00:00.000Z'),
     });
 
     expect(report.summary.total).toBe(1);
-    expect(report.projectId).toBe('AVIDS2/memorix');
+    expect(report.projectId).toBe('AVIDS2/baton');
   });
 });

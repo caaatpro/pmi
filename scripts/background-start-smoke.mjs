@@ -6,23 +6,23 @@ import process from 'node:process'
 
 const root = process.cwd()
 const distCli = path.resolve(root, 'dist', 'cli', 'index.js')
-const tempBase = process.env.MEMORIX_TEST_TMPDIR?.trim() || path.join(root, '.tmp-memorix-smoke')
+const tempBase = process.env.BATON_TEST_TMPDIR?.trim() || path.join(root, '.tmp-baton-smoke')
 await mkdir(tempBase, { recursive: true })
-const tempRoot = await mkdtemp(path.join(tempBase, 'memorix-background-smoke-'))
+const tempRoot = await mkdtemp(path.join(tempBase, 'baton-background-smoke-'))
 const home = path.join(tempRoot, 'home')
 const project = path.join(tempRoot, 'project')
-const dataDir = path.join(home, '.memorix', 'data')
+const dataDir = path.join(home, '.baton', 'data')
 const port = 38_000 + Math.floor(Math.random() * 1_000)
 const env = {
   ...process.env,
   HOME: home,
   USERPROFILE: home,
-  MEMORIX_DATA_DIR: dataDir,
-  MEMORIX_EMBEDDING: 'off',
-  MEMORIX_LLM_API_KEY: '',
+  BATON_DATA_DIR: dataDir,
+  BATON_EMBEDDING: 'off',
+  BATON_LLM_API_KEY: '',
   OPENAI_API_KEY: '',
-  MEMORIX_LLM_PROVIDER: '',
-  MEMORIX_LLM_MODEL: '',
+  BATON_LLM_PROVIDER: '',
+  BATON_LLM_MODEL: '',
   NO_COLOR: '1',
 }
 
@@ -92,7 +92,7 @@ try {
   assert.equal(second.code, 0, `second start failed\n${second.stdout}\n${second.stderr}`)
   assert.match(`${first.stdout}\n${first.stderr}\n${second.stdout}\n${second.stderr}`, /already running|running and healthy/i)
 
-  const state = JSON.parse(await readFile(path.join(home, '.memorix', 'background.json'), 'utf8'))
+  const state = JSON.parse(await readFile(path.join(home, '.baton', 'background.json'), 'utf8'))
   assert.ok(Number.isSafeInteger(state.pid) && state.pid > 0)
 
   const processListing = process.platform === 'win32'

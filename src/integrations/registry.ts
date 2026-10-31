@@ -54,7 +54,7 @@ export interface IntegrationCapabilityManifest {
   };
 }
 
-export interface MemorixIntegration {
+export interface BatonIntegration {
   agent: AgentName | 'any-mcp';
   name: string;
   entry: IntegrationEntry;
@@ -76,13 +76,13 @@ export interface SetupIntegrationRow {
   surfaces: string;
 }
 
-const integrationEntries: Array<Omit<MemorixIntegration, 'capabilities'>> = [
+const integrationEntries: Array<Omit<BatonIntegration, 'capabilities'>> = [
   {
     agent: 'claude',
     name: 'Claude Code',
     entry: 'official-plugin',
     status: 'ready',
-    install: 'memorix setup --agent claude',
+    install: 'baton setup --agent claude',
     surfaces: ['MCP', 'skills', 'hooks', 'local marketplace'],
   },
   {
@@ -90,7 +90,7 @@ const integrationEntries: Array<Omit<MemorixIntegration, 'capabilities'>> = [
     name: 'Codex',
     entry: 'official-plugin',
     status: 'ready',
-    install: 'memorix setup --agent codex',
+    install: 'baton setup --agent codex',
     surfaces: ['MCP', 'skills', 'hooks', 'Personal marketplace'],
   },
   {
@@ -98,7 +98,7 @@ const integrationEntries: Array<Omit<MemorixIntegration, 'capabilities'>> = [
     name: 'CodeBuddy Code',
     entry: 'official-plugin',
     status: 'ready',
-    install: 'memorix setup --agent codebuddy --global',
+    install: 'baton setup --agent codebuddy --global',
     surfaces: ['MCP', 'skills', 'hooks', 'local marketplace'],
     note: 'Uses CodeBuddy\'s official .codebuddy-plugin marketplace package and leaves existing settings untouched.',
   },
@@ -107,7 +107,7 @@ const integrationEntries: Array<Omit<MemorixIntegration, 'capabilities'>> = [
     name: 'GitHub Copilot CLI',
     entry: 'official-plugin',
     status: 'ready',
-    install: 'memorix setup --agent copilot',
+    install: 'baton setup --agent copilot',
     surfaces: ['MCP', 'skills', 'hooks'],
   },
   {
@@ -115,9 +115,9 @@ const integrationEntries: Array<Omit<MemorixIntegration, 'capabilities'>> = [
     name: 'Grok Build',
     entry: 'official-config',
     status: 'ready',
-    install: 'memorix setup --agent grok --global',
+    install: 'baton setup --agent grok --global',
     surfaces: ['hooks', 'AGENTS.md'],
-    note: 'Writes ~/.grok/hooks/memorix.json and leaves Grok MCP host-owned by default. Pass --mcp http to write [mcp_servers.memorix] in Grok config.toml.',
+    note: 'Writes ~/.grok/hooks/baton.json and leaves Grok MCP host-owned by default. Pass --mcp http to write [mcp_servers.baton] in Grok config.toml.',
   },
   {
     agent: 'qwen',
@@ -125,7 +125,7 @@ const integrationEntries: Array<Omit<MemorixIntegration, 'capabilities'>> = [
     entry: 'official-config',
     status: 'ready',
     setup: false,
-    install: 'memorix hooks install --agent qwen',
+    install: 'baton hooks install --agent qwen',
     surfaces: ['hooks', 'QWEN.md guidance'],
     note: 'Qwen uses the hook installer lane; it is intentionally excluded from the full setup command until a native MCP/package lane exists.',
   },
@@ -134,7 +134,7 @@ const integrationEntries: Array<Omit<MemorixIntegration, 'capabilities'>> = [
     name: 'Cursor',
     entry: 'official-config',
     status: 'ready',
-    install: 'memorix setup --agent cursor',
+    install: 'baton setup --agent cursor',
     surfaces: ['MCP', 'rules', 'skills', 'hooks'],
   },
   {
@@ -142,7 +142,7 @@ const integrationEntries: Array<Omit<MemorixIntegration, 'capabilities'>> = [
     name: 'Gemini CLI',
     entry: 'official-extension',
     status: 'ready',
-    install: 'memorix setup --agent gemini-cli',
+    install: 'baton setup --agent gemini-cli',
     surfaces: ['MCP', 'GEMINI.md context', 'hooks', 'skills'],
     note: 'Antigravity CLI has an official Gemini CLI migration path, but Gemini CLI remains an active standalone Google CLI target.',
   },
@@ -151,7 +151,7 @@ const integrationEntries: Array<Omit<MemorixIntegration, 'capabilities'>> = [
     name: 'OpenCode',
     entry: 'local-plugin',
     status: 'ready',
-    install: 'memorix setup --agent opencode',
+    install: 'baton setup --agent opencode',
     surfaces: ['MCP', 'local plugin file', 'skills', 'AGENTS.md'],
   },
   {
@@ -159,7 +159,7 @@ const integrationEntries: Array<Omit<MemorixIntegration, 'capabilities'>> = [
     name: 'OpenClaw',
     entry: 'official-bundle',
     status: 'ready',
-    install: 'memorix setup --agent openclaw',
+    install: 'baton setup --agent openclaw',
     surfaces: ['MCP', 'skills', 'OpenClaw hook pack', 'compatible bundle'],
     note: 'OpenClaw support installs a compatible bundle with .mcp.json, skills, and OpenClaw-style HOOK.md/handler.ts hooks.',
   },
@@ -168,16 +168,16 @@ const integrationEntries: Array<Omit<MemorixIntegration, 'capabilities'>> = [
     name: 'Hermes Agent',
     entry: 'official-plugin',
     status: 'ready',
-    install: 'memorix setup --agent hermes',
+    install: 'baton setup --agent hermes',
     surfaces: ['MCP', 'plugin', 'hooks', 'slash command', 'CLI command', 'skills'],
-    note: 'Hermes support installs plugins/memorix under Hermes home, enables it in config.yaml, and keeps MCP in the official mcp_servers YAML format.',
+    note: 'Hermes support installs plugins/baton under Hermes home, enables it in config.yaml, and keeps MCP in the official mcp_servers YAML format.',
   },
   {
     agent: 'omp',
     name: 'Oh-my-Pi',
     entry: 'official-package',
     status: 'ready',
-    install: 'memorix setup --agent omp',
+    install: 'baton setup --agent omp',
     surfaces: ['MCP', 'omp.extensions package', 'slash command', 'skills'],
     note: 'Oh-my-Pi support installs an omp.extensions package and writes .omp/mcp.json for projects or ~/.omp/agent/mcp.json for global setup.',
   },
@@ -186,7 +186,7 @@ const integrationEntries: Array<Omit<MemorixIntegration, 'capabilities'>> = [
     name: 'Windsurf',
     entry: 'official-config',
     status: 'ready',
-    install: 'memorix setup --agent windsurf',
+    install: 'baton setup --agent windsurf',
     surfaces: ['MCP', 'rules', 'hooks'],
   },
   {
@@ -194,7 +194,7 @@ const integrationEntries: Array<Omit<MemorixIntegration, 'capabilities'>> = [
     name: 'Kiro',
     entry: 'official-config',
     status: 'ready',
-    install: 'memorix setup --agent kiro',
+    install: 'baton setup --agent kiro',
     surfaces: ['MCP', 'steering', 'hooks'],
   },
   {
@@ -202,7 +202,7 @@ const integrationEntries: Array<Omit<MemorixIntegration, 'capabilities'>> = [
     name: 'Antigravity',
     entry: 'official-plugin',
     status: 'ready',
-    install: 'memorix setup --agent antigravity',
+    install: 'baton setup --agent antigravity',
     surfaces: ['MCP', 'plugin', 'hooks', 'skills', 'rules'],
     note: 'Antigravity support installs a native plugin with plugin.json, mcp_config.json, hooks.json, skills, and rules under the official plugin directories.',
   },
@@ -211,7 +211,7 @@ const integrationEntries: Array<Omit<MemorixIntegration, 'capabilities'>> = [
     name: 'Trae',
     entry: 'official-config',
     status: 'ready',
-    install: 'memorix setup --agent trae',
+    install: 'baton setup --agent trae',
     surfaces: ['MCP', 'rules'],
   },
   {
@@ -219,7 +219,7 @@ const integrationEntries: Array<Omit<MemorixIntegration, 'capabilities'>> = [
     name: 'DeepSeek Harness',
     entry: 'official-config',
     status: 'ready',
-    install: 'memorix setup --agent dsh',
+    install: 'baton setup --agent dsh',
     surfaces: ['MCP', 'AGENTS.md', 'skills'],
     note: 'DeepSeek Harness support writes a @deepseek-ai/dsh-mcp-client row into $DSH_HOME/cordis.patch.yml (default ~/.dsh/cordis.patch.yml), guidance into the harness AGENTS.md, and skills under $DSH_HOME/skills.',
   },
@@ -228,16 +228,16 @@ const integrationEntries: Array<Omit<MemorixIntegration, 'capabilities'>> = [
     name: 'WorkBuddy',
     entry: 'official-config',
     status: 'ready',
-    install: 'memorix setup --agent workbuddy',
+    install: 'baton setup --agent workbuddy',
     surfaces: ['MCP', 'AGENTS.md'],
-    note: 'WorkBuddy support writes a memorix MCP server row into ~/.workbuddy/mcp.json (or <project>/.workbuddy/mcp.json for project installs) and guidance into AGENTS.md.',
+    note: 'WorkBuddy support writes a baton MCP server row into ~/.workbuddy/mcp.json (or <project>/.workbuddy/mcp.json for project installs) and guidance into AGENTS.md.',
   },
   {
     agent: 'pi',
     name: 'pi coding agent',
     entry: 'official-package',
     status: 'ready',
-    install: 'memorix setup --agent pi',
+    install: 'baton setup --agent pi',
     surfaces: ['MCP', 'Pi package', 'extension API', 'skills', 'hooks'],
     note: 'Requires Pi 1.0+. Uses native .pi/mcp.json or ~/.pi/agent/mcp.json alongside the extension/skills package.',
   },
@@ -246,7 +246,7 @@ const integrationEntries: Array<Omit<MemorixIntegration, 'capabilities'>> = [
     name: 'Any MCP client',
     entry: 'mcp-fallback',
     status: 'ready',
-    install: 'memorix serve',
+    install: 'baton serve',
     surfaces: ['MCP stdio'],
   },
 ];
@@ -261,11 +261,11 @@ const PACKAGE_ENTRIES = new Set<IntegrationEntry>([
 
 const DEFAULT_HOOK_EVENTS = ['session_start', 'user_prompt', 'post_tool', 'pre_compact', 'session_end'];
 
-function packageRoot(agent: MemorixIntegration['agent']): string {
-  return agent === 'gemini-cli' ? 'plugins/gemini/memorix' : `plugins/${agent}/memorix`;
+function packageRoot(agent: BatonIntegration['agent']): string {
+  return agent === 'gemini-cli' ? 'plugins/gemini/baton' : `plugins/${agent}/baton`;
 }
 
-function capabilityManifest(entry: Omit<MemorixIntegration, 'capabilities'>): IntegrationCapabilityManifest {
+function capabilityManifest(entry: Omit<BatonIntegration, 'capabilities'>): IntegrationCapabilityManifest {
   const lowerSurfaces = entry.surfaces.map(surface => surface.toLowerCase());
   const hasMcp = entry.agent === 'grok' || lowerSurfaces.some(surface => surface.includes('mcp'));
   const hasHooks = lowerSurfaces.some(surface => surface.includes('hook'));
@@ -295,7 +295,7 @@ function capabilityManifest(entry: Omit<MemorixIntegration, 'capabilities'>): In
     : [];
   const hookFiles = hasHooks ? [entry.agent === 'qwen' ? '.qwen/settings.json' : 'host hook configuration'] : [];
   const ruleFiles = hasRules ? ['host rules or steering file'] : [];
-  const skillFiles = hasSkills ? ['official Memorix skills'] : [];
+  const skillFiles = hasSkills ? ['official Baton skills'] : [];
   const guidanceFiles = hasGuidance ? ['host guidance file'] : [];
 
   return {
@@ -305,7 +305,7 @@ function capabilityManifest(entry: Omit<MemorixIntegration, 'capabilities'>): In
     transport: {
       supported,
       default: defaultTransport,
-      ...(defaultTransport === 'stdio' ? { command: 'memorix serve' } : {}),
+      ...(defaultTransport === 'stdio' ? { command: 'baton serve' } : {}),
     },
     artifacts: { packageFiles, hookFiles, ruleFiles, skillFiles, guidanceFiles },
     hooks: { supported: hasHooks, events: hasHooks ? [...DEFAULT_HOOK_EVENTS] : [] },
@@ -329,27 +329,27 @@ function capabilityManifest(entry: Omit<MemorixIntegration, 'capabilities'>): In
     source: {
       registry: 'src/integrations/registry.ts',
       generatedBy,
-      documentation: ['docs/PMI/INSTALL.md', 'docs/PMI/API.md'],
+      documentation: ['docs/baton/INSTALL.md', 'docs/baton/API.md'],
     },
   };
 }
 
-export const MEMORIX_INTEGRATIONS: MemorixIntegration[] = integrationEntries.map((entry) => ({
+export const BATON_INTEGRATIONS: BatonIntegration[] = integrationEntries.map((entry) => ({
   ...entry,
   capabilities: capabilityManifest(entry),
 }));
 
-function isAgentEntry(item: MemorixIntegration): item is MemorixIntegration & { agent: AgentName } {
+function isAgentEntry(item: BatonIntegration): item is BatonIntegration & { agent: AgentName } {
   return item.agent !== 'any-mcp';
 }
 
-export function getAgentIntegrationEntries(): Array<MemorixIntegration & { agent: AgentName }> {
-  return MEMORIX_INTEGRATIONS.filter(isAgentEntry);
+export function getAgentIntegrationEntries(): Array<BatonIntegration & { agent: AgentName }> {
+  return BATON_INTEGRATIONS.filter(isAgentEntry);
 }
 
 export function getSetupAgentTargets(): AgentName[] {
-  return MEMORIX_INTEGRATIONS
-    .filter((item): item is MemorixIntegration & { agent: AgentName } => (
+  return BATON_INTEGRATIONS
+    .filter((item): item is BatonIntegration & { agent: AgentName } => (
       isAgentEntry(item) && item.status === 'ready' && item.setup !== false
     ))
     .map(item => item.agent);
@@ -386,8 +386,8 @@ export function validateIntegrationRegistry(): string[] {
 }
 
 export function getSetupIntegrationRows(): SetupIntegrationRow[] {
-  return MEMORIX_INTEGRATIONS
-    .filter((item): item is MemorixIntegration & { agent: AgentName } => (
+  return BATON_INTEGRATIONS
+    .filter((item): item is BatonIntegration & { agent: AgentName } => (
       isAgentEntry(item) && item.status === 'ready' && item.setup !== false
     ))
     .map((item) => ({

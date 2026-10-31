@@ -17,13 +17,13 @@ interface OwnerFile {
 
 function ownerPath(dataDir: string): string {
   const resolved = path.resolve(dataDir);
-  // The normal runtime data directory is ~/.memorix/data, so keep identity
+  // The normal runtime data directory is ~/.baton/data, so keep identity
   // beside it. Custom data directories and isolated tests own their identity
   // inside the supplied directory instead of accidentally sharing a temp root.
   const home = path.basename(resolved).toLocaleLowerCase('en-US') === 'data'
     ? path.dirname(resolved)
     : resolved;
-  return path.join(home, 'memorix-user.json');
+  return path.join(home, 'baton-user.json');
 }
 
 function normalizedOwnerId(value: string | undefined): string | undefined {
@@ -50,7 +50,7 @@ export async function resolveLocalMemoryOwner(
   dataDir: string,
   options: { create?: boolean } = {},
 ): Promise<LocalMemoryOwner | undefined> {
-  const configured = normalizedOwnerId(process.env.MEMORIX_USER_ID);
+  const configured = normalizedOwnerId(process.env.BATON_USER_ID);
   if (configured) return { id: configured, source: 'environment' };
 
   const filePath = ownerPath(dataDir);
@@ -70,6 +70,6 @@ export async function resolveLocalMemoryOwner(
     if (error?.code !== 'EEXIST') throw error;
     const concurrent = await readOwnerFile(filePath);
     if (concurrent) return concurrent;
-    throw new Error('Memorix could not establish a valid local memory owner identity.');
+    throw new Error('Baton could not establish a valid local memory owner identity.');
   }
 }

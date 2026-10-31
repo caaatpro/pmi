@@ -14,8 +14,8 @@ src/**/*.d.ts.map
 !src/embedding/transformers.d.ts
 !src/globals.d.ts
 
-# Memorix data
-.memorix-data/
+# Baton data
+.baton-data/
 *.backup-*
 
 # Fastembed model cache (~133MB ONNX models)
@@ -32,7 +32,7 @@ image/
 .demokiller/
 .opencode/*
 !.opencode/plugins/
-!.opencode/plugins/memorix.js
+!.opencode/plugins/baton.js
 docs/dev-log/
 test-smoke.txt
 /e2e_*.mjs
@@ -55,7 +55,7 @@ memory-game-*.png
 .DS_Store
 Thumbs.db
 
-# Agent configs (auto-installed by memorix hooks)
+# Agent configs (auto-installed by baton hooks)
 .agent/
 .claude/
 .gemini/
@@ -63,9 +63,9 @@ Thumbs.db
 .codex/
 .cursor/
 .kiro/
-.memorix/
+.baton/
 .windsurf/hooks.json
-.windsurf/rules/memorix.md
+.windsurf/rules/baton.md
 .github/copilot-instructions.md
 
 # Test scripts
@@ -97,5 +97,5 @@ temple/
 *.swp
 *.swo
 
-# PMI deployment secrets
+# Baton deployment secrets
 deploy/.env

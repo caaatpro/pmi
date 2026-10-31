@@ -1,9 +1,9 @@
 /**
  * Local client configuration for Connected mode:
  *
- * - `~/.pmi/credentials.json` (mode 0600): personal access token per server.
+ * - `~/.baton/credentials.json` (mode 0600): personal access token per server.
  *   Never inside the repository, never in project memory.
- * - `<repo>/.pmi/project.json`: which server project this working copy
+ * - `<repo>/.baton/project.json`: which server project this working copy
  *   replicates. Holds no secret and may be committed so teammates link the
  *   same project.
  */
@@ -32,12 +32,12 @@ export interface ProjectLink {
   domainPaths?: string[];
 }
 
-export function pmiHome(env: NodeJS.ProcessEnv = process.env): string {
-  return env.PMI_HOME?.trim() || path.join(os.homedir(), '.pmi');
+export function batonHome(env: NodeJS.ProcessEnv = process.env): string {
+  return env.BATON_HOME?.trim() || path.join(os.homedir(), '.baton');
 }
 
 function credentialsPath(env?: NodeJS.ProcessEnv): string {
-  return path.join(pmiHome(env), 'credentials.json');
+  return path.join(batonHome(env), 'credentials.json');
 }
 
 /** Canonical server URL: scheme + host + optional path prefix, no trailing slash. */
@@ -49,8 +49,8 @@ export function normalizeServerUrl(raw: string): string {
     throw new Error(`not a valid server URL: ${raw}`);
   }
   if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new Error(`unsupported URL scheme ${url.protocol}`);
-  if (url.protocol === 'http:' && !isLoopback(url.hostname) && process.env.PMI_ALLOW_INSECURE_HTTP !== '1') {
-    throw new Error('refusing to send a token over plain HTTP to a non-local server; use https:// or set PMI_ALLOW_INSECURE_HTTP=1');
+  if (url.protocol === 'http:' && !isLoopback(url.hostname) && process.env.BATON_ALLOW_INSECURE_HTTP !== '1') {
+    throw new Error('refusing to send a token over plain HTTP to a non-local server; use https:// or set BATON_ALLOW_INSECURE_HTTP=1');
   }
   return `${url.protocol}//${url.host}${url.pathname.replace(/\/+$/, '')}`;
 }
@@ -78,22 +78,22 @@ export function writeCredentials(file: CredentialsFile, env?: NodeJS.ProcessEnv)
 }
 
 /**
- * Token for a server: the saved credential, or `PMI_TOKEN` when `PMI_SERVER`
- * names this same server. `.pmi/project.json` comes from the repository, so
+ * Token for a server: the saved credential, or `BATON_TOKEN` when `BATON_SERVER`
+ * names this same server. `.baton/project.json` comes from the repository, so
  * a cloned repository must never be able to point a CI token at its own server.
  */
 export function tokenFor(server: string, env: NodeJS.ProcessEnv = process.env): string | undefined {
-  const envToken = env.PMI_TOKEN?.trim();
-  if (envToken && env.PMI_SERVER?.trim()) {
+  const envToken = env.BATON_TOKEN?.trim();
+  if (envToken && env.BATON_SERVER?.trim()) {
     try {
-      if (normalizeServerUrl(env.PMI_SERVER.trim()) === server) return envToken;
-    } catch { /* invalid PMI_SERVER: ignore the env token */ }
+      if (normalizeServerUrl(env.BATON_SERVER.trim()) === server) return envToken;
+    } catch { /* invalid BATON_SERVER: ignore the env token */ }
   }
   return readCredentials(env).servers[server]?.token;
 }
 
 export function projectLinkPath(projectRoot: string): string {
-  return path.join(projectRoot, '.pmi', 'project.json');
+  return path.join(projectRoot, '.baton', 'project.json');
 }
 
 export function readProjectLink(projectRoot: string): ProjectLink | undefined {

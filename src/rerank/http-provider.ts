@@ -4,7 +4,7 @@
  * Posts a Cohere-compatible `{model, query, documents}` body to
  * `{base_url}/rerank` (or an explicit `/rerank` path). Compatible with
  * any `/rerank` endpoint that accepts that body. The model id is
- * whatever the user configured — Memorix does not rewrite it.
+ * whatever the user configured — Baton does not rewrite it.
  */
 
 import { resolveRerankTimeoutMs } from './policy.js';

@@ -28,7 +28,7 @@ let graphManager: KnowledgeGraphManager;
 const PROJECT_ID = 'test/auto-relations';
 
 beforeEach(async () => {
-  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-autorel-'));
+  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-autorel-'));
   await resetDb();
   graphManager = new KnowledgeGraphManager(testDir);
   await graphManager.init();

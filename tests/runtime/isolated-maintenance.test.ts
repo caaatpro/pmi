@@ -37,7 +37,7 @@ function makeJob(overrides: Partial<MaintenanceJob> = {}): MaintenanceJob {
 }
 
 async function createRunner(source: string): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-maintenance-runner-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-maintenance-runner-'));
   temporaryPaths.push(dir);
   const runner = path.join(dir, 'runner.mjs');
   await fs.writeFile(runner, source, 'utf8');
@@ -88,15 +88,15 @@ describe('isolated maintenance runner', () => {
   });
 
   it('does not use the project root as the child cwd', async () => {
-    const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-maintenance-project-'));
-    const mark = path.join(os.tmpdir(), `memorix-maintenance-cwd-${Date.now()}.txt`);
+    const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-maintenance-project-'));
+    const mark = path.join(os.tmpdir(), `baton-maintenance-cwd-${Date.now()}.txt`);
     temporaryPaths.push(projectRoot, mark);
     const runner = await createRunner([
       'import { writeFileSync } from "node:fs";',
       'let input = "";',
       'process.stdin.on("data", (chunk) => { input += chunk; });',
       'process.stdin.on("end", () => {',
-      '  writeFileSync(process.env.MEMORIX_CWD_MARK, process.cwd(), "utf8");',
+      '  writeFileSync(process.env.BATON_CWD_MARK, process.cwd(), "utf8");',
       `  process.stdout.write("${MAINTENANCE_RESULT_PREFIX}{\\\"action\\\":\\\"complete\\\"}\\n");`,
       '});',
     ].join('\n'));
@@ -108,7 +108,7 @@ describe('isolated maintenance runner', () => {
     }, {
       runnerPath: runner,
       timeoutMs: 5_000,
-      env: { MEMORIX_CWD_MARK: mark },
+      env: { BATON_CWD_MARK: mark },
     });
 
     expect(result).toEqual({ action: 'complete' });

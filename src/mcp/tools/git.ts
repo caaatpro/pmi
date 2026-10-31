@@ -1,5 +1,5 @@
 /**
- * MCP `git_analyze` (docs/PMI/API.md §2): incremental analysis of the
+ * MCP `git_analyze` (docs/baton/API.md §2): incremental analysis of the
  * commits after the last analyzed one; `full` also checks that the related
  * files of active knowledge still exist.
  */

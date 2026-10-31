@@ -12,17 +12,17 @@ describe('OpenCodeMCPAdapter', () => {
             const json = JSON.stringify({
                 $schema: 'https://opencode.ai/config.json',
                 mcp: {
-                    memorix: {
+                    baton: {
                         type: 'local',
-                        command: ['memorix', 'serve'],
+                        command: ['baton', 'serve'],
                         enabled: true,
                     },
                 },
             });
             const servers = adapter.parse(json);
             expect(servers).toHaveLength(1);
-            expect(servers[0].name).toBe('memorix');
-            expect(servers[0].command).toBe('memorix');
+            expect(servers[0].name).toBe('baton');
+            expect(servers[0].command).toBe('baton');
             expect(servers[0].args).toEqual(['serve']);
         });
 
@@ -97,12 +97,12 @@ describe('OpenCodeMCPAdapter', () => {
                 mcp: {
                     svc: {
                         type: 'local',
-                        command: 'memorix',
+                        command: 'baton',
                     },
                 },
             });
             const servers = adapter.parse(json);
-            expect(servers[0].command).toBe('memorix');
+            expect(servers[0].command).toBe('baton');
             expect(servers[0].args).toEqual([]);
         });
     });
@@ -110,12 +110,12 @@ describe('OpenCodeMCPAdapter', () => {
     describe('generate', () => {
         it('should generate valid JSON for stdio servers', () => {
             const output = adapter.generate([
-                { name: 'memorix', command: 'memorix', args: ['serve'] },
+                { name: 'baton', command: 'baton', args: ['serve'] },
             ]);
             const parsed = JSON.parse(output);
             expect(parsed.$schema).toBe('https://opencode.ai/config.json');
-            expect(parsed.mcp.memorix.type).toBe('local');
-            expect(parsed.mcp.memorix.command).toEqual(['memorix', 'serve']);
+            expect(parsed.mcp.baton.type).toBe('local');
+            expect(parsed.mcp.baton.command).toEqual(['baton', 'serve']);
         });
 
         it('should generate JSON for HTTP servers', () => {
@@ -169,9 +169,9 @@ describe('OpenCodeMCPAdapter', () => {
         it('should survive parse → generate → parse for stdio', () => {
             const original = JSON.stringify({
                 mcp: {
-                    memorix: {
+                    baton: {
                         type: 'local',
-                        command: ['memorix', 'serve'],
+                        command: ['baton', 'serve'],
                         environment: { DEBUG: 'true' },
                     },
                 },
@@ -179,8 +179,8 @@ describe('OpenCodeMCPAdapter', () => {
             const servers = adapter.parse(original);
             const generated = adapter.generate(servers);
             const reparsed = adapter.parse(generated);
-            expect(reparsed[0].name).toBe('memorix');
-            expect(reparsed[0].command).toBe('memorix');
+            expect(reparsed[0].name).toBe('baton');
+            expect(reparsed[0].command).toBe('baton');
             expect(reparsed[0].args).toEqual(['serve']);
             expect(reparsed[0].env).toEqual({ DEBUG: 'true' });
         });

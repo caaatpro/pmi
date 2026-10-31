@@ -1,5 +1,5 @@
 /**
- * memorix repair — Repair agent integrations and derived indexes.
+ * baton repair — Repair agent integrations and derived indexes.
  */
 
 import { defineCommand } from 'citty';
@@ -34,12 +34,12 @@ export default defineCommand({
     const action = positional[0] || 'agents';
 
     if (action === 'index') {
-      if (args.dry) throw new Error('`memorix repair index` does not support --dry');
+      if (args.dry) throw new Error('`baton repair index` does not support --dry');
       const { detectProject } = await import('../../project/detector.js');
       const { getProjectDataDir } = await import('../../store/persistence.js');
       const { optimizeSemanticIndexes } = await import('../../search/semantic-index.js');
       const project = detectProject(process.cwd());
-      if (!project) throw new Error('Run `memorix repair index` inside a Git project');
+      if (!project) throw new Error('Run `baton repair index` inside a Git project');
       const dataDir = await getProjectDataDir(project.id);
       const tables = await optimizeSemanticIndexes(dataDir);
       if (args.json) console.log(JSON.stringify({ dataDir, optimizedTables: tables }, null, 2));
@@ -48,7 +48,7 @@ export default defineCommand({
     }
 
     if (action !== 'agents') {
-      const message = 'Usage: memorix repair agents [--agent <agent>] [--scope local|project|global|all] [--dry] | memorix repair index [--json]';
+      const message = 'Usage: baton repair agents [--agent <agent>] [--scope local|project|global|all] [--dry] | baton repair index [--json]';
       if (args.json) {
         console.log(JSON.stringify({ error: message }, null, 2));
       } else {

@@ -1,5 +1,5 @@
 /**
- * HTTP API of the central server (docs/PMI/API.md §1). Plain `node:http`
+ * HTTP API of the central server (docs/baton/API.md §1). Plain `node:http`
  * with zod validation. Every handler goes through `authenticate`; project
  * routes go through `authorize()` and read or write project data inside
  * `db.asUser()`, where Postgres row-level security applies as well.
@@ -73,25 +73,25 @@ const MAX_BODY_BYTES = 16 * 1024 * 1024;
 export interface CentralServerOptions {
   db: Database;
   version: string;
-  /** Session lease length; a session not renewed within it becomes resumable. Default PMI_LEASE_TTL or 600 s. */
+  /** Session lease length; a session not renewed within it becomes resumable. Default BATON_LEASE_TTL or 600 s. */
   leaseTtlSeconds?: number;
   /** How long an addressed handoff is reserved for its recipient. Default 24 h. */
   handoffReserveHours?: number;
-  /** Directory for blobs of 256 KiB and more. Default PMI_BLOB_DIR or ./data/blobs. */
+  /** Directory for blobs of 256 KiB and more. Default BATON_BLOB_DIR or ./data/blobs. */
   blobDir?: string;
   /** Embedding provider for semantic search; keyword-only search without it. */
   embeddings?: ServerEmbeddings | null;
   /** Minimum age of the cached L1 overview before a rebuild (default 600 s). */
   overviewMinAgeSeconds?: number;
-  /** Bearer token for /metrics; unset disables the endpoint. Default PMI_METRICS_TOKEN. */
+  /** Bearer token for /metrics; unset disables the endpoint. Default BATON_METRICS_TOKEN. */
   metricsToken?: string;
   /** Failed authentications per client address per minute before 429 (default 30). */
   maxAuthFailuresPerMinute?: number;
-  /** Take the client address from X-Forwarded-For (behind Caddy). Default PMI_TRUST_PROXY=1. */
+  /** Take the client address from X-Forwarded-For (behind Caddy). Default BATON_TRUST_PROXY=1. */
   trustProxy?: boolean;
-  /** Keys for snapshot blob encryption; default PMI_BLOB_KEY / PMI_BLOB_KEYS_OLD. */
+  /** Keys for snapshot blob encryption; default BATON_BLOB_KEY / BATON_BLOB_KEYS_OLD. */
   blobKeys?: BlobKeys;
-  /** Directory of the web UI files; null turns the UI off. Default: shipped with the server, off with PMI_UI=0. */
+  /** Directory of the web UI files; null turns the UI off. Default: shipped with the server, off with BATON_UI=0. */
   uiDir?: string | null;
   log?: (line: Record<string, unknown>) => void;
 }
@@ -418,7 +418,7 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
       const user = await ctx.user();
       const project = await authorize(db, user, ctx.params.id, 'memory.read');
       const input = parse(searchSchema, await ctx.body());
-      metrics.inc('pmi_memory_retrieval_total', { kind: 'search' });
+      metrics.inc('baton_memory_retrieval_total', { kind: 'search' });
       const results = await db.asUser(user.id, async (tx) => {
         const hits = await hybridSearch(tx, [project.id], input.query, { limit: input.limit, embeddings, includeDeprecated: input.include_deprecated });
         const rows = await memoriesByIds(tx, hits.map((hit) => hit.id));
@@ -433,7 +433,7 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
       const user = await ctx.user();
       const input = parse(searchSchema, await ctx.body());
       const projectIds = (await listProjects(db, user.id)).map((project) => project.id);
-      metrics.inc('pmi_memory_retrieval_total', { kind: 'search' });
+      metrics.inc('baton_memory_retrieval_total', { kind: 'search' });
       const results = await db.asUser(user.id, async (tx) => {
         const hits = await hybridSearch(tx, projectIds, input.query, { limit: input.limit, embeddings, includeDeprecated: input.include_deprecated });
         const relevance = new Map(hits.map((hit) => [hit.id, hit.relevance]));
@@ -468,7 +468,7 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
       const project = await authorize(db, user, input.project_id, 'memory.write');
       const batch = input.batch as unknown as ChangeBatch;
       if (!project.legacyProjectIds.includes(batch.projectId)) {
-        throw new HttpError(409, 'identity_mismatch', `project "${project.slug}" does not replicate Memorix project ${batch.projectId}`);
+        throw new HttpError(409, 'identity_mismatch', `project "${project.slug}" does not replicate Baton project ${batch.projectId}`);
       }
       try {
         validateBatches([batch], batch.projectId, syncNamespace(batch.projectId));
@@ -651,7 +651,7 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
       const user = await ctx.user();
       const project = await authorize(db, user, ctx.params.id, 'memory.read');
       const overview = await db.asUser(user.id, (tx) => getOverview(tx, db, project, { minAgeSeconds: overviewMinAge }));
-      if (overview.cacheHit) metrics.inc('pmi_context_cache_hits_total');
+      if (overview.cacheHit) metrics.inc('baton_context_cache_hits_total');
       return { body: { overview: overview.text, memoryIds: overview.ids, tokens: overview.tokens, cacheHit: overview.cacheHit } };
     }),
 
@@ -677,14 +677,14 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
         });
         return built;
       });
-      metrics.inc('pmi_context_build_ms_sum', {}, Date.now() - started);
-      if (pkg.receipt.cacheHit) metrics.inc('pmi_context_cache_hits_total');
+      metrics.inc('baton_context_build_ms_sum', {}, Date.now() - started);
+      if (pkg.receipt.cacheHit) metrics.inc('baton_context_cache_hits_total');
       return { body: pkg };
     }),
 
     route('GET', '/metrics', async (ctx) => {
-      const expected = options.metricsToken ?? process.env.PMI_METRICS_TOKEN;
-      if (!expected) throw new HttpError(404, 'not_found', 'metrics are disabled; set PMI_METRICS_TOKEN');
+      const expected = options.metricsToken ?? process.env.BATON_METRICS_TOKEN;
+      if (!expected) throw new HttpError(404, 'not_found', 'metrics are disabled; set BATON_METRICS_TOKEN');
       const given = /^Bearer\s+(\S+)$/i.exec(ctx.req.headers.authorization ?? '')?.[1] ?? '';
       const a = Buffer.from(given);
       const b = Buffer.from(expected);
@@ -713,7 +713,7 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
         expectedCursor: input.expected_cursor, newCursor: input.new_cursor, rewritten: input.rewritten,
         commits: input.commits as unknown as PostedCommit[],
       }));
-      metrics.inc('pmi_git_commits_analyzed_total', {}, report.analyzed);
+      metrics.inc('baton_git_commits_analyzed_total', {}, report.analyzed);
       return { body: report };
     }),
 
@@ -742,8 +742,8 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
   const metrics = createMetrics();
   const embeddings = options.embeddings ?? null;
   const overviewMinAge = options.overviewMinAgeSeconds ?? 600;
-  const blobStorage = new ServerBlobStorage(options.blobDir ?? process.env.PMI_BLOB_DIR ?? path.resolve('data', 'blobs'), options.blobKeys);
-  const leaseTtl = options.leaseTtlSeconds ?? (Number(process.env.PMI_LEASE_TTL) || 600);
+  const blobStorage = new ServerBlobStorage(options.blobDir ?? process.env.BATON_BLOB_DIR ?? path.resolve('data', 'blobs'), options.blobKeys);
+  const leaseTtl = options.leaseTtlSeconds ?? (Number(process.env.BATON_LEASE_TTL) || 600);
   const handoffReserveHours = options.handoffReserveHours ?? 24;
 
   function withoutState(session: SessionRow): Omit<SessionRow, 'state' | 'handoffBrief'> {
@@ -780,11 +780,11 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
     return { body: { memory } };
   }
 
-  const uiDir = options.uiDir === undefined ? (process.env.PMI_UI === '0' ? null : defaultUiDir()) : options.uiDir;
+  const uiDir = options.uiDir === undefined ? (process.env.BATON_UI === '0' ? null : defaultUiDir()) : options.uiDir;
   const ui: WebUi | undefined = uiDir ? loadUi(uiDir) : undefined;
 
   const authFailures = new FailureLimiter(options.maxAuthFailuresPerMinute ?? 30);
-  const trustProxy = options.trustProxy ?? process.env.PMI_TRUST_PROXY === '1';
+  const trustProxy = options.trustProxy ?? process.env.BATON_TRUST_PROXY === '1';
   const clientIp = (req: http.IncomingMessage): string => {
     const forwarded = trustProxy ? String(req.headers['x-forwarded-for'] ?? '').split(',')[0].trim() : '';
     return forwarded || req.socket.remoteAddress || 'unknown';
@@ -800,12 +800,12 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
       const payload = JSON.stringify(body);
       res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', ...SECURITY_HEADERS });
       res.end(payload);
-      metrics.inc('pmi_http_requests_total', { route: routeLabel, status: String(status) });
+      metrics.inc('baton_http_requests_total', { route: routeLabel, status: String(status) });
       log({ at: new Date().toISOString(), method: req.method, path: url.pathname, status, ms: Date.now() - started, user: user?.id });
     };
 
     if (serveUi(ui, req, res, url.pathname)) {
-      metrics.inc('pmi_http_requests_total', { route: 'ui', status: String(res.statusCode) });
+      metrics.inc('baton_http_requests_total', { route: 'ui', status: String(res.statusCode) });
       return;
     }
 
@@ -845,7 +845,7 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
     selected.handler(ctx).then(
       (result) => {
         if ('raw' in result) {
-          metrics.inc('pmi_http_requests_total', { route: routeLabel, status: String(result.status) });
+          metrics.inc('baton_http_requests_total', { route: routeLabel, status: String(result.status) });
           log({ at: new Date().toISOString(), method: req.method, path: url.pathname, status: result.status, ms: Date.now() - started, user: user?.id });
           return;
         }

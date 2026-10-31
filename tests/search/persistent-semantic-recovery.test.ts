@@ -53,11 +53,11 @@ function observation(): Observation {
 
 describe('persistent semantic search recovery', () => {
   let dataDir = '';
-  const previousThreshold = process.env.MEMORIX_ORAMA_HYDRATION_THRESHOLD;
+  const previousThreshold = process.env.BATON_ORAMA_HYDRATION_THRESHOLD;
 
   beforeEach(async () => {
-    dataDir = await mkdtemp(path.join(tmpdir(), 'memorix-semantic-recovery-'));
-    process.env.MEMORIX_ORAMA_HYDRATION_THRESHOLD = '1';
+    dataDir = await mkdtemp(path.join(tmpdir(), 'baton-semantic-recovery-'));
+    process.env.BATON_ORAMA_HYDRATION_THRESHOLD = '1';
     await initObservationStore(dataDir);
     await getObservationStore().insert(observation());
     await initObservations(dataDir);
@@ -73,8 +73,8 @@ describe('persistent semantic search recovery', () => {
     closeAllDatabases();
     await resetDb();
     state.semanticHits.mockReset();
-    if (previousThreshold === undefined) delete process.env.MEMORIX_ORAMA_HYDRATION_THRESHOLD;
-    else process.env.MEMORIX_ORAMA_HYDRATION_THRESHOLD = previousThreshold;
+    if (previousThreshold === undefined) delete process.env.BATON_ORAMA_HYDRATION_THRESHOLD;
+    else process.env.BATON_ORAMA_HYDRATION_THRESHOLD = previousThreshold;
     if (dataDir) await rm(dataDir, { recursive: true, force: true });
     dataDir = '';
   });

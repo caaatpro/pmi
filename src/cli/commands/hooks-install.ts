@@ -1,5 +1,5 @@
 /**
- * CLI Command: memorix hooks install
+ * CLI Command: baton hooks install
  *
  * TUI interactive selection for installing hooks.
  * Auto-detects installed agents and lets user choose which to install.
@@ -11,7 +11,7 @@ import * as p from '@clack/prompts';
 export default defineCommand({
   meta: {
     name: 'install',
-    description: 'Install Memorix hooks for IDEs (interactive)',
+    description: 'Install Baton hooks for IDEs (interactive)',
   },
   args: {
     agent: {
@@ -62,11 +62,11 @@ export default defineCommand({
     }
 
     // TUI interactive selection
-    p.intro('Memorix Hooks Installation');
+    p.intro('Baton Hooks Installation');
 
     const { AGENT_SUPPORT_TIER } = await import('../../hooks/types.js');
     const selected = await p.multiselect({
-      message: 'Select IDEs to install Memorix hooks:',
+      message: 'Select IDEs to install Baton hooks:',
       options: availableAgents.map((agent) => ({
         value: agent,
         label: getAgentLabel(agent),
@@ -178,19 +178,19 @@ function getAgentHint(agent: string): string {
     qwen: '.qwen/settings.json',
     windsurf: '.windsurf/hooks.json',
     cursor: '.cursor/hooks.json',
-    copilot: '.github/hooks/memorix.json (project-only, no global)',
-    opencode: '.opencode/plugins/memorix.js',
-    kiro: '.kiro/hooks/memorix-agent-stop.kiro.hook',
+    copilot: '.github/hooks/baton.json (project-only, no global)',
+    opencode: '.opencode/plugins/baton.js',
+    kiro: '.kiro/hooks/baton-agent-stop.kiro.hook',
     antigravity: '.agents/hooks.json or ~/.gemini/config/hooks.json',
     'gemini-cli': '.gemini/settings.json',
-    openclaw: 'OpenClaw bundle hooks; use `memorix setup --agent openclaw`',
-    hermes: 'Hermes plugin hooks; use `memorix setup --agent hermes`',
-    omp: 'Oh-my-Pi package hooks; use `memorix setup --agent omp`',
+    openclaw: 'OpenClaw bundle hooks; use `baton setup --agent openclaw`',
+    hermes: 'Hermes plugin hooks; use `baton setup --agent hermes`',
+    omp: 'Oh-my-Pi package hooks; use `baton setup --agent omp`',
     trae: '.trae/rules/project_rules.md (rules only, no hooks system)',
-    dsh: '~/.dsh/cordis.patch.yml MCP row via `memorix setup --agent dsh` (no hooks system)',
-    workbuddy: '~/.workbuddy/mcp.json MCP row via `memorix setup --agent workbuddy` (no hooks system)',
-    grok: '~/.grok/hooks/memorix.json (own file, not RuleSync dest)',
-    codex: 'Codex plugin hooks; use `memorix setup --agent codex`',
+    dsh: '~/.dsh/cordis.patch.yml MCP row via `baton setup --agent dsh` (no hooks system)',
+    workbuddy: '~/.workbuddy/mcp.json MCP row via `baton setup --agent workbuddy` (no hooks system)',
+    grok: '~/.grok/hooks/baton.json (own file, not RuleSync dest)',
+    codex: 'Codex plugin hooks; use `baton setup --agent codex`',
   };
   return hints[agent] || '';
 }

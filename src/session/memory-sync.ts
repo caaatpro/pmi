@@ -1,8 +1,8 @@
 /**
- * Memory sync with the PMI server outside the CLI: the daemon runs it for
+ * Memory sync with the Baton server outside the CLI: the daemon runs it for
  * the working copies of its live sessions, so knowledge reaches the team
- * without anyone typing `pmi sync`. One sync per data directory at a time
- * (`pmi-memory-sync.lock`): the sync sequence and row state are shared.
+ * without anyone typing `baton sync`. One sync per data directory at a time
+ * (`baton-memory-sync.lock`): the sync sequence and row state are shared.
  */
 import path from 'node:path';
 
@@ -15,7 +15,7 @@ import { createSqliteSyncStore } from '../sync/store-port.js';
 import type { SyncReport } from '../sync/types.js';
 
 export async function withMemorySyncLock<T>(dataDir: string, fn: () => Promise<T>): Promise<T> {
-  const lockPath = path.join(dataDir, 'pmi-memory-sync.lock');
+  const lockPath = path.join(dataDir, 'baton-memory-sync.lock');
   await acquireLock(lockPath);
   try {
     return await fn();
@@ -31,7 +31,7 @@ export async function syncProjectMemory(dataDir: string, projectRoot: string, en
   return withMemorySyncLock(dataDir, async () => {
     await initObservationStore(dataDir);
     const syncStore = createSqliteSyncStore(dataDir, getObservationStore(), link.legacyProjectId);
-    const remote = await createRemote('pmi', syncStore.namespace(), env, { link });
+    const remote = await createRemote('baton', syncStore.namespace(), env, { link });
     return runSync(syncStore, remote, { deviceId: syncStore.deviceId(), dryRun: false, push: true, pull: true });
   });
 }

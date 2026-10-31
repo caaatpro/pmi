@@ -22,7 +22,7 @@ describe('FsRemote', () => {
   let remote: FsRemote;
 
   beforeEach(async () => {
-    root = await mkdtemp(path.join(tmpdir(), 'memorix-sync-fs-'));
+    root = await mkdtemp(path.join(tmpdir(), 'baton-sync-fs-'));
     remote = new FsRemote({ root, namespace: 'project-test' });
     await remote.init();
   });

@@ -9,7 +9,7 @@ import { closeAllDatabases } from '../../src/store/sqlite-db.js';
 let root: string | null = null;
 
 function makeRoot(): string {
-  root = join(tmpdir(), `memorix-lite-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  root = join(tmpdir(), `baton-lite-${Date.now()}-${Math.random().toString(16).slice(2)}`);
   mkdirSync(root, { recursive: true });
   return root;
 }

@@ -6,7 +6,7 @@ import './app.css';
 
 import { App } from './App';
 
-// pmi-server puts a per-request nonce here; the CSP allows only style elements
+// baton-server puts a per-request nonce here; the CSP allows only style elements
 // carrying it, which is how Mantine's CSS variables get in.
 const nonce = document.querySelector<HTMLMetaElement>('meta[name="csp-nonce"]')?.content ?? '';
 

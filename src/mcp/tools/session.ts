@@ -1,7 +1,7 @@
 /**
- * PMI session continuity tools for the local MCP server (docs/PMI/API.md §2):
+ * Baton session continuity tools for the local MCP server (docs/baton/API.md §2):
  * session_checkpoint, session_handoff, session_list, session_resume,
- * session_finish. `memorix_session_start` creates the session state.
+ * session_finish. `baton_session_start` creates the session state.
  *
  * First tool module outside src/server.ts: it receives the few pieces of
  * connection state it needs through `SessionToolContext` instead of reading
@@ -20,8 +20,8 @@ export interface SessionToolContext {
   /** The session this MCP connection opened or resumed, if any. */
   connectionSessionId: () => string | undefined;
   setConnectionSessionId: (id: string | undefined) => void;
-  /** Create the Memorix session row for a resumed session so memory written next is attributed to it. */
-  openMemorixSession: (sessionId: string, agent?: string) => Promise<void>;
+  /** Create the Baton session row for a resumed session so memory written next is attributed to it. */
+  openBatonSession: (sessionId: string, agent?: string) => Promise<void>;
   /** Process whose death means the agent is gone (the stdio server lives as long as its agent). */
   agentPid: number;
 }
@@ -59,7 +59,7 @@ export function registerSessionTools(server: McpServer, ctx: SessionToolContext)
     const id = explicit ?? ctx.connectionSessionId();
     if (id) return id;
     const [live] = local.list({ projectId: ctx.project().id, statuses: LIVE_STATUSES, deviceOnly: true });
-    if (!live) throw new Error('No active session: call memorix_session_start or session_resume first.');
+    if (!live) throw new Error('No active session: call baton_session_start or session_resume first.');
     return live.id;
   };
   const updateFrom = (args: UpdateArgs): service.SessionUpdate => {
@@ -72,7 +72,7 @@ export function registerSessionTools(server: McpServer, ctx: SessionToolContext)
     description:
       'Save the state of the current task so anyone can continue it if this session stops: what is done, what is pending, ' +
       'the next action and open problems. The working copy (branch, HEAD, changed files) is recorded automatically. ' +
-      'Call it after finishing a meaningful step; file changes are also checkpointed by the PMI daemon without you.',
+      'Call it after finishing a meaningful step; file changes are also checkpointed by the Baton daemon without you.',
     inputSchema: updateShape,
   }, async (args) => {
     try {
@@ -81,7 +81,7 @@ export function registerSessionTools(server: McpServer, ctx: SessionToolContext)
       const checkpoint = service.checkpointSession(local, sessionId, 'manual', updateFrom(args));
       const flush = await service.flushOutbox(local);
       return text(
-        `Checkpoint ${checkpoint.seq} saved for ${sessionId}${flush.offline ? ' (PMI server unreachable — queued)' : ''}.`,
+        `Checkpoint ${checkpoint.seq} saved for ${sessionId}${flush.offline ? ' (Baton server unreachable — queued)' : ''}.`,
         { sessionId, checkpoint: { id: checkpoint.id, seq: checkpoint.seq }, queued: flush.pending },
       );
     } catch (error) {
@@ -110,7 +110,7 @@ export function registerSessionTools(server: McpServer, ctx: SessionToolContext)
       if (ctx.connectionSessionId() === sessionId) ctx.setConnectionSessionId(undefined);
       const rejected = flush.rejected.filter((item) => item.sessionId === sessionId);
       const status = rejected.length
-        ? `The PMI server refused the handoff: ${rejected.map((item) => item.error).join('; ')}`
+        ? `The Baton server refused the handoff: ${rejected.map((item) => item.error).join('; ')}`
         : flush.offline ? 'Saved locally; delivered on the next successful sync.' : `Handed off. Resume elsewhere with session_resume("${sessionId}").`;
       return text(`${result.brief}\n\n${status}`, { sessionId, brief: result.brief, delivered: !flush.offline && !rejected.length });
     } catch (error) {
@@ -128,7 +128,7 @@ export function registerSessionTools(server: McpServer, ctx: SessionToolContext)
       const { sessions, offline } = await service.listProjectSessions(store(), { projectId: project.id, projectRoot: project.rootPath, all });
       const lines = sessions.map((session) => `- ${session.id} [${session.status}] ${session.task || '(no task)'} — ${session.agent ?? '?'}${session.userEmail ? `, ${session.userEmail}` : ''}, ${session.updatedAt}`);
       return text(
-        [sessions.length ? lines.join('\n') : 'No resumable sessions.', ...(offline ? ['(PMI server unreachable: this device only)'] : [])].join('\n'),
+        [sessions.length ? lines.join('\n') : 'No resumable sessions.', ...(offline ? ['(Baton server unreachable: this device only)'] : [])].join('\n'),
         { sessions, offline },
       );
     } catch (error) {
@@ -158,7 +158,7 @@ export function registerSessionTools(server: McpServer, ctx: SessionToolContext)
         projectId: project.id, projectRoot: project.rootPath, sessionId, agent, model, modelProvider, agentPid: ctx.agentPid,
         restore: restoreMode === 'none' ? { mode: 'none' } : { mode: 'worktree' },
       });
-      await ctx.openMemorixSession(resumed.id, agent ?? resumed.state.agent ?? undefined);
+      await ctx.openBatonSession(resumed.id, agent ?? resumed.state.agent ?? undefined);
       ctx.setConnectionSessionId(resumed.id);
       const state: SessionState = pkg.state;
       const lines = [

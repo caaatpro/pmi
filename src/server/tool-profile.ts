@@ -8,16 +8,16 @@
  * We provide four profiles:
  *   - "micro" (stdio default): Agent-ready project context + bounded recovery controls — 8 tools.
  *     Suitable for normal MCP clients where every tool schema costs context tokens.
- *   - "lite": Core memory CRUD, sessions, reasoning, continuity, retention, backup, PMI context, git, sessions and workspace recovery — 34 tools.
+ *   - "lite": Core memory CRUD, sessions, reasoning, continuity, retention, backup, Baton context, git, sessions and workspace recovery — 34 tools.
  *     Suitable for solo users who want the full memory surface without team tools.
  *   - "team" (HTTP default): lite + agent identity (team_manage) and Knowledge Workspace — 36 tools.
  *     Suitable when agents join with an explicit identity for personal/team memory.
  *   - "full": Everything, including niche / advanced tools (consolidate, dedup,
  *     formation metrics, rules/workspace sync).
- *     Opt in via `MEMORIX_MODE=full` or `--mode full`.
+ *     Opt in via `BATON_MODE=full` or `--mode full`.
  *
- * Users can override at any time via the `MEMORIX_MODE` env var, the `--mode`
- * CLI flag, or programmatically via `createMemorixServer({ toolProfile: ... })`.
+ * Users can override at any time via the `BATON_MODE` env var, the `--mode`
+ * CLI flag, or programmatically via `createBatonServer({ toolProfile: ... })`.
  */
 
 export type ToolProfile = 'micro' | 'lite' | 'team' | 'full';
@@ -28,33 +28,33 @@ export type ToolProfile = 'micro' | 'lite' | 'team' | 'full';
  */
 export const TOOL_PROFILES: Record<string, ReadonlyArray<ToolProfile>> = Object.freeze({
   // ── micro: default agent-facing surface — keep tools/list tiny ────
-  memorix_store:              ['micro', 'lite', 'team', 'full'],
-  memorix_search:             ['micro', 'lite', 'team', 'full'],
-  memorix_detail:             ['micro', 'lite', 'team', 'full'],
-  memorix_project_context:    ['micro', 'lite', 'team', 'full'],
-  memorix_context_pack:       ['micro', 'lite', 'team', 'full'],
-  memorix_codegraph_status:   ['micro', 'lite', 'team', 'full'],
-  memorix_resolve:            ['micro', 'lite', 'team', 'full'],
+  baton_store:              ['micro', 'lite', 'team', 'full'],
+  baton_search:             ['micro', 'lite', 'team', 'full'],
+  baton_detail:             ['micro', 'lite', 'team', 'full'],
+  baton_project_context:    ['micro', 'lite', 'team', 'full'],
+  baton_context_pack:       ['micro', 'lite', 'team', 'full'],
+  baton_codegraph_status:   ['micro', 'lite', 'team', 'full'],
+  baton_resolve:            ['micro', 'lite', 'team', 'full'],
   // A fail-closed stdio server needs an explicit recovery path when a client
   // did not launch it from the workspace.
-  memorix_session_start:      ['micro', 'lite', 'team', 'full'],
+  baton_session_start:      ['micro', 'lite', 'team', 'full'],
   // Evidence and feedback are deliberate operator/context-control surfaces;
   // keep the default micro profile at its eight-tool token budget.
-  memorix_evidence:           ['lite', 'team', 'full'],
-  memorix_feedback:           ['lite', 'team', 'full'],
-  memorix_continuity:         ['lite', 'team', 'full'],
+  baton_evidence:           ['lite', 'team', 'full'],
+  baton_feedback:           ['lite', 'team', 'full'],
+  baton_continuity:         ['lite', 'team', 'full'],
 
   // ── lite: extended solo memory surface ────────────────────────────
-  memorix_graph_context:      ['lite', 'team', 'full'],
-  memorix_timeline:           ['lite', 'team', 'full'],
-  memorix_suggest_topic_key:  ['lite', 'team', 'full'],
-  memorix_session_end:        ['lite', 'team', 'full'],
-  memorix_session_context:    ['lite', 'team', 'full'],
-  memorix_store_reasoning:    ['lite', 'team', 'full'],
-  memorix_search_reasoning:   ['lite', 'team', 'full'],
-  memorix_transfer:           ['lite', 'team', 'full'],
-  memorix_retention:          ['lite', 'team', 'full'],
-  // PMI context and memory (src/mcp/tools/context.ts)
+  baton_graph_context:      ['lite', 'team', 'full'],
+  baton_timeline:           ['lite', 'team', 'full'],
+  baton_suggest_topic_key:  ['lite', 'team', 'full'],
+  baton_session_end:        ['lite', 'team', 'full'],
+  baton_session_context:    ['lite', 'team', 'full'],
+  baton_store_reasoning:    ['lite', 'team', 'full'],
+  baton_search_reasoning:   ['lite', 'team', 'full'],
+  baton_transfer:           ['lite', 'team', 'full'],
+  baton_retention:          ['lite', 'team', 'full'],
+  // Baton context and memory (src/mcp/tools/context.ts)
   context_build:              ['lite', 'team', 'full'],
   project_overview:           ['lite', 'team', 'full'],
   memory_search:              ['lite', 'team', 'full'],
@@ -62,28 +62,28 @@ export const TOOL_PROFILES: Record<string, ReadonlyArray<ToolProfile>> = Object.
   memory_save:                ['lite', 'team', 'full'],
   decision_log:               ['lite', 'team', 'full'],
   git_analyze:                ['lite', 'team', 'full'],
-  // PMI session continuity (src/mcp/tools/session.ts)
+  // Baton session continuity (src/mcp/tools/session.ts)
   session_checkpoint:         ['lite', 'team', 'full'],
   session_handoff:            ['lite', 'team', 'full'],
   session_list:               ['lite', 'team', 'full'],
   session_resume:             ['lite', 'team', 'full'],
   session_finish:             ['lite', 'team', 'full'],
-  // PMI workspace recovery (src/mcp/tools/workspace.ts)
+  // Baton workspace recovery (src/mcp/tools/workspace.ts)
   workspace_snapshot:         ['lite', 'team', 'full'],
   workspace_restore:          ['lite', 'team', 'full'],
 
   // ── team: orchestration coordination surfaces — HTTP default ──────
-  memorix_knowledge:          ['team', 'full'],
+  baton_knowledge:          ['team', 'full'],
   team_manage:                ['team', 'full'],
 
   // ── full: advanced / specialized — opt-in only ───────────────────
-  memorix_audit_project:      ['full'],
-  memorix_deduplicate:        ['full'],
-  memorix_consolidate:        ['full'],
-  memorix_formation_metrics:  ['full'],
-  memorix_rules_sync:         ['full'],
-  memorix_workspace_sync:     ['full'],
-  memorix_compaction_checkpoint: ['full'],
+  baton_audit_project:      ['full'],
+  baton_deduplicate:        ['full'],
+  baton_consolidate:        ['full'],
+  baton_formation_metrics:  ['full'],
+  baton_rules_sync:         ['full'],
+  baton_workspace_sync:     ['full'],
+  baton_compaction_checkpoint: ['full'],
 });
 
 /**
@@ -104,7 +104,7 @@ export function isToolInProfile(toolName: string, profile: ToolProfile): boolean
 export interface ResolveToolProfileOpts {
   /** Explicit profile from caller (highest priority). */
   explicit?: ToolProfile | string | null;
-  /** Raw env var value, e.g. from process.env.MEMORIX_MODE. */
+  /** Raw env var value, e.g. from process.env.BATON_MODE. */
   envValue?: string | null;
   /** Default when nothing is set — typically 'lite' for stdio, 'team' for HTTP. */
   fallback: ToolProfile;
@@ -113,7 +113,7 @@ export interface ResolveToolProfileOpts {
 /**
  * Resolve the effective tool profile.
  *
- * Priority: explicit option > MEMORIX_MODE env > fallback.
+ * Priority: explicit option > BATON_MODE env > fallback.
  * Invalid values fall through to the next level so users never silently
  * lose tools due to a typo.
  */

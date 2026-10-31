@@ -1,8 +1,8 @@
 /**
  * CLI heap selection for the tsup respawn banner.
  *
- * `memorix serve` and other long-lived commands need a large V8 heap for
- * embeddings and the in-memory index. `memorix hook` is a per-event
+ * `baton serve` and other long-lived commands need a large V8 heap for
+ * embeddings and the in-memory index. `baton hook` is a per-event
  * lifecycle process and must not reserve a 4 GB heap — copies accumulate.
  */
 
@@ -44,9 +44,9 @@ export function resolveCliHeapMb(
   env: NodeJS.ProcessEnv = process.env,
 ): number {
   if (isHookCliInvocation(argv)) {
-    return parseHeapMb(env.MEMORIX_HOOK_HEAP_MB, DEFAULT_HOOK_HEAP_MB);
+    return parseHeapMb(env.BATON_HOOK_HEAP_MB, DEFAULT_HOOK_HEAP_MB);
   }
-  return parseHeapMb(env.MEMORIX_HEAP_MB, DEFAULT_CLI_HEAP_MB);
+  return parseHeapMb(env.BATON_HEAP_MB, DEFAULT_CLI_HEAP_MB);
 }
 
 /**
@@ -58,7 +58,7 @@ export function buildCliHeapBannerPrelude(): string {
     '#!/usr/bin/env node',
     'import {spawnSync as __ms} from "node:child_process";',
     'import {fileURLToPath as __fu} from "node:url";',
-    'if(!process.env.__MEMORIX_HEAP){process.env.__MEMORIX_HEAP="1";',
+    'if(!process.env.__BATON_HEAP){process.env.__BATON_HEAP="1";',
     'const __args=process.argv.slice(2);',
     'let __cmd;',
     'for(let __i=0;__i<__args.length;__i++){',
@@ -67,7 +67,7 @@ export function buildCliHeapBannerPrelude(): string {
     'if(__a.startsWith("-")){if(!__a.includes("=")&&__args[__i+1]&&!__args[__i+1].startsWith("-"))__i++;continue;}',
     '__cmd=__a;break;}',
     `const __fallback=__cmd==="hook"?${DEFAULT_HOOK_HEAP_MB}:${DEFAULT_CLI_HEAP_MB};`,
-    'const __raw=__cmd==="hook"?process.env.MEMORIX_HOOK_HEAP_MB:process.env.MEMORIX_HEAP_MB;',
+    'const __raw=__cmd==="hook"?process.env.BATON_HOOK_HEAP_MB:process.env.BATON_HEAP_MB;',
     'const __n=Number(__raw);',
     `const __heap=(Number.isFinite(__n)&&__n>=${MIN_HEAP_MB}&&__n<=${MAX_HEAP_MB})?String(Math.floor(__n)):String(__fallback);`,
     'let r=__ms(process.execPath,["--max-old-space-size="+__heap,__fu(import.meta.url),...process.argv.slice(2)],{stdio:"inherit",env:process.env,windowsHide:true});',

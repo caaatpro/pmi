@@ -1,0 +1,23 @@
+{
+  "name": "baton-pi-package",
+  "version": "1.10.2",
+  "description": "Baton shared workspace memory package for Pi coding agent.",
+  "license": "Apache-2.0",
+  "keywords": [
+    "pi-package",
+    "baton",
+    "agent-memory",
+    "coding-agent"
+  ],
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "pi": {
+    "extensions": [
+      "./extensions"
+    ],
+    "skills": [
+      "./skills"
+    ]
+  }
+}

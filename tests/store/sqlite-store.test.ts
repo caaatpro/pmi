@@ -40,7 +40,7 @@ function makeObs(overrides: Partial<Observation> & { id: number; entityName: str
 let tmpDir: string;
 
 beforeEach(async () => {
-  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-sqlite-test-'));
+  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-sqlite-test-'));
 });
 
 afterEach(async () => {
@@ -526,7 +526,7 @@ describe('initObservationStore fallback', () => {
   });
 
   it('switches store when dataDir changes', async () => {
-    const dir2 = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-sqlite-test2-'));
+    const dir2 = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-sqlite-test2-'));
     try {
       const store1 = await initObservationStore(tmpDir);
       const store2 = await initObservationStore(dir2);
@@ -553,10 +553,10 @@ describe('SqliteBackend close()', () => {
     await fs.rm(tmpDir, { recursive: true, force: true });
 
     // Recreate for afterEach cleanup
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-sqlite-test-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-sqlite-test-'));
   });
 
-  it('refuses to open memorix.db directly in $HOME', () => {
+  it('refuses to open baton.db directly in $HOME', () => {
     const previousHome = process.env.HOME;
     const previousProfile = process.env.USERPROFILE;
     process.env.HOME = tmpDir;

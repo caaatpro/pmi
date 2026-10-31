@@ -1,7 +1,7 @@
 /**
- * Audit Module - Track Memorix-written files
+ * Audit Module - Track Baton-written files
  *
- * Records all files written by Memorix to distinguish them from
+ * Records all files written by Baton to distinguish them from
  * project-native files. Provides audit trail for cleanup and rollback.
  */
 
@@ -10,7 +10,7 @@ import * as path from 'node:path';
 import { homedir } from 'node:os';
 
 function getAuditFilePath(): string {
-  return process.env.MEMORIX_AUDIT_FILE || path.join(homedir(), '.memorix', 'audit.json');
+  return process.env.BATON_AUDIT_FILE || path.join(homedir(), '.baton', 'audit.json');
 }
 
 export interface AuditEntry {
@@ -71,7 +71,7 @@ export function getProjectId(projectRoot: string): string {
 }
 
 /**
- * Record a file written by Memorix.
+ * Record a file written by Baton.
  */
 export async function recordFile(
   projectRoot: string,
@@ -108,7 +108,7 @@ export async function recordFile(
 }
 
 /**
- * Get all files written by Memorix for a project.
+ * Get all files written by Baton for a project.
  */
 export async function getProjectFiles(projectRoot: string): Promise<AuditEntry[]> {
   const data = await loadAudit();

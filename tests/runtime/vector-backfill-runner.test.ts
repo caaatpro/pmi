@@ -20,9 +20,9 @@ type SpawnOptions = {
 
 describe('detached vector backfill runner', () => {
   const request = {
-    projectId: 'AVIDS2/memorix',
-    projectRoot: path.resolve('work', 'memorix'),
-    dataDir: path.join(os.tmpdir(), 'pmi-vector-backfill-test', 'memorix'),
+    projectId: 'AVIDS2/baton',
+    projectRoot: path.resolve('work', 'baton'),
+    dataDir: path.join(os.tmpdir(), 'baton-vector-backfill-test', 'baton'),
   };
 
   it('resolves the compiled worker beside both library and CLI bundles', () => {
@@ -59,7 +59,7 @@ describe('detached vector backfill runner', () => {
     expect(options.detached).toBe(process.platform !== 'win32');
     expect(options.stdio).toBe('ignore');
     expect(options.windowsHide).toBe(true);
-    expect(options.env?.MEMORIX_VECTOR_BACKFILL_REQUEST).toBe(JSON.stringify(request));
+    expect(options.env?.BATON_VECTOR_BACKFILL_REQUEST).toBe(JSON.stringify(request));
     expect(unref).toHaveBeenCalledOnce();
   });
 
@@ -102,7 +102,7 @@ describe('detached vector backfill runner', () => {
         return this;
       },
     }));
-    const lockPath = path.join(os.tmpdir(), `memorix-vector-backfill-test-${process.pid}.lock`);
+    const lockPath = path.join(os.tmpdir(), `baton-vector-backfill-test-${process.pid}.lock`);
 
     const first = launchDetachedVectorBackfill(request, {
       runnerPath: 'E:/pkg/dist/vector-backfill-runner.js',

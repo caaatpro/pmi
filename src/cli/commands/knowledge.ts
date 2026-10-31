@@ -24,22 +24,22 @@ function modeFrom(value: unknown): 'local' | 'versioned' {
 
 function usage(): string {
   return [
-    'Memorix Knowledge Commands',
+    'Baton Knowledge Commands',
     '',
-    '  memorix knowledge init [--mode local]',
-    '  memorix knowledge init --mode versioned --path C:\\project\\docs\\knowledge',
-    '  memorix knowledge status',
-    '  memorix knowledge claims',
-    '  memorix knowledge review --id <claim-id> --review approved --detail "checked current source evidence"',
-    '  memorix knowledge compile',
-    '  memorix knowledge lint',
-    '  memorix knowledge apply --proposal <id> [--force]',
-    '  memorix knowledge workflow import',
-    '  memorix knowledge workflow list',
-    '  memorix knowledge workflow select --task "prepare a release"',
-    '  memorix knowledge workflow preview --id <workflow-id> --agent codex',
-    '  memorix knowledge workflow apply --id <workflow-id> --agent codex',
-    '  memorix knowledge workflow run --id <workflow-id> --task "..." --outcome passed',
+    '  baton knowledge init [--mode local]',
+    '  baton knowledge init --mode versioned --path C:\\project\\docs\\knowledge',
+    '  baton knowledge status',
+    '  baton knowledge claims',
+    '  baton knowledge review --id <claim-id> --review approved --detail "checked current source evidence"',
+    '  baton knowledge compile',
+    '  baton knowledge lint',
+    '  baton knowledge apply --proposal <id> [--force]',
+    '  baton knowledge workflow import',
+    '  baton knowledge workflow list',
+    '  baton knowledge workflow select --task "prepare a release"',
+    '  baton knowledge workflow preview --id <workflow-id> --agent codex',
+    '  baton knowledge workflow apply --id <workflow-id> --agent codex',
+    '  baton knowledge workflow run --id <workflow-id> --task "..." --outcome passed',
   ].join('\n');
 }
 
@@ -73,7 +73,7 @@ function evidenceList(value: unknown): string[] {
 export default defineCommand({
   meta: {
     name: 'knowledge',
-    description: 'Initialize, review, and lint the Memorix Knowledge Workspace',
+    description: 'Initialize, review, and lint the Baton Knowledge Workspace',
   },
   args: {
     action: { type: 'string', description: 'Action: init, status, compile, lint, or apply' },
@@ -122,7 +122,7 @@ export default defineCommand({
 
       const workspace = await loadKnowledgeWorkspace({ projectId: project.id, dataDir, mode });
       if (!workspace) {
-        emitError('Knowledge workspace is not initialized. Run "memorix knowledge init" first.', asJson);
+        emitError('Knowledge workspace is not initialized. Run "baton knowledge init" first.', asJson);
         return;
       }
       const claimStore = new ClaimStore();
@@ -297,7 +297,7 @@ export default defineCommand({
         case 'apply': {
           const proposalId = (args.proposal as string | undefined)?.trim();
           if (!proposalId) {
-            emitError('proposal is required for "memorix knowledge apply"', asJson);
+            emitError('proposal is required for "baton knowledge apply"', asJson);
             return;
           }
           const result = await applyKnowledgeProposal({

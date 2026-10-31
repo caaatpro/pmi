@@ -9,14 +9,14 @@ import { resetConfigCache } from '../../src/config.js';
 
 /**
  * The memory data directory must be controllable ONLY by user-level input
- * (the MEMORIX_DATA_DIR environment variable or the default home path).
- * A hostile repository must never be able to redirect Memorix storage
+ * (the BATON_DATA_DIR environment variable or the default home path).
+ * A hostile repository must never be able to redirect Baton storage
  * through a project config file. This mirrors the same boundary Claude
  * Code hardened for its Auto Memory directory: project settings are
  * deliberately excluded from the path resolution chain.
  */
 describe('data directory boundary', () => {
-  const originalDataDir = process.env.MEMORIX_DATA_DIR;
+  const originalDataDir = process.env.BATON_DATA_DIR;
   const TMP = join(process.cwd(), '.tmp-data-dir-boundary-test');
   const HOME = join(TMP, 'home');
   const PROJECT = join(TMP, 'project');
@@ -26,7 +26,7 @@ describe('data directory boundary', () => {
   beforeEach(() => {
     vi.resetModules();
     rmSync(TMP, { recursive: true, force: true });
-    mkdirSync(join(HOME, '.memorix'), { recursive: true });
+    mkdirSync(join(HOME, '.baton'), { recursive: true });
     mkdirSync(PROJECT, { recursive: true });
     mkdirSync(ENV_DIR, { recursive: true });
     resetTomlConfigCache();
@@ -36,14 +36,14 @@ describe('data directory boundary', () => {
   });
 
   afterEach(() => {
-    if (originalDataDir === undefined) delete process.env.MEMORIX_DATA_DIR;
-    else process.env.MEMORIX_DATA_DIR = originalDataDir;
+    if (originalDataDir === undefined) delete process.env.BATON_DATA_DIR;
+    else process.env.BATON_DATA_DIR = originalDataDir;
     rmSync(TMP, { recursive: true, force: true });
   });
 
   it('ignores data-directory keys in the project TOML config', async () => {
-    process.env.MEMORIX_DATA_DIR = ENV_DIR;
-    writeFileSync(join(PROJECT, 'memorix.toml'), [
+    process.env.BATON_DATA_DIR = ENV_DIR;
+    writeFileSync(join(PROJECT, 'baton.toml'), [
       'dataDir = ' + JSON.stringify(MALICIOUS_DIR),
       'data_dir = ' + JSON.stringify(MALICIOUS_DIR),
       '[memory]',
@@ -64,8 +64,8 @@ describe('data directory boundary', () => {
   });
 
   it('ignores data-directory keys in the legacy project YAML config', async () => {
-    process.env.MEMORIX_DATA_DIR = ENV_DIR;
-    writeFileSync(join(PROJECT, 'memorix.yml'), [
+    process.env.BATON_DATA_DIR = ENV_DIR;
+    writeFileSync(join(PROJECT, 'baton.yml'), [
       'dataDir: ' + JSON.stringify(MALICIOUS_DIR),
       'memory:',
       '  dataDir: ' + JSON.stringify(MALICIOUS_DIR),
@@ -79,8 +79,8 @@ describe('data directory boundary', () => {
   });
 
   it('falls back to the user home default, never the project config, without the env var', async () => {
-    delete process.env.MEMORIX_DATA_DIR;
-    writeFileSync(join(PROJECT, 'memorix.toml'), [
+    delete process.env.BATON_DATA_DIR;
+    writeFileSync(join(PROJECT, 'baton.toml'), [
       'dataDir = ' + JSON.stringify(MALICIOUS_DIR),
     ].join('\n'), 'utf-8');
 
@@ -92,8 +92,8 @@ describe('data directory boundary', () => {
   });
 
   it('keeps the flat shared directory shape regardless of project config', async () => {
-    process.env.MEMORIX_DATA_DIR = ENV_DIR;
-    writeFileSync(join(PROJECT, 'memorix.toml'), [
+    process.env.BATON_DATA_DIR = ENV_DIR;
+    writeFileSync(join(PROJECT, 'baton.toml'), [
       'dataDir = ' + JSON.stringify(MALICIOUS_DIR),
     ].join('\n'), 'utf-8');
 

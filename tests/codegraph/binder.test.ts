@@ -9,7 +9,7 @@ import { closeAllDatabases } from '../../src/store/sqlite-db.js';
 let dir: string | null = null;
 
 function tempDir(): string {
-  dir = mkdtempSync(join(tmpdir(), 'memorix-codegraph-binder-'));
+  dir = mkdtempSync(join(tmpdir(), 'baton-codegraph-binder-'));
   return dir;
 }
 

@@ -10,7 +10,7 @@ function asRecord(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-/** Parse the small YAML front-matter surface Memorix consumes. */
+/** Parse the small YAML front-matter surface Baton consumes. */
 export function parseFrontmatter(raw: string): ParsedFrontmatter {
   const opening = /^(?:\uFEFF)?---[ \t]*\r?\n/.exec(raw);
   if (!opening) return { data: {}, content: raw };

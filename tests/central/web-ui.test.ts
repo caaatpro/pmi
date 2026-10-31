@@ -1,5 +1,5 @@
 /**
- * Web UI of the central server (docs/PMI/WEB_UI.md): the built React app under
+ * Web UI of the central server (docs/baton/WEB_UI.md): the built React app under
  * /ui/ with its CSP and per-request style nonce, and the read API it relies
  * on — project stats, the audit log, author emails and paging — under the same
  * RBAC and row-level security as the rest of /v1. Serving needs `npm run build`.

@@ -15,7 +15,7 @@ import {
 let root: string | null = null;
 
 function makeProject(): string {
-  root = mkdtempSync(path.join(tmpdir(), 'memorix-external-codegraph-'));
+  root = mkdtempSync(path.join(tmpdir(), 'baton-external-codegraph-'));
   mkdirSync(path.join(root, '.codegraph'), { recursive: true });
   mkdirSync(path.join(root, 'src'), { recursive: true });
   writeFileSync(path.join(root, 'src', 'auth.ts'), [
@@ -282,7 +282,7 @@ describe('external CodeGraph provider', () => {
   });
 
   it('stays quiet when a project has not opted into a local CodeGraph index', async () => {
-    const projectRoot = mkdtempSync(path.join(tmpdir(), 'memorix-no-external-codegraph-'));
+    const projectRoot = mkdtempSync(path.join(tmpdir(), 'baton-no-external-codegraph-'));
     root = projectRoot;
     const runner = runnerFor(projectRoot);
 
@@ -293,7 +293,7 @@ describe('external CodeGraph provider', () => {
   });
 
   it('requires explicit initialization before sync and never invokes agent installation', async () => {
-    const projectRoot = mkdtempSync(path.join(tmpdir(), 'memorix-external-codegraph-lifecycle-'));
+    const projectRoot = mkdtempSync(path.join(tmpdir(), 'baton-external-codegraph-lifecycle-'));
     root = projectRoot;
     const runner: ExternalCodeGraphRunner & { run: ReturnType<typeof vi.fn> } = {
       run: vi.fn(async () => ({ ok: true, stdout: '' })),

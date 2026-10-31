@@ -96,11 +96,11 @@ describe('typed embedding inputs', () => {
 
   it('reads the cache directory environment at provider creation time', async () => {
     await withEmbeddingEnv({
-      MEMORIX_DATA_DIR: '/tmp/memorix-runtime-cache-dir',
-      MEMORIX_EMBEDDING_API_KEY: 'test-key',
-      MEMORIX_EMBEDDING_BASE_URL: 'https://api.openai.com/v1',
-      MEMORIX_EMBEDDING_MODEL: 'text-embedding-3-small',
-      MEMORIX_EMBEDDING_DIMENSIONS: '2',
+      BATON_DATA_DIR: '/tmp/baton-runtime-cache-dir',
+      BATON_EMBEDDING_API_KEY: 'test-key',
+      BATON_EMBEDDING_BASE_URL: 'https://api.openai.com/v1',
+      BATON_EMBEDDING_MODEL: 'text-embedding-3-small',
+      BATON_EMBEDDING_DIMENSIONS: '2',
     }, async () => {
       const provider = await APIEmbeddingProvider.create({ allowNetworkProbe: false });
       // Without a dims cache this may return null; creation path must not throw on env resolution.
@@ -110,10 +110,10 @@ describe('typed embedding inputs', () => {
 
   it('reports unsupported modality as a typed capability error', async () => {
     await withEmbeddingEnv({
-      MEMORIX_EMBEDDING_API_KEY: 'test-key',
-      MEMORIX_EMBEDDING_BASE_URL: 'https://api.openai.com/v1',
-      MEMORIX_EMBEDDING_MODEL: 'text-embedding-3-small',
-      MEMORIX_EMBEDDING_DIMENSIONS: '2',
+      BATON_EMBEDDING_API_KEY: 'test-key',
+      BATON_EMBEDDING_BASE_URL: 'https://api.openai.com/v1',
+      BATON_EMBEDDING_MODEL: 'text-embedding-3-small',
+      BATON_EMBEDDING_DIMENSIONS: '2',
     }, async () => {
       // Seed dims metadata path by probing through network-allowed create with mocked fetch
       const fetchMock = vi.fn().mockResolvedValue({
@@ -136,11 +136,11 @@ describe('typed embedding inputs', () => {
 describe('API multimodal mapping', () => {
   it('maps Jina query/document intent and includes modality in cache identity', async () => {
     await withEmbeddingEnv({
-      MEMORIX_DATA_DIR: `/tmp/memorix-jina-${Date.now()}`,
-      MEMORIX_EMBEDDING_API_KEY: 'test-key',
-      MEMORIX_EMBEDDING_BASE_URL: 'https://api.jina.ai/v1',
-      MEMORIX_EMBEDDING_MODEL: 'jina-embeddings-v4',
-      MEMORIX_EMBEDDING_DIMENSIONS: '3',
+      BATON_DATA_DIR: `/tmp/baton-jina-${Date.now()}`,
+      BATON_EMBEDDING_API_KEY: 'test-key',
+      BATON_EMBEDDING_BASE_URL: 'https://api.jina.ai/v1',
+      BATON_EMBEDDING_MODEL: 'jina-embeddings-v4',
+      BATON_EMBEDDING_DIMENSIONS: '3',
     }, async () => {
       const fetchMock = vi.fn().mockImplementation(async (_url, init) => {
         const body = JSON.parse(String(init.body));
@@ -180,11 +180,11 @@ describe('API multimodal mapping', () => {
 
   it('uses the native Gemini embedContent contract and omits task type for Gemini 2', async () => {
     await withEmbeddingEnv({
-      MEMORIX_DATA_DIR: `/tmp/memorix-google-${Date.now()}`,
-      MEMORIX_EMBEDDING_API_KEY: 'test-key',
-      MEMORIX_EMBEDDING_BASE_URL: 'https://generativelanguage.googleapis.com/v1beta',
-      MEMORIX_EMBEDDING_MODEL: 'gemini-embedding-2-preview',
-      MEMORIX_EMBEDDING_DIMENSIONS: '3',
+      BATON_DATA_DIR: `/tmp/baton-google-${Date.now()}`,
+      BATON_EMBEDDING_API_KEY: 'test-key',
+      BATON_EMBEDDING_BASE_URL: 'https://generativelanguage.googleapis.com/v1beta',
+      BATON_EMBEDDING_MODEL: 'gemini-embedding-2-preview',
+      BATON_EMBEDDING_DIMENSIONS: '3',
     }, async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
@@ -214,11 +214,11 @@ describe('API multimodal mapping', () => {
 
   it('keeps Google OpenAI compatibility routing separate', async () => {
     await withEmbeddingEnv({
-      MEMORIX_DATA_DIR: `/tmp/memorix-google-openai-${Date.now()}`,
-      MEMORIX_EMBEDDING_API_KEY: 'test-key',
-      MEMORIX_EMBEDDING_BASE_URL: 'https://generativelanguage.googleapis.com/v1beta/openai',
-      MEMORIX_EMBEDDING_MODEL: 'text-embedding-004',
-      MEMORIX_EMBEDDING_DIMENSIONS: '3',
+      BATON_DATA_DIR: `/tmp/baton-google-openai-${Date.now()}`,
+      BATON_EMBEDDING_API_KEY: 'test-key',
+      BATON_EMBEDDING_BASE_URL: 'https://generativelanguage.googleapis.com/v1beta/openai',
+      BATON_EMBEDDING_MODEL: 'text-embedding-004',
+      BATON_EMBEDDING_DIMENSIONS: '3',
     }, async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,

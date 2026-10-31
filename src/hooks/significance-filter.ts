@@ -26,7 +26,7 @@ const SKIP_PATTERNS: RegExp[] = [
   /^(user:|assistant:)?\s*(yes|no|ok|okay|sure|fine|great|good|right|correct|wrong|true|false|是|否|好的|对|错)\s*[.!?]?\s*$/i,
 
   // Tool results with no meaningful content
-  /^(memorix_search|memorix_store|memorix_detail):\s*(found|completed|no results|error|stored)/i,
+  /^(baton_search|baton_store|baton_detail):\s*(found|completed|no results|error|stored)/i,
 
   // Empty or whitespace-only
   /^\s*$/,
@@ -200,7 +200,7 @@ export function isRetrievedResult(content: string): boolean {
   const text = content.toLowerCase();
 
   const retrievedPatterns = [
-    /^(memorix_search|memorix_detail|memorix_timeline|search_nodes|read_graph):/i,
+    /^(baton_search|baton_detail|baton_timeline|search_nodes|read_graph):/i,
     /^(retrieved|result|results|found|matches|nodes|edges|search completed):/i,
     /^(observation #\d+|stored observation|memory #\d+)/i,
     /^(id:|timestamp:|similarity:|source:|type:)/i,
@@ -241,8 +241,8 @@ export function isTrivialCommand(command: string): boolean {
     }
   }
 
-  // Self-referential: inspecting memorix's own data files
-  if (/\.memorix[/\\]|observations\.json|memorix.*data/i.test(cmd)) {
+  // Self-referential: inspecting baton's own data files
+  if (/\.baton[/\\]|observations\.json|baton.*data/i.test(cmd)) {
     return true;
   }
 

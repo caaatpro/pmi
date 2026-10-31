@@ -11,14 +11,14 @@ vi.mock('node:os', async () => {
 });
 
 const EMBEDDING_ENV_KEYS = [
-  'MEMORIX_EMBEDDING_API_KEY',
-  'MEMORIX_API_KEY',
+  'BATON_EMBEDDING_API_KEY',
+  'BATON_API_KEY',
   'DASHSCOPE_API_KEY',
   'ALIYUN_API_KEY',
-  'MEMORIX_LLM_API_KEY',
-  'MEMORIX_LLM_BASE_URL',
-  'MEMORIX_EMBEDDING_BASE_URL',
-  'MEMORIX_EMBEDDING_MODEL',
+  'BATON_LLM_API_KEY',
+  'BATON_LLM_BASE_URL',
+  'BATON_EMBEDDING_BASE_URL',
+  'BATON_EMBEDDING_MODEL',
   'OPENAI_API_KEY',
   'OPENROUTER_API_KEY',
   'REQUESTY_API_KEY',
@@ -28,7 +28,7 @@ let tempHome: string | undefined;
 
 beforeEach(() => {
   vi.resetModules();
-  tempHome = mkdtempSync(join(tmpdir(), 'memorix-empty-home-'));
+  tempHome = mkdtempSync(join(tmpdir(), 'baton-empty-home-'));
   homedirMock.mockReturnValue(tempHome);
   for (const key of EMBEDDING_ENV_KEYS) delete process.env[key];
 });
@@ -58,35 +58,35 @@ describe('embedding API key lane isolation', () => {
     expect(getEmbeddingApiKey()).toBeUndefined();
   });
 
-  it('uses MEMORIX_EMBEDDING_API_KEY for embedding', async () => {
-    process.env.MEMORIX_EMBEDDING_API_KEY = 'memorix-embed-key';
+  it('uses BATON_EMBEDDING_API_KEY for embedding', async () => {
+    process.env.BATON_EMBEDDING_API_KEY = 'baton-embed-key';
     process.env.DASHSCOPE_API_KEY = 'dashscope-key';
     process.env.ALIYUN_API_KEY = 'aliyun-key';
     const { getEmbeddingApiKey } = await import('../../src/config.ts');
 
-    expect(getEmbeddingApiKey()).toBe('memorix-embed-key');
+    expect(getEmbeddingApiKey()).toBe('baton-embed-key');
   });
 
-  it('does not use MEMORIX_API_KEY for embedding', async () => {
-    process.env.MEMORIX_API_KEY = 'memory-llm-key';
-    process.env.MEMORIX_EMBEDDING_BASE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
+  it('does not use BATON_API_KEY for embedding', async () => {
+    process.env.BATON_API_KEY = 'memory-llm-key';
+    process.env.BATON_EMBEDDING_BASE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
     const { getEmbeddingApiKey } = await import('../../src/config.ts');
 
     expect(getEmbeddingApiKey()).toBeUndefined();
   });
 
-  it('does not let MEMORIX_API_KEY shadow the embedding lane key', async () => {
-    process.env.MEMORIX_API_KEY = 'memory-llm-key';
-    process.env.MEMORIX_EMBEDDING_API_KEY = 'embedding-key';
-    process.env.MEMORIX_EMBEDDING_BASE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
+  it('does not let BATON_API_KEY shadow the embedding lane key', async () => {
+    process.env.BATON_API_KEY = 'memory-llm-key';
+    process.env.BATON_EMBEDDING_API_KEY = 'embedding-key';
+    process.env.BATON_EMBEDDING_BASE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
     const { getEmbeddingApiKey } = await import('../../src/config.ts');
 
     expect(getEmbeddingApiKey()).toBe('embedding-key');
   });
 
   it('does not fall back to memory LLM API key for embedding', async () => {
-    process.env.MEMORIX_LLM_API_KEY = 'memory-llm-key';
-    process.env.MEMORIX_EMBEDDING_BASE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
+    process.env.BATON_LLM_API_KEY = 'memory-llm-key';
+    process.env.BATON_EMBEDDING_BASE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
     const { getEmbeddingApiKey } = await import('../../src/config.ts');
 
     expect(getEmbeddingApiKey()).toBeUndefined();
@@ -101,17 +101,17 @@ describe('embedding API key lane isolation', () => {
 
   it('uses OPENROUTER_API_KEY for OpenRouter embedding endpoints', async () => {
     process.env.OPENROUTER_API_KEY = 'openrouter-key';
-    process.env.MEMORIX_EMBEDDING_BASE_URL = 'https://openrouter.ai/api/v1';
-    process.env.MEMORIX_EMBEDDING_MODEL = 'qwen/qwen3-embedding-8b';
+    process.env.BATON_EMBEDDING_BASE_URL = 'https://openrouter.ai/api/v1';
+    process.env.BATON_EMBEDDING_MODEL = 'qwen/qwen3-embedding-8b';
     const { getEmbeddingApiKey } = await import('../../src/config.ts');
 
     expect(getEmbeddingApiKey()).toBe('openrouter-key');
   });
 
-  it('keeps MEMORIX_EMBEDDING_API_KEY above OPENROUTER_API_KEY', async () => {
+  it('keeps BATON_EMBEDDING_API_KEY above OPENROUTER_API_KEY', async () => {
     process.env.OPENROUTER_API_KEY = 'openrouter-key';
-    process.env.MEMORIX_EMBEDDING_API_KEY = 'embedding-key';
-    process.env.MEMORIX_EMBEDDING_BASE_URL = 'https://openrouter.ai/api/v1';
+    process.env.BATON_EMBEDDING_API_KEY = 'embedding-key';
+    process.env.BATON_EMBEDDING_BASE_URL = 'https://openrouter.ai/api/v1';
     const { getEmbeddingApiKey } = await import('../../src/config.ts');
 
     expect(getEmbeddingApiKey()).toBe('embedding-key');
@@ -119,7 +119,7 @@ describe('embedding API key lane isolation', () => {
 
   it('does not use OPENROUTER_API_KEY for non-OpenRouter embedding endpoints', async () => {
     process.env.OPENROUTER_API_KEY = 'openrouter-key';
-    process.env.MEMORIX_EMBEDDING_BASE_URL = 'https://api.openai.com/v1';
+    process.env.BATON_EMBEDDING_BASE_URL = 'https://api.openai.com/v1';
     const { getEmbeddingApiKey } = await import('../../src/config.ts');
 
     expect(getEmbeddingApiKey()).toBeUndefined();
@@ -127,7 +127,7 @@ describe('embedding API key lane isolation', () => {
 
   it('uses REQUESTY_API_KEY for Requesty embedding endpoints', async () => {
     process.env.REQUESTY_API_KEY = 'requesty-key';
-    process.env.MEMORIX_EMBEDDING_BASE_URL = 'https://router.requesty.ai/v1';
+    process.env.BATON_EMBEDDING_BASE_URL = 'https://router.requesty.ai/v1';
     const { getEmbeddingApiKey } = await import('../../src/config.ts');
 
     expect(getEmbeddingApiKey()).toBe('requesty-key');
@@ -135,14 +135,14 @@ describe('embedding API key lane isolation', () => {
 
   it('does not use REQUESTY_API_KEY for non-Requesty embedding endpoints', async () => {
     process.env.REQUESTY_API_KEY = 'requesty-key';
-    process.env.MEMORIX_EMBEDDING_BASE_URL = 'https://api.openai.com/v1';
+    process.env.BATON_EMBEDDING_BASE_URL = 'https://api.openai.com/v1';
     const { getEmbeddingApiKey } = await import('../../src/config.ts');
 
     expect(getEmbeddingApiKey()).toBeUndefined();
   });
 
   it('does not fall back to memory LLM base URL for embedding', async () => {
-    process.env.MEMORIX_LLM_BASE_URL = 'https://llm.example/v1';
+    process.env.BATON_LLM_BASE_URL = 'https://llm.example/v1';
     const { getEmbeddingBaseUrl } = await import('../../src/config.ts');
 
     expect(getEmbeddingBaseUrl()).not.toBe('https://llm.example/v1');

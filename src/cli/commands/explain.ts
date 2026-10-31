@@ -15,7 +15,7 @@ function coerceRefreshMode(input?: string): AutoContextRefreshMode {
 export default defineCommand({
   meta: {
     name: 'explain',
-    description: 'Explain where Memorix project context comes from',
+    description: 'Explain where Baton project context comes from',
   },
   args: {
     refresh: { type: 'string', description: 'Project scan policy: auto, always, or never' },

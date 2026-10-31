@@ -38,9 +38,9 @@ import { resetConfigCache } from '../../src/config.ts';
 // Save and clear embedding-related env vars to prevent real API provider initialization
 const savedEnv: Record<string, string | undefined> = {};
 const EMBEDDING_ENV_KEYS = [
-  'MEMORIX_API_KEY', 'MEMORIX_EMBEDDING', 'MEMORIX_EMBEDDING_API_KEY',
-  'MEMORIX_EMBEDDING_BASE_URL', 'MEMORIX_EMBEDDING_MODEL',
-  'MEMORIX_LLM_API_KEY', 'OPENAI_API_KEY', 'DASHSCOPE_API_KEY', 'ALIYUN_API_KEY',
+  'BATON_API_KEY', 'BATON_EMBEDDING', 'BATON_EMBEDDING_API_KEY',
+  'BATON_EMBEDDING_BASE_URL', 'BATON_EMBEDDING_MODEL',
+  'BATON_LLM_API_KEY', 'OPENAI_API_KEY', 'DASHSCOPE_API_KEY', 'ALIYUN_API_KEY',
 ];
 
 beforeEach(() => {
@@ -101,7 +101,7 @@ describe('Embedding Provider', () => {
       const path = await import('node:path');
       const os = await import('node:os');
 
-      const testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-embed-'));
+      const testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-embed-'));
       await resetDb();
       await initObservations(testDir);
 
@@ -131,9 +131,9 @@ describe('Embedding Provider', () => {
 
   describe('auto mode with API config present', () => {
     it('does not treat provider aliases as embedding API config', async () => {
-      process.env.MEMORIX_EMBEDDING = 'auto';
-      process.env.MEMORIX_API_KEY = 'memory-llm-key';
-      process.env.MEMORIX_LLM_API_KEY = 'scoped-memory-llm-key';
+      process.env.BATON_EMBEDDING = 'auto';
+      process.env.BATON_API_KEY = 'memory-llm-key';
+      process.env.BATON_LLM_API_KEY = 'scoped-memory-llm-key';
       process.env.OPENAI_API_KEY = 'openai-provider-key';
       process.env.DASHSCOPE_API_KEY = 'dashscope-provider-key';
       process.env.ALIYUN_API_KEY = 'aliyun-provider-key';
@@ -145,10 +145,10 @@ describe('Embedding Provider', () => {
     });
 
     it('should prefer API embeddings before local fallback providers', async () => {
-      process.env.MEMORIX_EMBEDDING = 'auto';
-      process.env.MEMORIX_EMBEDDING_API_KEY = 'api-key';
-      process.env.MEMORIX_EMBEDDING_BASE_URL = 'https://embeddings.example/v1';
-      process.env.MEMORIX_EMBEDDING_MODEL = 'text-embedding-3-small';
+      process.env.BATON_EMBEDDING = 'auto';
+      process.env.BATON_EMBEDDING_API_KEY = 'api-key';
+      process.env.BATON_EMBEDDING_BASE_URL = 'https://embeddings.example/v1';
+      process.env.BATON_EMBEDDING_MODEL = 'text-embedding-3-small';
 
       const apiProvider = {
         name: 'api-text-embedding-3-small',
@@ -166,10 +166,10 @@ describe('Embedding Provider', () => {
     });
 
     it('falls back to fastembed when the API provider fails at runtime', async () => {
-      process.env.MEMORIX_EMBEDDING = 'auto';
-      process.env.MEMORIX_EMBEDDING_API_KEY = 'api-key';
-      process.env.MEMORIX_EMBEDDING_BASE_URL = 'https://embeddings.example/v1';
-      process.env.MEMORIX_EMBEDDING_MODEL = 'text-embedding-3-small';
+      process.env.BATON_EMBEDDING = 'auto';
+      process.env.BATON_EMBEDDING_API_KEY = 'api-key';
+      process.env.BATON_EMBEDDING_BASE_URL = 'https://embeddings.example/v1';
+      process.env.BATON_EMBEDDING_MODEL = 'text-embedding-3-small';
 
       const apiProvider = {
         name: 'api-text-embedding-3-small',
@@ -197,10 +197,10 @@ describe('Embedding Provider', () => {
     });
 
     it('treats quota-exceeded 402 responses as temporary API failures in auto mode', async () => {
-      process.env.MEMORIX_EMBEDDING = 'auto';
-      process.env.MEMORIX_EMBEDDING_API_KEY = 'api-key';
-      process.env.MEMORIX_EMBEDDING_BASE_URL = 'https://embeddings.example/v1';
-      process.env.MEMORIX_EMBEDDING_MODEL = 'text-embedding-3-small';
+      process.env.BATON_EMBEDDING = 'auto';
+      process.env.BATON_EMBEDDING_API_KEY = 'api-key';
+      process.env.BATON_EMBEDDING_BASE_URL = 'https://embeddings.example/v1';
+      process.env.BATON_EMBEDDING_MODEL = 'text-embedding-3-small';
 
       const apiProvider = {
         name: 'api-text-embedding-3-small',
@@ -229,10 +229,10 @@ describe('Embedding Provider', () => {
 
   describe('strict api mode runtime degradation', () => {
     it('forwards a bounded provider-init budget to the API provider', async () => {
-      process.env.MEMORIX_EMBEDDING = 'api';
-      process.env.MEMORIX_EMBEDDING_API_KEY = 'api-key';
-      process.env.MEMORIX_EMBEDDING_BASE_URL = 'https://embeddings.example/v1';
-      process.env.MEMORIX_EMBEDDING_MODEL = 'text-embedding-3-small';
+      process.env.BATON_EMBEDDING = 'api';
+      process.env.BATON_EMBEDDING_API_KEY = 'api-key';
+      process.env.BATON_EMBEDDING_BASE_URL = 'https://embeddings.example/v1';
+      process.env.BATON_EMBEDDING_MODEL = 'text-embedding-3-small';
 
       const apiProvider = {
         name: 'api-text-embedding-3-small',
@@ -248,10 +248,10 @@ describe('Embedding Provider', () => {
     });
 
     it('opens a cooldown circuit after runtime API failures in strict api mode', async () => {
-      process.env.MEMORIX_EMBEDDING = 'api';
-      process.env.MEMORIX_EMBEDDING_API_KEY = 'api-key';
-      process.env.MEMORIX_EMBEDDING_BASE_URL = 'https://embeddings.example/v1';
-      process.env.MEMORIX_EMBEDDING_MODEL = 'text-embedding-3-small';
+      process.env.BATON_EMBEDDING = 'api';
+      process.env.BATON_EMBEDDING_API_KEY = 'api-key';
+      process.env.BATON_EMBEDDING_BASE_URL = 'https://embeddings.example/v1';
+      process.env.BATON_EMBEDDING_MODEL = 'text-embedding-3-small';
 
       const apiProvider = {
         name: 'api-text-embedding-3-small',
@@ -271,10 +271,10 @@ describe('Embedding Provider', () => {
     });
 
     it('reports a billing failure as degraded runtime health instead of configured-and-ready', async () => {
-      process.env.MEMORIX_EMBEDDING = 'api';
-      process.env.MEMORIX_EMBEDDING_API_KEY = 'api-key';
-      process.env.MEMORIX_EMBEDDING_BASE_URL = 'https://embeddings.example/v1';
-      process.env.MEMORIX_EMBEDDING_MODEL = 'text-embedding-3-small';
+      process.env.BATON_EMBEDDING = 'api';
+      process.env.BATON_EMBEDDING_API_KEY = 'api-key';
+      process.env.BATON_EMBEDDING_BASE_URL = 'https://embeddings.example/v1';
+      process.env.BATON_EMBEDDING_MODEL = 'text-embedding-3-small';
 
       mockApiProviderCreate.mockResolvedValue({
         name: 'api-text-embedding-3-small',

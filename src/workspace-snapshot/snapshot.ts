@@ -196,9 +196,9 @@ export interface BuiltSnapshot {
 export function buildSnapshot(store: BlobStore, input: BuildSnapshotInput): BuiltSnapshot {
   const root = input.root;
   const head = tryGitText(root, ['rev-parse', '--verify', '-q', 'HEAD'])?.trim();
-  if (!head) throw new Error('[pmi] the repository has no commit yet; commit once before taking a workspace snapshot');
+  if (!head) throw new Error('[baton] the repository has no commit yet; commit once before taking a workspace snapshot');
   const branch = tryGitText(root, ['symbolic-ref', '--short', '-q', 'HEAD'])?.trim() || null;
-  const maxFileBytes = input.maxFileBytes ?? (Number(process.env.PMI_SNAPSHOT_MAX_FILE) || MAX_FILE_BYTES_DEFAULT);
+  const maxFileBytes = input.maxFileBytes ?? (Number(process.env.BATON_SNAPSHOT_MAX_FILE) || MAX_FILE_BYTES_DEFAULT);
 
   const files: SnapshotFile[] = [];
   const excluded: SnapshotExcluded[] = [];
@@ -264,7 +264,7 @@ export function buildSnapshot(store: BlobStore, input: BuildSnapshotInput): Buil
   let bundle: SnapshotManifest['git']['bundle'] = null;
   let remoteBase: string | null = head;
   if (unpushed.length) {
-    const tmp = path.join(os.tmpdir(), `pmi-bundle-${randomBytes(6).toString('hex')}.bundle`);
+    const tmp = path.join(os.tmpdir(), `baton-bundle-${randomBytes(6).toString('hex')}.bundle`);
     try {
       const hasRemotes = Boolean(tryGitText(root, ['for-each-ref', '--count=1', 'refs/remotes'])?.trim());
       git(root, ['bundle', 'create', '-q', tmp, 'HEAD', ...(hasRemotes ? ['--not', '--remotes'] : [])]);
@@ -275,7 +275,7 @@ export function buildSnapshot(store: BlobStore, input: BuildSnapshotInput): Buil
     remoteBase = tryGitText(root, ['rev-parse', '-q', '--verify', `${unpushed.at(-1)}^`])?.trim() || null;
   }
 
-  // Human-readable patches, kept for review (`pmi workspace show --patch`); restore uses the file contents.
+  // Human-readable patches, kept for review (`baton workspace show --patch`); restore uses the file contents.
   // Excluded paths (secrets, oversized files) must not leak through the patches either.
   const pathspec = ['--', '.', ...excluded.map((item) => `:(exclude,literal)${item.path}`)];
   const worktreePatch = git(root, ['diff', '--binary', 'HEAD', ...pathspec]);

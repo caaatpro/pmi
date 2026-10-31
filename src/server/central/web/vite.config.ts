@@ -1,4 +1,4 @@
-// Web UI of pmi-server (docs/PMI/WEB_UI.md): React + Mantine, built into
+// Web UI of baton-server (docs/baton/WEB_UI.md): React + Mantine, built into
 // dist/server/central/ui and served under /ui/ by src/server/central/ui.ts.
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';

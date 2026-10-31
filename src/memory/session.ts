@@ -86,21 +86,21 @@ const COMMAND_TRACE_PATTERNS = [
   /\bnpx\s+tsc\b/i,
 ];
 
-// Observations about Memorix itself (its tools, internals, runtime modes) should almost
+// Observations about Baton itself (its tools, internals, runtime modes) should almost
 // never be injected into unrelated projects.  These get a much heavier penalty.
 const SYSTEM_SELF_PATTERNS = [
-  /memorix.demo/i,
-  /memorix.*全能力/i,
-  /memorix.*工具.*能力/i,
-  /memorix.*runtime.*mode/i,
-  /memorix.*运行模式/i,
-  /memorix.*control.plane/i,
+  /baton.demo/i,
+  /baton.*全能力/i,
+  /baton.*工具.*能力/i,
+  /baton.*runtime.*mode/i,
+  /baton.*运行模式/i,
+  /baton.*control.plane/i,
   /session.*inject(?:ion)?/i,
   /注入.*逻辑/i,
   /\b22\s*(?:个|tools?).*(?:工具|能力|capabilit)/i,
-  /memorix.*(?:v\d|版本|version)/i,
-  /memorix.*(?:兼容|compat)/i,
-  /memorix.*(?:测试|test)/i,
+  /baton.*(?:v\d|版本|version)/i,
+  /baton.*(?:兼容|compat)/i,
+  /baton.*(?:测试|test)/i,
   /memmcp/i,
 ];
 
@@ -358,7 +358,7 @@ function compactResumeText(text: string, limit: number): string {
 export function renderSessionResumeCard(brief: SessionResumeBrief): string {
   if (!brief.previousSession && brief.memories.length === 0) return '';
 
-  const lines = ['## Memorix Resume'];
+  const lines = ['## Baton Resume'];
   if (brief.previousSession) {
     const agent = brief.previousSession.agent ? ` (${brief.previousSession.agent})` : '';
     lines.push(`Previous session: ${brief.previousSession.id}${agent}`);
@@ -404,7 +404,7 @@ export function scoreObservationForSessionContext(obs: Observation, projectToken
     score -= 8;
   }
 
-  // Heavy penalty for observations about Memorix itself (system self-reference).
+  // Heavy penalty for observations about Baton itself (system self-reference).
   // These should almost never surface in unrelated project sessions.
   if (isSystemSelfObservation(obs)) {
     score -= 15;
@@ -643,7 +643,7 @@ export async function getSessionContext(
       hints.push(`${l3GitCount} git-memory item(s) available — search \`what-changed\` or by entity/commit`);
     }
     if (totalHookCount > 0) {
-      hints.push(`${totalHookCount} hook trace(s) available — use \`memorix_timeline\` for activity expansion`);
+      hints.push(`${totalHookCount} hook trace(s) available — use \`baton_timeline\` for activity expansion`);
     }
     for (const hint of hints) {
       lines.push(`[TIP] ${hint}`);
@@ -678,7 +678,7 @@ export async function getSessionContext(
     lines.push('## Key Project Memories');
     lines.push('*Durable working context — explicit decisions, gotchas, and discoveries.*');
     for (const obs of l2Obs) {
-      // Same labels as memorix_search and the hooks; a local copy had
+      // Same labels as baton_search and the hooks; a local copy had
       // gotcha as [DISCOVERY] and decision/why-it-exists swapped.
       const emoji = OBSERVATION_ICONS[obs.type] ?? '[PIN]';
       const fact = obs.facts?.[0] ? ` — ${redactCredentials(obs.facts[0])}` : '';
@@ -707,10 +707,10 @@ export async function getSessionContext(
   // ── L3 Evidence Hints ─────────────────────────────────────────────
   const l3Lines: string[] = [];
   if (l3GitCount > 0) {
-    l3Lines.push(`[PIN] ${l3GitCount} git-memory item(s) — use \`memorix_search\` to retrieve repository evidence`);
+    l3Lines.push(`[PIN] ${l3GitCount} git-memory item(s) — use \`baton_search\` to retrieve repository evidence`);
   }
   if (totalHookCount > 0) {
-    l3Lines.push(`[HOOK] ${totalHookCount} hook trace(s) — use \`memorix_timeline\` for full activity expansion`);
+    l3Lines.push(`[HOOK] ${totalHookCount} hook trace(s) — use \`baton_timeline\` for full activity expansion`);
   }
   if (l3Lines.length > 0) {
     lines.push('## L3 Evidence');
