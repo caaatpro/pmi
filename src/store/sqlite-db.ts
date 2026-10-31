@@ -957,7 +957,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_maintenance_jobs_active_dedupe
 
 interface SchemaMigration {
   id: string;
-  apply: (db: any) => void;
+  /** `dataDir` is the store directory, absent for in-memory databases. */
+  apply: (db: any, dataDir?: string) => void;
 }
 
 function hasColumn(db: any, table: string, column: string): boolean {
@@ -1241,6 +1242,13 @@ const SCHEMA_MIGRATIONS: SchemaMigration[] = [
     },
   },
   {
+    // PMI: mini-skills become ordinary memories of category coding_convention
+    // (docs/PMI/ROADMAP.md, Phase 3 deferral). The mini_skills table is left
+    // as it was; each skill is copied once, keyed by topicKey mini-skill/<id>.
+    id: 'pmi-5-mini-skills-to-conventions',
+    apply: (db, dataDir) => { convertMiniSkillsToConventions(db, dataDir); },
+  },
+  {
     id: '1.9-continuity-v2',
     apply: (db) => {
       addColumnIfMissing(db, 'task_continuity_events', 'event_key', 'event_key TEXT');
@@ -1253,6 +1261,139 @@ const SCHEMA_MIGRATIONS: SchemaMigration[] = [
     },
   },
 ];
+
+/** topicKey of the coding_convention memory a mini-skill was converted into. */
+export function miniSkillTopicKey(skillId: number): string {
+  return `mini-skill/${skillId}`;
+}
+
+interface LegacyMiniSkill {
+  id: number;
+  sourceObservationIds: number[];
+  sourceEntity: string;
+  title: string;
+  instruction: string;
+  trigger: string;
+  facts: string[];
+  projectId: string;
+  createdAt: string;
+  tags: string[];
+  updatedAt?: string | null;
+}
+
+function parseJsonList<T>(value: unknown): T[] {
+  if (Array.isArray(value)) return value as T[];
+  if (typeof value !== 'string' || value === '') return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed as T[] : [];
+  } catch {
+    return [];
+  }
+}
+
+function readJsonFile(file: string | undefined): unknown {
+  if (!file || !fs.existsSync(file)) return undefined;
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf-8'));
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Copy every mini-skill into `observations` as an active, core memory of
+ * category coding_convention. Skills still only in a legacy mini-skills.json
+ * (never imported because the mini_skills table was empty) are included, as
+ * the removed MiniSkillStore would have imported them. Ids are allocated past
+ * every id in use, including a legacy observations.json not yet imported.
+ */
+function convertMiniSkillsToConventions(db: any, dataDir?: string): void {
+  const tableRows = db.prepare('SELECT * FROM mini_skills ORDER BY id').all() as Array<Record<string, any>>;
+  let skills: LegacyMiniSkill[] = tableRows.map((row) => ({
+    id: Number(row.id),
+    sourceObservationIds: parseJsonList<number>(row.sourceObservationIds),
+    sourceEntity: row.sourceEntity || 'unknown',
+    title: String(row.title ?? ''),
+    instruction: row.instruction ?? '',
+    trigger: row.trigger_desc ?? '',
+    facts: parseJsonList<string>(row.facts),
+    projectId: String(row.projectId),
+    createdAt: String(row.createdAt),
+    tags: parseJsonList<string>(row.tags),
+    updatedAt: row.updatedAt || null,
+  }));
+  if (skills.length === 0 && dataDir) {
+    skills = parseJsonList<Record<string, any>>(readJsonFile(path.join(dataDir, 'mini-skills.json')))
+      .filter((skill) => skill && Number.isSafeInteger(skill.id) && typeof skill.projectId === 'string' && typeof skill.title === 'string')
+      .map((skill) => ({
+        id: skill.id,
+        sourceObservationIds: parseJsonList<number>(skill.sourceObservationIds),
+        sourceEntity: skill.sourceEntity || 'unknown',
+        title: skill.title,
+        instruction: skill.instruction ?? '',
+        trigger: skill.trigger ?? '',
+        facts: parseJsonList<string>(skill.facts),
+        projectId: skill.projectId,
+        createdAt: typeof skill.createdAt === 'string' ? skill.createdAt : new Date().toISOString(),
+        tags: parseJsonList<string>(skill.tags),
+        updatedAt: typeof skill.updatedAt === 'string' ? skill.updatedAt : null,
+      }));
+  }
+  if (skills.length === 0) return;
+
+  const exists = db.prepare('SELECT 1 FROM observations WHERE projectId = ? AND topicKey = ?');
+  const pending = skills.filter((skill) => !exists.get(skill.projectId, miniSkillTopicKey(skill.id)));
+  if (pending.length === 0) return;
+
+  const counter = Number(db.prepare("SELECT value FROM meta WHERE key = 'next_id'").get()?.value ?? 1);
+  const maxRow = Number(db.prepare('SELECT MAX(id) AS id FROM observations').get()?.id ?? 0);
+  let legacyMax = 0;
+  if (dataDir && maxRow === 0) {
+    const legacy = parseJsonList<{ id?: unknown }>(readJsonFile(path.join(dataDir, 'observations.json')));
+    for (const obs of legacy) if (Number.isSafeInteger(obs?.id)) legacyMax = Math.max(legacyMax, Number(obs.id));
+    const legacyCounter = readJsonFile(path.join(dataDir, 'counter.json')) as { nextId?: unknown; next_id?: unknown } | undefined;
+    const legacyNext = Number(legacyCounter?.nextId ?? legacyCounter?.next_id ?? 0);
+    if (Number.isSafeInteger(legacyNext)) legacyMax = Math.max(legacyMax, legacyNext - 1);
+  }
+  let nextId = Math.max(Number.isSafeInteger(counter) ? counter : 1, maxRow + 1, legacyMax + 1);
+
+  const insert = db.prepare(`
+    INSERT INTO observations
+      (id, entityName, type, title, narrative, facts, filesModified, concepts, tokens,
+       createdAt, updatedAt, projectId, topicKey, revisionCount, status, source,
+       sourceDetail, valueCategory, category, confidence)
+    VALUES
+      (@id, @entityName, 'how-it-works', @title, @narrative, @facts, '[]', @concepts, @tokens,
+       @createdAt, @updatedAt, @projectId, @topicKey, 1, 'active', 'agent',
+       'explicit', 'core', 'coding_convention', 'observed')
+  `);
+  for (const skill of pending) {
+    const narrative = [
+      skill.instruction.trim(),
+      skill.trigger.trim() ? `When: ${skill.trigger.trim()}` : '',
+      skill.sourceObservationIds.length > 0
+        ? `Promoted from observations ${skill.sourceObservationIds.map((id) => `#${id}`).join(', ')} (mini-skill S${skill.id}).`
+        : `Converted from mini-skill S${skill.id}.`,
+    ].filter(Boolean).join('\n\n');
+    const facts = skill.facts.map(String);
+    insert.run({
+      id: nextId++,
+      entityName: skill.sourceEntity,
+      title: skill.title,
+      narrative,
+      facts: JSON.stringify(facts),
+      concepts: JSON.stringify(skill.tags.map(String)),
+      tokens: Math.ceil((skill.title.length + narrative.length + facts.join(' ').length) / 4),
+      createdAt: skill.createdAt,
+      updatedAt: skill.updatedAt ?? skill.createdAt,
+      projectId: skill.projectId,
+      topicKey: miniSkillTopicKey(skill.id),
+    });
+  }
+  db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('next_id', ?)").run(String(nextId));
+  db.prepare("UPDATE meta SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT) WHERE key = 'storage_generation'").run();
+}
 
 /** Migrations introduced by PMI; a store holding data is backed up before the first one runs. */
 const PMI_MIGRATION_PREFIX = 'pmi-';
@@ -1292,7 +1433,7 @@ function applySchemaMigrations(db: any, dbPath?: string): void {
     const applied = db.prepare('SELECT 1 FROM schema_migrations WHERE id = ?').get(migration.id);
     if (applied) continue;
     const apply = db.transaction(() => {
-      migration.apply(db);
+      migration.apply(db, dbPath ? path.dirname(dbPath) : undefined);
       db.prepare('INSERT INTO schema_migrations (id, applied_at) VALUES (?, ?)').run(
         migration.id,
         new Date().toISOString(),

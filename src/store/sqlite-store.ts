@@ -310,7 +310,9 @@ export class SqliteBackend implements ObservationStore {
     await withFileLock(this.dataDir, async () => {
       // Re-check under the cross-process lock. Another initializer may have
       // completed the migration while this process was waiting.
-      const count = this.db.prepare(`SELECT COUNT(*) AS cnt FROM observations`).get();
+      // Mini-skills converted by migration pmi-4 do not count: they were
+      // allocated ids past this JSON source, which is still to be imported.
+      const count = this.db.prepare(`SELECT COUNT(*) AS cnt FROM observations WHERE topicKey IS NULL OR topicKey NOT LIKE 'mini-skill/%'`).get();
       if (count.cnt > 0) return;
 
       const raw = fs.readFileSync(jsonPath, 'utf-8');
@@ -344,7 +346,7 @@ export class SqliteBackend implements ObservationStore {
           counterNextId = candidate === undefined ? undefined : Number(candidate);
         }
         const maxId = Math.max(...obsList.map((obs) => obs.id));
-        this.rawSaveIdCounter(Math.max(counterNextId ?? 1, maxId + 1));
+        this.rawSaveIdCounter(Math.max(counterNextId ?? 1, maxId + 1, this.rawLoadIdCounter()));
         this.bumpGeneration();
       });
       insertMany(observations);
