@@ -257,6 +257,7 @@ describe('agent doctor and repair', () => {
     expect(claude.mcp.status).toBe('repairable');
     expect(claude.mcp.issues).toContain('stale-command-path');
     expect(claude.mcp.issues).toContain('claude-always-load-missing');
+    expect(claude.mcp.issues).toContain('claude-project-config-not-read');
     expect(claude.guidance.status).toBe('repairable');
     expect(claude.guidance.issues).toContain('guidance-outdated');
     expect(parsed.agents.repairCommand).toContain('memorix repair agents --agent claude');
@@ -277,7 +278,10 @@ describe('agent doctor and repair', () => {
     expect(parsed.repair.changed).toContain('claude:mcp:project');
     expect(parsed.repair.changed).toContain('claude:guidance:project');
 
-    const settings = JSON.parse(readFileSync(path.join(repoDir, '.claude', 'settings.json'), 'utf-8'));
+    // The stale entry in .claude/settings.json (never read by Claude Code) is gone; .mcp.json has the server.
+    const legacy = JSON.parse(readFileSync(path.join(repoDir, '.claude', 'settings.json'), 'utf-8'));
+    expect(legacy.mcpServers?.memorix).toBeUndefined();
+    const settings = JSON.parse(readFileSync(path.join(repoDir, '.mcp.json'), 'utf-8'));
     expect(settings.mcpServers.memorix).toMatchObject({
       command: 'memorix',
       args: ['serve', '--mode', 'lite'],

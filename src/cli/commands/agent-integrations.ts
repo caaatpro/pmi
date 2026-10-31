@@ -997,7 +997,17 @@ async function inspectMcp(agent: AgentName, projectRoot: string, scope: AgentInt
       }
     }
 
-    const configPath = adapter.getConfigPath(targetScope === 'project' ? projectRoot : undefined);
+    let configPath = adapter.getConfigPath(targetScope === 'project' ? projectRoot : undefined);
+    // Older setups put the Claude project entry into .claude/settings.json,
+    // which Claude Code never reads for servers: inspect it there and flag it.
+    const legacyIssues: string[] = [];
+    if (agent === 'claude' && targetScope === 'project' && !existsSync(configPath)) {
+      const legacyPath = resolve(projectRoot, '.claude', 'settings.json');
+      if (existsSync(legacyPath) && adapter.parse(await readFile(legacyPath, 'utf-8')).some((entry) => entry.name === 'memorix')) {
+        configPath = legacyPath;
+        legacyIssues.push('claude-project-config-not-read');
+      }
+    }
     if (targetScope === 'global' && configPath === adapter.getConfigPath(projectRoot) && scope === 'all') {
       // User-level-only adapters (Trae, DSH) resolve one path for every
       // scope. Deduplicate only when the project iteration also runs;
@@ -1055,7 +1065,7 @@ async function inspectMcp(agent: AgentName, projectRoot: string, scope: AgentInt
       continue;
     }
 
-    const issues: string[] = [];
+    const issues: string[] = [...legacyIssues];
     if (!server.url && looksLikeStaleMemorixCommand(server)) issues.push('stale-command-path');
     if (!server.url && !isRecommendedStdioServer(server)) issues.push('nonstandard-mcp-command');
     if (agent === 'claude' && server.alwaysLoad !== true) issues.push('claude-always-load-missing');

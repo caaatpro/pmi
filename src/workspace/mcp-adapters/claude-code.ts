@@ -4,7 +4,10 @@ import { join } from 'node:path';
 
 /**
  * Claude Code MCP config adapter.
- * Format: JSON file at ~/.claude.json or project-level .claude/settings.json
+ * Format: JSON file at ~/.claude.json (user scope) or .mcp.json in the project
+ * root (project scope). Claude Code does not read server definitions from
+ * .claude/settings.json; older Memorix setups wrote there (see
+ * removeLegacyClaudeProjectEntry in cli/commands/setup.ts).
  * Structure: { mcpServers: { [name]: { command, args, env?, url? } } }
  */
 export class ClaudeCodeMCPAdapter implements MCPConfigAdapter {
@@ -50,7 +53,7 @@ export class ClaudeCodeMCPAdapter implements MCPConfigAdapter {
 
   getConfigPath(projectRoot?: string): string {
     if (projectRoot) {
-      return join(projectRoot, '.claude', 'settings.json');
+      return join(projectRoot, '.mcp.json');
     }
     return join(homedir(), '.claude.json');
   }

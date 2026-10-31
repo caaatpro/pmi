@@ -4,10 +4,12 @@ PMI хранит знания о проекте и состояние работ
 
 ## 1. Установка и подключение агента
 
+Полная пошаговая установка с сервером и проверкой — [INSTALL.md](INSTALL.md). Кратко:
+
 ```bash
 git clone https://github.com/caaatpro/pmi.git && cd pmi && npm ci && npm run build && npm link
 cd ~/work/my-project
-pmi setup --agent claude          # или codex, cursor, gemini-cli, copilot, windsurf, …
+pmi setup --agent claude          # или cursor; Codex: pmi setup --agent codex --global --noPlugin; все: pmi setup --list
 ```
 
 `setup` прописывает MCP‑сервер (`memorix serve --mode lite`), правила и хуки агента. Без сервера PMI работает локально (Local mode).

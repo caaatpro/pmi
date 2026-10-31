@@ -822,8 +822,29 @@ export async function installMcpConfig(options: {
 
   await mkdir(path.dirname(configPath), { recursive: true });
   await writeFile(configPath, content, 'utf-8');
+  if (options.agent === 'claude' && projectRoot) await removeLegacyClaudeProjectEntry(projectRoot);
 
   return { agent: options.agent, configPath, transport: options.mcp };
+}
+
+/**
+ * Older setups put the project MCP entry into .claude/settings.json, which
+ * Claude Code never reads for servers. Drop only our own "memorix" entry
+ * there (and the key if it ends up empty); everything else stays.
+ */
+async function removeLegacyClaudeProjectEntry(projectRoot: string): Promise<void> {
+  const legacyPath = path.join(projectRoot, '.claude', 'settings.json');
+  let settings: Record<string, unknown>;
+  try {
+    settings = JSON.parse(await readFile(legacyPath, 'utf-8'));
+  } catch {
+    return;
+  }
+  const servers = settings.mcpServers as Record<string, unknown> | undefined;
+  if (!servers || typeof servers !== 'object' || !('memorix' in servers)) return;
+  delete servers.memorix;
+  if (Object.keys(servers).length === 0) delete settings.mcpServers;
+  await writeFile(legacyPath, `${JSON.stringify(settings, null, 2)}\n`, 'utf-8');
 }
 
 async function upsertCodexMarketplace(marketplacePath: string, pluginPath: string): Promise<void> {

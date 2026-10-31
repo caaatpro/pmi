@@ -150,7 +150,11 @@ const link = defineCommand({
         legacyProjectId: project.id,
         linkedAt: new Date().toISOString(),
       };
-      writeProjectLink(project.rootPath, projectLink);
+      // The link is usually committed: leave it untouched when nothing changed.
+      const existing = readProjectLink(project.rootPath);
+      const unchanged = existing && existing.server === projectLink.server && existing.projectId === projectLink.projectId
+        && existing.slug === projectLink.slug && existing.legacyProjectId === projectLink.legacyProjectId;
+      if (!unchanged) writeProjectLink(project.rootPath, projectLink);
       emitResult(
         { ...projectLink, created: result.created },
         `${result.created ? 'Created and linked' : 'Linked'} project ${result.project.slug} on ${server}.\nRun \`pmi sync\` to upload local memory and pull the team's.`,

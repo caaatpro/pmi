@@ -330,7 +330,7 @@ export async function resolveProject(
     [user.id, input.legacyProjectId, input.rootCommit ?? null],
   );
   if (visible.length > 1) {
-    throw new HttpError(409, 'ambiguous_project', 'several projects match this repository; pass --project explicitly',
+    throw new HttpError(409, 'ambiguous_project', 'several projects match this repository (a fork shares the first commit); ask an organization admin',
       visible.map((project) => ({ id: project.id, slug: project.slug })));
   }
   let project = visible[0];

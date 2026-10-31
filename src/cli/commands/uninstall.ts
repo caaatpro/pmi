@@ -80,15 +80,17 @@ export function getMCPConfigEntries(home: string, cwd: string): MCPConfigEntry[]
     note: 'Remove the "memorix" key from mcpServers in this file.',
   });
 
-  // Claude Code — project level
-  entries.push({
-    agent: 'Claude Code',
-    path: path.join(cwd, '.claude', 'settings.json'),
-    kind: 'project',
-    format: 'json',
-    detected: checkJSON(path.join(cwd, '.claude', 'settings.json')),
-    note: 'Remove the "memorix" key from mcpServers in this file.',
-  });
+  // Claude Code — project level (.mcp.json; .claude/settings.json from older setups)
+  for (const file of [path.join(cwd, '.mcp.json'), path.join(cwd, '.claude', 'settings.json')]) {
+    entries.push({
+      agent: 'Claude Code',
+      path: file,
+      kind: 'project',
+      format: 'json',
+      detected: checkJSON(file),
+      note: 'Remove the "memorix" key from mcpServers in this file.',
+    });
+  }
 
   // Cursor — global
   entries.push({

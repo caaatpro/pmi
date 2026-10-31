@@ -183,6 +183,16 @@ describe('memorix uninstall MCP config detection', () => {
     expect(out.stdout).toContain('Claude Code');
   });
 
+  it('detects project-level .mcp.json with memorix entry', async () => {
+    fs.writeFileSync(
+      path.join(TMP_HOME, '.mcp.json'),
+      JSON.stringify({ mcpServers: { memorix: { command: 'memorix', args: ['serve'] } } }),
+    );
+    const out = await memorix('--dry-run');
+    expect(out.stdout).toContain('.mcp.json');
+    expect(out.stdout).toContain('DETECTED');
+  });
+
   it('does not modify MCP config files', async () => {
     const claudeDir = path.join(TMP_HOME, '.claude');
     fs.mkdirSync(claudeDir, { recursive: true });

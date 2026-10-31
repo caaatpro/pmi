@@ -845,12 +845,38 @@ describe('setup MCP config installer', () => {
       const result = await installMcpConfig({ agent: 'claude', projectRoot: tmpDir, mcp: 'stdio' });
       const config = JSON.parse(await fs.readFile(result.configPath, 'utf-8'));
 
-      expect(result.configPath).toBe(path.join(tmpDir, '.claude', 'settings.json'));
+      // Claude Code reads project MCP servers from .mcp.json, not .claude/settings.json.
+      expect(result.configPath).toBe(path.join(tmpDir, '.mcp.json'));
       expect(config.mcpServers.memorix).toMatchObject({
         command: 'memorix',
         args: ['serve', '--mode', 'lite'],
         alwaysLoad: true,
       });
+    } finally {
+      await cleanup(tmpDir);
+    }
+  });
+
+  it('moves a Claude entry left in .claude/settings.json by older setups, keeping everything else', async () => {
+    const tmpDir = makeTmpDir();
+    try {
+      const legacyPath = path.join(tmpDir, '.claude', 'settings.json');
+      await fs.mkdir(path.dirname(legacyPath), { recursive: true });
+      await fs.writeFile(legacyPath, JSON.stringify({
+        permissions: { allow: ['Bash(npm test)'] },
+        mcpServers: { memorix: { command: 'node', args: ['old/dist/cli/index.js', 'serve'] }, other: { command: 'other' } },
+      }), 'utf-8');
+
+      await installMcpConfig({ agent: 'claude', projectRoot: tmpDir, mcp: 'stdio' });
+      const legacy = JSON.parse(await fs.readFile(legacyPath, 'utf-8'));
+      expect(legacy).toEqual({ permissions: { allow: ['Bash(npm test)'] }, mcpServers: { other: { command: 'other' } } });
+      const config = JSON.parse(await fs.readFile(path.join(tmpDir, '.mcp.json'), 'utf-8'));
+      expect(config.mcpServers.memorix.command).toBe('memorix');
+
+      // Our entry alone: the now empty mcpServers key goes as well.
+      await fs.writeFile(legacyPath, JSON.stringify({ mcpServers: { memorix: { command: 'memorix' } } }), 'utf-8');
+      await installMcpConfig({ agent: 'claude', projectRoot: tmpDir, mcp: 'stdio' });
+      expect(JSON.parse(await fs.readFile(legacyPath, 'utf-8'))).toEqual({});
     } finally {
       await cleanup(tmpDir);
     }
