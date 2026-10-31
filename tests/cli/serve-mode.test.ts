@@ -18,7 +18,6 @@ const isSystemDirectoryMock = vi.fn();
 const initTeamStoreMock = vi.fn();
 const getProjectDataDirMock = vi.fn();
 const getBaseDataDirMock = vi.fn();
-const checkForUpdatesMock = vi.fn();
 const listRootsMock = vi.fn();
 const setNotificationHandlerMock = vi.fn();
 const connectMock = vi.fn();
@@ -215,10 +214,6 @@ vi.mock('../../src/store/persistence.js', () => ({
   getBaseDataDir: getBaseDataDirMock,
 }));
 
-vi.mock('../../src/cli/update-checker.js', () => ({
-  checkForUpdates: checkForUpdatesMock,
-}));
-
 import serveCommand from '../../src/cli/commands/serve.js';
 import serveHttpCommand from '../../src/cli/commands/serve-http.js';
 
@@ -362,7 +357,6 @@ describe('serve command mode support', () => {
     });
     existsSyncMock.mockReturnValue(false);
     readFileSyncMock.mockReturnValue('');
-    checkForUpdatesMock.mockResolvedValue(undefined);
     vi.spyOn(process, 'cwd').mockReturnValue(project.rootPath);
     vi.spyOn(process.stdin, 'on').mockImplementation(() => process.stdin);
     vi.spyOn(process, 'on').mockImplementation(() => process);

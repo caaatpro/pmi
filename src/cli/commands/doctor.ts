@@ -570,48 +570,6 @@ export default defineCommand({
       report.llm = { enabled: false };
     }
 
-    // ── 9. Auto-Update Status ──────────────────────────────────
-    lines.push('');
-    lines.push('┌─ Auto-Update ─────────────────────────────────────');
-
-    try {
-      const { readCache, getCurrentVersion } = await import('../update-checker.js');
-      const cache = await readCache();
-      const curVer = getCurrentVersion();
-      lines.push(info(`Current version: v${curVer}`));
-      if (cache) {
-        lines.push(info(`Latest known: v${cache.latestVersion}`));
-        const lastCheckAgo = cache.lastCheck ? `${Math.round((Date.now() - cache.lastCheck) / 3600000)}h ago` : 'never';
-        lines.push(info(`Last check: ${lastCheckAgo}`));
-        if (cache.lastAutoUpdateStatus === 'success') {
-          lines.push(ok(`Last auto-update: v${cache.updatedFrom} → v${cache.updatedTo} (restart to apply)`));
-        } else if (cache.lastAutoUpdateStatus === 'failed') {
-          lines.push(warn(`Last auto-update failed: ${cache.lastAutoUpdateError ?? 'unknown error'}`));
-        }
-      } else {
-        lines.push(info('No update checks recorded yet'));
-      }
-      const modeRaw = (process.env.MEMORIX_AUTO_UPDATE ?? '').toLowerCase().trim();
-      const autoUpdateMode = !modeRaw || modeRaw === 'notify'
-        ? 'notify'
-        : ['off', 'false', '0'].includes(modeRaw)
-          ? 'off'
-          : ['install', 'true', '1'].includes(modeRaw)
-            ? 'install'
-            : 'notify';
-      lines.push(info(
-        autoUpdateMode === 'off'
-          ? 'Auto-update: disabled'
-          : autoUpdateMode === 'install'
-            ? 'Auto-update: enabled (background install)'
-            : 'Auto-update: enabled (notify only)',
-      ));
-      report.autoUpdate = { enabled: autoUpdateMode !== 'off', mode: autoUpdateMode, currentVersion: curVer, cache };
-    } catch {
-      lines.push(info('Auto-update status unavailable'));
-      report.autoUpdate = { enabled: false };
-    }
-
     // ── Summary ──────────────────────────────────────────────────
     if (args.receipt && projectId) {
       lines.push('');

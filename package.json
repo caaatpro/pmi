@@ -1,6 +1,6 @@
 {
   "name": "memorix",
-  "mcpName": "io.github.AVIDS2/memorix",
+  "private": true,
   "version": "1.10.2",
   "description": "Local-first shared memory layer for AI coding agents across MCP clients, Git history, reasoning context, and project sessions.",
   "type": "module",
@@ -30,7 +30,6 @@
     "dist",
     "!dist/**/*.map",
     "src",
-    "server.json",
     "!src/**/*.js",
     "!src/**/*.js.map",
     "!src/**/*.d.ts",
@@ -68,12 +67,7 @@
     "gate:context-matrix": "vitest run tests/evaluation/context-task-matrix.test.ts",
     "gate:context-runtime": "node scripts/context-evaluation-gate.mjs",
     "gate:large-store": "npm run build && node scripts/large-store-gate.mjs",
-    "sync:mcp-registry": "node scripts/sync-mcp-registry-manifest.mjs",
-    "check:mcp-registry": "node scripts/check-mcp-registry-manifest.mjs",
-    "sync:plugin-release": "node scripts/sync-plugin-release-manifests.mjs",
-    "check:plugin-release": "node scripts/sync-plugin-release-manifests.mjs --check",
-    "lint": "tsc --noEmit && tsc -p src/server/central/web --noEmit",
-    "prepublishOnly": "npm run check:mcp-registry && npm run check:plugin-release && npm audit signatures && npm run build && npm test"
+    "lint": "tsc --noEmit && tsc -p src/server/central/web --noEmit"
   },
   "keywords": [
     "mcp",

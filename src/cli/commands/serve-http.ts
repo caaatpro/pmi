@@ -2150,10 +2150,6 @@ export default defineCommand({
       console.error(`[memorix] ═══════════════════════════════════════════════════`);
       console.error(`[memorix] Sessions at startup: ${sessions.size} (live count available at /api/team)`);
       console.error(`[memorix] Agents can connect via: { "transport": "http", "url": "http://localhost:${port}/mcp" }`);
-
-      // Fire-and-forget: background update check after server is fully started.
-      // Default is notify-only. All output goes to stderr only. Failures never affect the server.
-      import('../update-checker.js').then(m => m.checkForUpdates()).catch(() => {});
         resolve();
       };
       if (typeof (httpServer as any).once === 'function') {

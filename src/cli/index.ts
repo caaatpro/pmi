@@ -197,9 +197,6 @@ const main = defineCommand({
     }
 
     // Fallback: show usage hint
-    if (process.stdout.isTTY) {
-      import('./update-checker.js').then(m => m.checkForUpdates()).catch(() => {});
-    }
     console.error(`PMI v${getCliVersion()} — Project Memory Infrastructure\n`);
     console.error('Usage: pmi <command>   (alias: memorix)\n');
     console.error('Commands:');
