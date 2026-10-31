@@ -36,10 +36,8 @@
     "!src/**/*.d.ts.map",
     "README.md",
     "docs",
-    "!docs/dev-log",
     "plugins",
     "LICENSE",
-    "CHANGELOG.md",
     "AGENTS.md"
   ],
   "scripts": {

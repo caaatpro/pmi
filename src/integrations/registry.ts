@@ -329,7 +329,7 @@ function capabilityManifest(entry: Omit<MemorixIntegration, 'capabilities'>): In
     source: {
       registry: 'src/integrations/registry.ts',
       generatedBy,
-      documentation: ['docs/INTEGRATIONS.md', 'docs/API_REFERENCE.md'],
+      documentation: ['docs/PMI/INSTALL.md', 'docs/PMI/API.md'],
     },
   };
 }

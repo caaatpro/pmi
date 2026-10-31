@@ -41,7 +41,6 @@ COPY --from=build --chown=node:node /app/dist ./dist
 COPY --from=build --chown=node:node /app/package.json ./package.json
 COPY --from=build --chown=node:node /app/README.md ./README.md
 COPY --from=build --chown=node:node /app/LICENSE ./LICENSE
-COPY --from=build --chown=node:node /app/CHANGELOG.md ./CHANGELOG.md
 COPY --from=build --chown=node:node /app/AGENTS.md ./AGENTS.md
 
 USER node
