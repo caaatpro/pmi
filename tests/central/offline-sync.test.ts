@@ -6,7 +6,7 @@
  * client A writes while the server is down → its changes wait locally →
  * the server comes back → `pmi sync` uploads them → client B receives them.
  */
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import type http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -80,6 +80,12 @@ describe.skipIf(!pgAvailable || !cliBuilt)('TEST 8: offline client buffers and c
     const linkB = await pmi(b, 'project', 'link', '--json');
     expect(linkB.code, linkB.stderr).toBe(0);
     expect(linkB.json.projectId).toBe(linkA.json.projectId);
+
+    // .pmi/project.json is meant to be committed: linking again to the same project leaves it untouched.
+    const linkFile = path.join(a.repo, '.pmi', 'project.json');
+    const before = readFileSync(linkFile, 'utf8');
+    expect((await pmi(a, 'project', 'link', '--json')).code).toBe(0);
+    expect(readFileSync(linkFile, 'utf8')).toBe(before);
   }, 120_000);
 
   it('keeps writes made while the server is down and delivers them after it returns', async () => {
