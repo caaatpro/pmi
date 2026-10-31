@@ -44,6 +44,8 @@ import {
 import { pendingMigrations } from './migrations.js';
 import { buildServerContext, getOverview, hybridSearch, recordMetric, type ServerEmbeddings } from './context-repo.js';
 import { createMetrics } from './metrics.js';
+import { listAudit, projectStats } from './stats-repo.js';
+import { defaultUiDir, loadUi, serveUi, type WebUi } from './ui.js';
 import { applyReconcile, getCursor, postCommits, relatedFiles, resolveRepository, type PostedCommit } from './git-repo.js';
 import { timingSafeEqual } from 'node:crypto';
 import {
@@ -89,6 +91,8 @@ export interface CentralServerOptions {
   trustProxy?: boolean;
   /** Keys for snapshot blob encryption; default PMI_BLOB_KEY / PMI_BLOB_KEYS_OLD. */
   blobKeys?: BlobKeys;
+  /** Directory of the web UI files; null turns the UI off. Default: shipped with the server, off with PMI_UI=0. */
+  uiDir?: string | null;
   log?: (line: Record<string, unknown>) => void;
 }
 
@@ -154,6 +158,12 @@ const memoryQuerySchema = z.object({
   component: z.string().max(200).optional(),
   file: z.string().max(1024).optional(),
   limit: z.coerce.number().int().min(1).max(500).default(100),
+  offset: z.coerce.number().int().min(0).max(1_000_000).default(0),
+});
+
+const auditQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(500).default(100),
+  before: z.coerce.number().int().positive().optional(),
 });
 
 const changesQuerySchema = z.object({
@@ -346,6 +356,22 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
       const user = await ctx.user();
       const project = await authorize(db, user, ctx.params.id, 'memory.read');
       return { body: { project, ...(project.role === 'viewer' ? {} : { grants: await listProjectGrants(db, project.id) }) } };
+    }),
+
+    // Counts for the web UI: knowledge by category, confidence and status,
+    // sessions by status, open conflicts, git analysis cursors.
+    route('GET', '/v1/projects/:id/stats', async (ctx) => {
+      const user = await ctx.user();
+      const project = await authorize(db, user, ctx.params.id, 'memory.read');
+      await expireLeases(db);
+      return { body: { stats: await db.asUser(user.id, (tx) => projectStats(tx, project.id)) } };
+    }),
+
+    route('GET', '/v1/projects/:id/audit', async (ctx) => {
+      const user = await ctx.user();
+      const project = await authorize(db, user, ctx.params.id, 'project.manage');
+      const query = parse(auditQuerySchema, Object.fromEntries(ctx.url.searchParams));
+      return { body: { entries: await listAudit(db, project.id, query) } };
     }),
 
     route('PUT', '/v1/projects/:id/grants', async (ctx) => {
@@ -752,6 +778,9 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
     return { body: { memory } };
   }
 
+  const uiDir = options.uiDir === undefined ? (process.env.PMI_UI === '0' ? null : defaultUiDir()) : options.uiDir;
+  const ui: WebUi | undefined = uiDir ? loadUi(uiDir) : undefined;
+
   const authFailures = new FailureLimiter(options.maxAuthFailuresPerMinute ?? 30);
   const trustProxy = options.trustProxy ?? process.env.PMI_TRUST_PROXY === '1';
   const clientIp = (req: http.IncomingMessage): string => {
@@ -772,6 +801,11 @@ export function createCentralServer(options: CentralServerOptions): http.Server 
       metrics.inc('pmi_http_requests_total', { route: routeLabel, status: String(status) });
       log({ at: new Date().toISOString(), method: req.method, path: url.pathname, status, ms: Date.now() - started, user: user?.id });
     };
+
+    if (serveUi(ui, req, res, url.pathname)) {
+      metrics.inc('pmi_http_requests_total', { route: 'ui', status: String(res.statusCode) });
+      return;
+    }
 
     const match = routes
       .filter((candidate) => candidate.pattern.test(url.pathname));

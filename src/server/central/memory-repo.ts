@@ -344,6 +344,7 @@ export interface MemoryView {
   topicKey: string | null;
   source: string;
   authorUserId: string | null;
+  authorEmail: string | null;
   authorAgent: string | null;
   relatedFiles: string[];
   version: number;
@@ -353,7 +354,7 @@ export interface MemoryView {
 }
 
 const MEMORY_VIEW_COLUMNS = `id, category, confidence, status, title, content, facts, component, topic_key AS "topicKey",
-  source, author_user_id AS "authorUserId", author_agent AS "authorAgent", related_files AS "relatedFiles", version,
+  source, author_user_id AS "authorUserId", core.user_email(author_user_id) AS "authorEmail", author_agent AS "authorAgent", related_files AS "relatedFiles", version,
   created_at AS "createdAt", updated_at AS "updatedAt", server_seq::int AS "serverSeq"`;
 
 export interface MemoryFilters {
@@ -363,6 +364,7 @@ export interface MemoryFilters {
   component?: string;
   file?: string;
   limit: number;
+  offset?: number;
 }
 
 export async function listMemories(db: Queryable, projectId: string, filters: MemoryFilters): Promise<MemoryView[]> {
@@ -380,7 +382,7 @@ export async function listMemories(db: Queryable, projectId: string, filters: Me
   params.push(filters.limit);
   return db.query<MemoryView>(
     `SELECT ${MEMORY_VIEW_COLUMNS} FROM memory.memories WHERE ${where.join(' AND ')}
-      ORDER BY updated_at DESC LIMIT $${params.length}`,
+      ORDER BY updated_at DESC, id LIMIT $${params.length} OFFSET ${Math.max(0, Math.trunc(filters.offset ?? 0))}`,
     params,
   );
 }
@@ -397,10 +399,10 @@ export async function getMemory(
   return row;
 }
 
-export async function listVersions(db: Queryable, memoryId: string): Promise<Array<{ version: number; deleted: boolean; changedAt: string; changedByUser: string | null; changedByDevice: string | null; reason: string }>> {
+export async function listVersions(db: Queryable, memoryId: string): Promise<Array<{ version: number; deleted: boolean; changedAt: string; changedByUser: string | null; changedByEmail: string | null; changedByDevice: string | null; reason: string }>> {
   return db.query(
     `SELECT version, deleted, changed_at AS "changedAt", changed_by_user AS "changedByUser",
-            changed_by_device AS "changedByDevice", change_reason AS reason
+            core.user_email(changed_by_user) AS "changedByEmail", changed_by_device AS "changedByDevice", change_reason AS reason
        FROM memory.memory_versions WHERE memory_id = $1 ORDER BY version DESC`,
     [memoryId],
   );

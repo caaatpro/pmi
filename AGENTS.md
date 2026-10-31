@@ -19,7 +19,7 @@ PMI (Project Memory Infrastructure) is a TypeScript/Node fork of Memorix. The ta
 - `src/session/` — session continuity client: local store, service, daemon, git state
 - `src/context/` — context engine (L1/L2/L3, ranking, budget) and token-savings estimate
 - `src/mcp/tools/` — PMI MCP tools (context, sessions, workspace), split out of `src/server.ts`
-- `src/server/central/` — `pmi-server`: Postgres schema, HTTP API, tokens
+- `src/server/central/` — `pmi-server`: Postgres schema, HTTP API, tokens; `web/` is its web UI (React + Mantine, `npm run build:ui`)
 - `src/client/` — Connected-mode client config (`~/.pmi`, `.pmi/project.json`) and API client
 - `src/sync/` — replication of memory records (PMI server, fs/S3/GitHub/Postgres relays)
 - `src/git/` — incremental git analysis (pipeline, classifiers, local sink), commit ingest and hooks
@@ -31,7 +31,7 @@ PMI (Project Memory Infrastructure) is a TypeScript/Node fork of Memorix. The ta
 
 ```bash
 npm run build       # required before CLI/integration tests that spawn dist/
-npm run lint        # tsc --noEmit
+npm run lint        # tsc --noEmit (server and web UI)
 npm test            # full vitest suite
 npx vitest run tests/<path>
 npx vitest run tests/central   # needs Docker or PMI_TEST_PG_URL
