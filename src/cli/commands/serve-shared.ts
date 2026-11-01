@@ -33,14 +33,14 @@ export function resolveServeProject(
     options.initCwd ||
     options.processCwd;
 
-  const messages: string[] = [`[memorix] Starting with cwd: ${projectRoot}`];
+  const messages: string[] = [`[baton] Starting with cwd: ${projectRoot}`];
   const hasExplicitRoot = Boolean(options.cwdArg || options.envProjectRoot || options.initCwd);
   const startsAtHome = isHomeDirectory(projectRoot, options.homeDir);
 
   if (startsAtHome) {
     if (hasExplicitRoot) {
-      messages.push(`[memorix] Refusing explicit $HOME project root: ${projectRoot}`);
-      messages.push('[memorix] Memorix will wait for MCP Roots or an explicit memorix_session_start projectRoot.');
+      messages.push(`[baton] Refusing explicit $HOME project root: ${projectRoot}`);
+      messages.push('[baton] Baton will wait for MCP Roots or an explicit baton_session_start projectRoot.');
       return {
         projectRoot,
         detectedProject: null,
@@ -56,8 +56,8 @@ export function resolveServeProject(
     if (inherited) {
       const inheritedProject = deps.detectProject(inherited);
       if (inheritedProject && !isHomeDirectory(inheritedProject.rootPath, options.homeDir)) {
-        messages.push(`[memorix] Unreliable launch directory detected: ${projectRoot}`);
-        messages.push(`[memorix] Inherited last git project: ${inheritedProject.rootPath}`);
+        messages.push(`[baton] Unreliable launch directory detected: ${projectRoot}`);
+        messages.push(`[baton] Inherited last git project: ${inheritedProject.rootPath}`);
         return {
           projectRoot: inheritedProject.rootPath,
           detectedProject: inheritedProject,
@@ -66,9 +66,9 @@ export function resolveServeProject(
         };
       }
     }
-    messages.push(`[memorix] Unreliable launch directory detected: ${projectRoot}`);
-    messages.push('[memorix] Memorix will wait for MCP Roots or an explicit memorix_session_start projectRoot.');
-    messages.push('[memorix] It will not create ~/memorix.db or treat $HOME as a project.');
+    messages.push(`[baton] Unreliable launch directory detected: ${projectRoot}`);
+    messages.push('[baton] Baton will wait for MCP Roots or an explicit baton_session_start projectRoot.');
+    messages.push('[baton] It will not create ~/baton.db or treat $HOME as a project.');
     return {
       projectRoot,
       detectedProject: null,
@@ -92,9 +92,9 @@ export function resolveServeProject(
   }
 
   if (deps.isSystemDirectory(projectRoot)) {
-    messages.push(`[memorix] Unreliable launch directory detected: ${projectRoot}`);
-    messages.push('[memorix] Memorix will wait for MCP Roots or an explicit memorix_session_start projectRoot.');
-    messages.push('[memorix] It will not restore a previous project automatically, to prevent cross-project memory access.');
+    messages.push(`[baton] Unreliable launch directory detected: ${projectRoot}`);
+    messages.push('[baton] Baton will wait for MCP Roots or an explicit baton_session_start projectRoot.');
+    messages.push('[baton] It will not restore a previous project automatically, to prevent cross-project memory access.');
     return {
       projectRoot,
       detectedProject: null,
@@ -109,7 +109,7 @@ export function resolveServeProject(
     projectRoot = subGit;
     detected = deps.detectProject(subGit);
     if (detected) {
-      messages.push(`[memorix] Found .git in subdirectory: ${subGit}`);
+      messages.push(`[baton] Found .git in subdirectory: ${subGit}`);
       return {
         projectRoot,
         detectedProject: detected,
@@ -119,8 +119,8 @@ export function resolveServeProject(
     }
   }
 
-  messages.push('[memorix] Unable to establish a reliable git-backed project context.');
-  messages.push('[memorix] Memorix now refuses to silently fall back to untracked/* in stdio mode.');
+  messages.push('[baton] Unable to establish a reliable git-backed project context.');
+  messages.push('[baton] Baton now refuses to silently fall back to untracked/* in stdio mode.');
 
   return {
     projectRoot,

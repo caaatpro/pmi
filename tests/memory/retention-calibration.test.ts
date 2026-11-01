@@ -21,11 +21,11 @@ import {
   getRetentionZone,
   explainRetention,
 } from '../../src/memory/retention.js';
-import type { MemorixDocument } from '../../src/types.js';
+import type { BatonDocument } from '../../src/types.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
-function makeDoc(overrides: Partial<MemorixDocument> = {}): MemorixDocument {
+function makeDoc(overrides: Partial<BatonDocument> = {}): BatonDocument {
   return {
     id: 'obs-1',
     observationId: 1,

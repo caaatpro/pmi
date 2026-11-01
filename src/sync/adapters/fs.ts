@@ -138,16 +138,16 @@ export class FsRemote implements SyncRemote {
 
 function assertBatchNamespace(batch: ChangeBatch, namespace: string): void {
   if (batch.namespace !== namespace) {
-    throw new Error('[memorix] sync batch namespace does not match the filesystem relay');
+    throw new Error('[baton] sync batch namespace does not match the filesystem relay');
   }
   if (!isSafeSyncDeviceId(batch.deviceId)) {
-    throw new Error('[memorix] sync batch has an invalid device id');
+    throw new Error('[baton] sync batch has an invalid device id');
   }
 }
 
 function assertLimit(limit: number): void {
   if (!Number.isSafeInteger(limit) || limit < 1) {
-    throw new Error('[memorix] sync pull limit must be a positive integer');
+    throw new Error('[baton] sync pull limit must be a positive integer');
   }
 }
 
@@ -174,6 +174,6 @@ async function atomicWrite(file: string, value: unknown): Promise<void> {
 async function assertSameBatch(file: string, expected: ChangeBatch): Promise<void> {
   const actual = JSON.parse(await readFile(file, 'utf8')) as ChangeBatch;
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
-    throw new Error('[memorix] filesystem relay event path already contains a different payload');
+    throw new Error('[baton] filesystem relay event path already contains a different payload');
   }
 }

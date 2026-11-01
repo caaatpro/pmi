@@ -29,7 +29,7 @@ describe('sanitize', () => {
   });
 
   it('should not mask short strings or normal text', () => {
-    const input = 'command = "npx"\nargs = ["-y", "memorix"]';
+    const input = 'command = "npx"\nargs = ["-y", "baton"]';
     expect(sanitize(input)).toBe(input);
   });
 

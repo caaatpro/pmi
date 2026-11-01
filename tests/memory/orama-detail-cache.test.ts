@@ -14,7 +14,7 @@ vi.mock('../../src/embedding/provider.js', () => ({
 
 describe('Orama detail cache', () => {
 	it('returns vector-free detail without damaging a cache-miss document', async () => {
-		const projectId = 'AVIDS2/memorix';
+		const projectId = 'AVIDS2/baton';
 
 		const doc = {
 			id: `obs-${encodeURIComponent(projectId)}-42`,

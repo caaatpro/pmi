@@ -17,7 +17,7 @@ afterEach(() => {
 
 describe('internal semantic context', () => {
   it('returns only task-relevant symbols and source-backed relations', async () => {
-    root = join(tmpdir(), `memorix-semantic-context-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    root = join(tmpdir(), `baton-semantic-context-${Date.now()}-${Math.random().toString(16).slice(2)}`);
     mkdirSync(join(root, 'src'), { recursive: true });
     writeFileSync(join(root, 'src', 'auth.ts'), [
       "import { validate } from './validate.js';",

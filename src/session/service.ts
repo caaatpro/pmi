@@ -1,10 +1,10 @@
 /**
  * Client-side session continuity operations shared by the CLI, the MCP tools
  * and the daemon. Each operation writes the local store first and queues the
- * server call; `flushOutbox` delivers queued operations when the PMI server
+ * server call; `flushOutbox` delivers queued operations when the Baton server
  * is reachable, so starting, checkpointing and handing off work offline.
  */
-import { createApiClient, PmiApiError, type PmiApiClient } from '../client/api.js';
+import { createApiClient, BatonApiError, type BatonApiClient } from '../client/api.js';
 import { readProjectLink, tokenFor, type ProjectLink } from '../client/config.js';
 import {
   buildHandoffBrief,
@@ -114,7 +114,7 @@ export function startSession(store: LocalSessionStore, input: StartInput): Local
   };
   const session = store.put({ state, workspaceRoot: input.projectRoot, agentPid: input.agentPid ?? null });
   // The working copy as it is now is the baseline; the daemon checkpoints changes from here.
-  if (reading) store.db.prepare('UPDATE pmi_sessions SET last_fingerprint = ? WHERE id = ?').run(reading.fingerprint, sessionId);
+  if (reading) store.db.prepare('UPDATE baton_sessions SET last_fingerprint = ? WHERE id = ?').run(reading.fingerprint, sessionId);
   return store.get(session.id)!;
 }
 
@@ -135,7 +135,7 @@ export function checkpointSession(
   options: { status?: SessionStatus } = {},
 ): LocalCheckpoint {
   const session = store.get(sessionId);
-  if (!session) throw new Error(`[pmi] unknown session ${sessionId}`);
+  if (!session) throw new Error(`[baton] unknown session ${sessionId}`);
   const reading = session.workspaceRoot ? readWorkspace(session.workspaceRoot) : undefined;
   const snapshotId = SNAPSHOT_TRIGGERS.has(trigger) && session.workspaceRoot
     ? takeSessionSnapshot(store, session.workspaceRoot, session.projectId, sessionId, trigger === 'handoff')
@@ -205,7 +205,7 @@ export function finishSession(store: LocalSessionStore, sessionId: string, input
  */
 export function releaseSession(store: LocalSessionStore, sessionId: string): LocalSession {
   const session = store.get(sessionId);
-  if (!session) throw new Error(`[pmi] unknown session ${sessionId}`);
+  if (!session) throw new Error(`[baton] unknown session ${sessionId}`);
   const reading = session.workspaceRoot ? readWorkspace(session.workspaceRoot) : undefined;
   if (reading && reading.fingerprint !== session.lastFingerprint) checkpointSession(store, sessionId, 'exit');
   const hasCheckpoint = (store.get(sessionId)?.checkpointSeq ?? 0) > 0;
@@ -214,7 +214,7 @@ export function releaseSession(store: LocalSessionStore, sessionId: string): Loc
 
 export interface ConnectedProject {
   link: ProjectLink;
-  api: PmiApiClient;
+  api: BatonApiClient;
 }
 
 /** Server connection for a working copy, or undefined in Local mode. */
@@ -306,7 +306,7 @@ async function flushOutboxLocked(store: LocalSessionStore, env: NodeJS.ProcessEn
       store.markOp(op.id, { state: 'sent' });
       report.sent++;
     } catch (error) {
-      const apiError = error instanceof PmiApiError ? error : undefined;
+      const apiError = error instanceof BatonApiError ? error : undefined;
       if (!apiError || apiError.offline || apiError.status >= 500) {
         store.markOp(op.id, { state: 'pending', error: (error as Error).message });
         report.offline = Boolean(apiError?.offline);
@@ -372,7 +372,7 @@ export async function listProjectSessions(
         offline: false,
       };
     } catch (error) {
-      if (!(error instanceof PmiApiError && error.offline)) throw error;
+      if (!(error instanceof BatonApiError && error.offline)) throw error;
     }
   }
   const statuses: SessionStatus[] | undefined = input.all ? undefined : ['resumable', 'interrupted', 'waiting_handoff'];
@@ -425,7 +425,7 @@ export async function resumeSession(
   const connection = connectedProject(input.projectRoot, env);
   if (!connection) {
     const local = store.get(input.sessionId);
-    if (!local) throw new Error('[pmi] session not found locally and this working copy is not linked to a PMI server');
+    if (!local) throw new Error('[baton] session not found locally and this working copy is not linked to a Baton server');
     const resumed = store.update(input.sessionId, (state) => ({ ...state, status: 'in_progress', ...(input.agent ? { agent: input.agent } : {}) }));
     const brief = buildHandoffBrief(local.state);
     const { resumeHints } = await import('../domain/session.js');
@@ -476,7 +476,7 @@ export async function resumeSession(
   // The server already holds this state; store it locally without queueing it back.
   const local = store.put({ state, workspaceRoot, agentPid: input.agentPid ?? null }, false);
   const reading = workspaceRoot ? readWorkspace(workspaceRoot) : undefined;
-  if (reading) store.db.prepare('UPDATE pmi_sessions SET last_fingerprint = ? WHERE id = ?').run(reading.fingerprint, local.id);
+  if (reading) store.db.prepare('UPDATE baton_sessions SET last_fingerprint = ? WHERE id = ?').run(reading.fingerprint, local.id);
   if (pkg.resumedFrom !== local.id) {
     const previous = store.get(pkg.resumedFrom);
     if (previous && previous.status !== 'completed') store.setStatus(previous.id, 'completed');

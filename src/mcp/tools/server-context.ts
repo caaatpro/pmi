@@ -1,7 +1,7 @@
 /**
- * Connection state shared by the inherited Memorix MCP tools.
+ * Connection state shared by the inherited Baton MCP tools.
  *
- * `createMemorixServer` owns this state and changes it when the connection is
+ * `createBatonServer` owns this state and changes it when the connection is
  * rebound to another project (`switchProject`) or an agent joins the team.
  * Tool modules read it through accessors on this object instead of closures,
  * so a value read inside a handler is always the current one.
@@ -22,7 +22,7 @@ export type ToolNotice = {
   isError?: true;
 };
 
-/** Set by memorix_project_context: the brief bounds retrieval for one coding turn. */
+/** Set by baton_project_context: the brief bounds retrieval for one coding turn. */
 export interface AutopilotRetrievalBoundary {
   projectId: string;
   issuedAt: number;

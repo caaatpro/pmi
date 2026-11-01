@@ -18,33 +18,33 @@ vi.mock('../../src/config/behavior.js', () => ({
 }));
 
 describe('hook compaction continuity', () => {
-  const originalDataDir = process.env.MEMORIX_DATA_DIR;
+  const originalDataDir = process.env.BATON_DATA_DIR;
   const tempDirs: string[] = [];
 
   afterEach(() => {
     closeAllDatabases();
-    if (originalDataDir === undefined) delete process.env.MEMORIX_DATA_DIR;
-    else process.env.MEMORIX_DATA_DIR = originalDataDir;
+    if (originalDataDir === undefined) delete process.env.BATON_DATA_DIR;
+    else process.env.BATON_DATA_DIR = originalDataDir;
     for (const dir of tempDirs.splice(0)) {
       rmSync(dir, { recursive: true, force: true });
     }
   });
 
   function createRepository(): { repoDir: string; dataDir: string } {
-    const root = mkdtempSync(path.join(os.tmpdir(), 'memorix-hook-compact-'));
+    const root = mkdtempSync(path.join(os.tmpdir(), 'baton-hook-compact-'));
     const repoDir = path.join(root, 'repo');
     const dataDir = path.join(root, 'data');
     tempDirs.push(root);
     mkdirSync(repoDir, { recursive: true });
     writeFileSync(path.join(repoDir, 'README.md'), '# demo\n', 'utf8');
     execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
-    process.env.MEMORIX_DATA_DIR = dataDir;
+    process.env.BATON_DATA_DIR = dataDir;
     return { repoDir, dataDir };
   }
 
   it('normalizes Codex native manual/auto reasons and Pi native compaction entries', () => {
     const codex = normalizeHookInput({
-      _memorix_agent: 'codex',
+      _baton_agent: 'codex',
       hook_event_name: 'PreCompact',
       session_id: 'codex-session',
       cwd: 'E:\\demo',
@@ -112,14 +112,14 @@ describe('hook compaction continuity', () => {
   it('uses a compact SessionStart only as lifecycle completion when a host exposes no summary', async () => {
     const { repoDir } = createRepository();
     const preflight = normalizeHookInput({
-      _memorix_agent: 'codex',
+      _baton_agent: 'codex',
       hook_event_name: 'PreCompact',
       session_id: 'codex-session',
       cwd: repoDir,
       trigger: 'auto',
     });
     const compactResume = normalizeHookInput({
-      _memorix_agent: 'codex',
+      _baton_agent: 'codex',
       hook_event_name: 'SessionStart',
       session_id: 'codex-session',
       cwd: repoDir,
@@ -141,14 +141,14 @@ describe('hook compaction continuity', () => {
   it('delivers a Codex compact checkpoint once through the documented SessionStart context channel', async () => {
     const { repoDir } = createRepository();
     const preflight = normalizeHookInput({
-      _memorix_agent: 'codex',
+      _baton_agent: 'codex',
       hook_event_name: 'PreCompact',
       session_id: 'codex-recovery',
       cwd: repoDir,
       trigger: 'manual',
     });
     const compactResume = normalizeHookInput({
-      _memorix_agent: 'codex',
+      _baton_agent: 'codex',
       hook_event_name: 'SessionStart',
       session_id: 'codex-recovery',
       cwd: repoDir,
@@ -160,7 +160,7 @@ describe('hook compaction continuity', () => {
     const first = await handleHookEvent(compactResume);
     const second = await handleHookEvent(compactResume);
 
-    expect(first.output.systemMessage).toContain('Memorix recovered one bounded checkpoint');
+    expect(first.output.systemMessage).toContain('Baton recovered one bounded checkpoint');
     expect(first.output.systemMessage).toContain('## Compact Continuation');
     expect(second.output.systemMessage ?? '').not.toContain('## Compact Continuation');
   });
@@ -191,7 +191,7 @@ describe('hook compaction continuity', () => {
     const first = await handleHookEvent(nextPrompt);
     const second = await handleHookEvent(nextPrompt);
 
-    expect(first.output.systemMessage).toContain('Memorix recovered one bounded checkpoint');
+    expect(first.output.systemMessage).toContain('Baton recovered one bounded checkpoint');
     expect(first.output.systemMessage).toContain('## Compact Continuation');
     expect(second.output.systemMessage ?? '').not.toContain('## Compact Continuation');
   });

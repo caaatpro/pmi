@@ -6,7 +6,7 @@ import { join } from 'node:path';
  * Claude Code MCP config adapter.
  * Format: JSON file at ~/.claude.json (user scope) or .mcp.json in the project
  * root (project scope). Claude Code does not read server definitions from
- * .claude/settings.json; older Memorix setups wrote there (see
+ * .claude/settings.json; older Baton setups wrote there (see
  * removeLegacyClaudeProjectEntry in cli/commands/setup.ts).
  * Structure: { mcpServers: { [name]: { command, args, env?, url? } } }
  */

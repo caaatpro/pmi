@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { getGlobalConfigTomlPath, getProjectConfigTomlPath } from './config-paths.js';
 
-export interface MemorixTomlConfig {
+export interface BatonTomlConfig {
   agent?: {
     provider?: string;
     model?: string;
@@ -67,9 +67,9 @@ interface LoadTomlOptions {
   homeDir?: string;
 }
 
-const configCache = new Map<string, MemorixTomlConfig>();
+const configCache = new Map<string, BatonTomlConfig>();
 
-export function loadTomlConfig(options: LoadTomlOptions = {}): MemorixTomlConfig {
+export function loadTomlConfig(options: LoadTomlOptions = {}): BatonTomlConfig {
   const homeDir = options.homeDir ?? homedir();
   const projectRoot = options.projectRoot ?? null;
   const cacheKey = `${homeDir}\0${projectRoot ?? ''}`;
@@ -93,7 +93,7 @@ export function resetTomlConfigCache(): void {
   configCache.clear();
 }
 
-function mergeTomlConfig(base: MemorixTomlConfig, override: MemorixTomlConfig): MemorixTomlConfig {
+function mergeTomlConfig(base: BatonTomlConfig, override: BatonTomlConfig): BatonTomlConfig {
   return {
     ...base,
     ...override,
@@ -112,7 +112,7 @@ function mergeTomlConfig(base: MemorixTomlConfig, override: MemorixTomlConfig): 
   };
 }
 
-function parseTomlConfig(content: string, filePath: string): MemorixTomlConfig {
+function parseTomlConfig(content: string, filePath: string): BatonTomlConfig {
   const root: Record<string, unknown> = {};
   let current: Record<string, unknown> = root;
 
@@ -133,7 +133,7 @@ function parseTomlConfig(content: string, filePath: string): MemorixTomlConfig {
     current[assignment[1]] = parseTomlValue(assignment[2].trim(), filePath, index + 1);
   }
 
-  return root as MemorixTomlConfig;
+  return root as BatonTomlConfig;
 }
 
 function ensureTable(root: Record<string, unknown>, path: string[]): Record<string, unknown> {

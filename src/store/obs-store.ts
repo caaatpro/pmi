@@ -181,7 +181,7 @@ let _storeDataDir: string | null = null;
 /** Get the active ObservationStore singleton. Throws if not yet initialized. */
 export function getObservationStore(): ObservationStore {
   if (!_store) {
-    throw new Error('[memorix] ObservationStore not initialized — call initObservationStore() first');
+    throw new Error('[baton] ObservationStore not initialized — call initObservationStore() first');
   }
   return _store;
 }
@@ -220,7 +220,7 @@ export async function createObservationStore(dataDir: string): Promise<Observati
   } catch (err) {
     if (!isSqliteUnavailableError(err)) throw err;
     const reason = formatSqliteFailure(err);
-    console.error(`[memorix] SQLite module unavailable — degraded mode (reads/writes disabled): ${reason}`);
+    console.error(`[baton] SQLite module unavailable — degraded mode (reads/writes disabled): ${reason}`);
     const degraded = new DegradedBackend(reason);
     await degraded.init(dataDir);
     return degraded;

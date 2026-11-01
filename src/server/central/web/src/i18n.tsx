@@ -4,7 +4,7 @@ export type Lang = 'en' | 'ru';
 
 const en = {
   signIn: 'Sign in', token: 'Personal access token', remember: 'Remember on this device',
-  loginHelp: 'Paste a personal access token (pmi_pat_…). An administrator issues one with: pmi-server issue-token <email>',
+  loginHelp: 'Paste a personal access token (baton_pat_…). An administrator issues one with: baton-server issue-token <email>',
   signOut: 'Sign out', badToken: 'The server did not accept this token.', search: 'Search all knowledge',
   language: 'Русский', theme: 'Toggle light and dark theme',
   projects: 'Projects', noProjects: 'You have no access to any project yet. Ask an administrator for a grant.',
@@ -45,7 +45,7 @@ type Key = keyof typeof en;
 
 const ru: Record<Key, string> = {
   signIn: 'Войти', token: 'Личный токен доступа', remember: 'Запомнить на этом устройстве',
-  loginHelp: 'Вставьте личный токен (pmi_pat_…). Его выдаёт администратор: pmi-server issue-token <email>',
+  loginHelp: 'Вставьте личный токен (baton_pat_…). Его выдаёт администратор: baton-server issue-token <email>',
   signOut: 'Выйти', badToken: 'Сервер не принял этот токен.', search: 'Поиск по всем знаниям',
   language: 'English', theme: 'Светлая или тёмная тема',
   projects: 'Проекты', noProjects: 'У вас пока нет доступа ни к одному проекту. Попросите администратора выдать права.',

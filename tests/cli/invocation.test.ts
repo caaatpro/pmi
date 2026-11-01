@@ -7,29 +7,29 @@ import { normalizeCliInvocation } from '../../src/cli/invocation.js';
 describe('CLI invocation normalization', () => {
   const originalArgv = process.argv;
   const originalCwd = process.cwd();
-  const originalProjectRoot = process.env.MEMORIX_CLI_PROJECT_ROOT;
-  const originalActorId = process.env.MEMORIX_CLI_ACTOR_ID;
+  const originalProjectRoot = process.env.BATON_CLI_PROJECT_ROOT;
+  const originalActorId = process.env.BATON_CLI_ACTOR_ID;
   const cleanupRoots: string[] = [];
 
   afterEach(() => {
     process.argv = originalArgv;
     process.chdir(originalCwd);
-    if (originalProjectRoot === undefined) delete process.env.MEMORIX_CLI_PROJECT_ROOT;
-    else process.env.MEMORIX_CLI_PROJECT_ROOT = originalProjectRoot;
-    if (originalActorId === undefined) delete process.env.MEMORIX_CLI_ACTOR_ID;
-    else process.env.MEMORIX_CLI_ACTOR_ID = originalActorId;
+    if (originalProjectRoot === undefined) delete process.env.BATON_CLI_PROJECT_ROOT;
+    else process.env.BATON_CLI_PROJECT_ROOT = originalProjectRoot;
+    if (originalActorId === undefined) delete process.env.BATON_CLI_ACTOR_ID;
+    else process.env.BATON_CLI_ACTOR_ID = originalActorId;
     for (const root of cleanupRoots.splice(0)) {
       rmSync(root, { recursive: true, force: true });
     }
   });
 
   it('binds a common project root and normalizes shell-native flag spellings before command parsing', () => {
-    const root = mkdtempSync(path.join(tmpdir(), 'memorix-cli-invocation-'));
+    const root = mkdtempSync(path.join(tmpdir(), 'baton-cli-invocation-'));
     cleanupRoots.push(root);
     const canonicalRoot = realpathSync(root);
     const invocation = normalizeCliInvocation([
       'node',
-      'memorix',
+      'baton',
       'session',
       'start',
       '--cwd',
@@ -44,8 +44,8 @@ describe('CLI invocation normalization', () => {
 
     expect(invocation).toEqual({ projectRoot: canonicalRoot, actorId: 'agent-123' });
     expect(process.cwd()).toBe(canonicalRoot);
-    expect(process.env.MEMORIX_CLI_PROJECT_ROOT).toBe(canonicalRoot);
-    expect(process.env.MEMORIX_CLI_ACTOR_ID).toBe('agent-123');
+    expect(process.env.BATON_CLI_PROJECT_ROOT).toBe(canonicalRoot);
+    expect(process.env.BATON_CLI_ACTOR_ID).toBe('agent-123');
     expect(process.argv.slice(2)).toEqual([
       'session',
       'start',
@@ -59,20 +59,20 @@ describe('CLI invocation normalization', () => {
   it('rejects a nonexistent --cwd before a command can run', () => {
     expect(() => normalizeCliInvocation([
       'node',
-      'memorix',
+      'baton',
       'memory',
       'search',
       '--cwd',
-      path.join(tmpdir(), 'memorix-path-does-not-exist'),
+      path.join(tmpdir(), 'baton-path-does-not-exist'),
     ])).toThrow('CLI project directory does not exist');
   });
 
   it('preserves command-owned dashed flags instead of rewriting their meaning globally', () => {
-    const root = mkdtempSync(path.join(tmpdir(), 'memorix-cli-invocation-'));
+    const root = mkdtempSync(path.join(tmpdir(), 'baton-cli-invocation-'));
     cleanupRoots.push(root);
     normalizeCliInvocation([
       'node',
-      'memorix',
+      'baton',
       'uninstall',
       '--cwd',
       root,

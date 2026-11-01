@@ -245,7 +245,7 @@ export class StdioStartupGate {
     if (message.method !== MCP_SERVER_DISCOVER_METHOD) return false;
     if (!Object.prototype.hasOwnProperty.call(message, 'id')) return false;
     const params = message.params;
-    // A claim-less discover is the compatibility probe supported by Memorix
+    // A claim-less discover is the compatibility probe supported by Baton
     // 1.8.x. A modern 2026 request carries `_meta` and must flow into the
     // official v2 stdio classifier after the startup queue is ready.
     if (params === undefined) return true;

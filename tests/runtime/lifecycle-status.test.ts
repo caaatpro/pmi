@@ -14,7 +14,7 @@ import { closeAllDatabases } from '../../src/store/sqlite-db.js';
 let dataDir = '';
 
 beforeEach(async () => {
-  dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-lifecycle-status-'));
+  dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-lifecycle-status-'));
 });
 
 afterEach(async () => {

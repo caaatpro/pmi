@@ -7,8 +7,8 @@ import * as p from '@clack/prompts';
 import { buildSetupPlan, installAgentSetup, installMcpConfig } from '../../src/cli/commands/setup.js';
 import { inspectAgentIntegrations, repairAgentIntegrations } from '../../src/cli/commands/agent-integrations.js';
 import { getMCPConfigEntries } from '../../src/cli/commands/uninstall.js';
-import { MEMORIX_INTEGRATIONS } from '../../src/integrations/registry.js';
-import { OFFICIAL_MEMORIX_SKILLS } from '../../src/hooks/official-skills.js';
+import { BATON_INTEGRATIONS } from '../../src/integrations/registry.js';
+import { OFFICIAL_BATON_SKILLS } from '../../src/hooks/official-skills.js';
 
 const homedirMock = vi.hoisted(() => vi.fn());
 vi.mock('node:os', async () => ({
@@ -28,7 +28,7 @@ describe('Pi native MCP setup', () => {
   let originalCwd: string;
 
   beforeEach(() => {
-    root = realpathSync(mkdtempSync(path.join(tmpdir(), 'memorix-pi-setup-')));
+    root = realpathSync(mkdtempSync(path.join(tmpdir(), 'baton-pi-setup-')));
     home = path.join(root, 'home');
     project = path.join(root, 'project');
     mkdirSync(home);
@@ -63,23 +63,23 @@ describe('Pi native MCP setup', () => {
           await installAgentSetup('pi', plan, global);
 
           const config = JSON.parse(readFileSync(configPath(global), 'utf-8'));
-          expect(config.mcpServers.memorix).toEqual(mcp === 'stdio'
-            ? { command: 'memorix', args: ['serve', '--mode', 'lite'] }
+          expect(config.mcpServers.baton).toEqual(mcp === 'stdio'
+            ? { command: 'baton', args: ['serve', '--mode', 'lite'] }
             : { url: 'http://localhost:3211/mcp' });
           expect(existsSync(configPath(!global))).toBe(false);
 
           const packagePath = global
-            ? path.join(home, '.pi', 'agent', 'packages', 'memorix')
-            : path.join(project, '.pi', 'packages', 'memorix');
-          expect(existsSync(path.join(packagePath, 'extensions', 'memorix.js'))).toBe(true);
-          expect(existsSync(path.join(packagePath, 'skills', 'memorix-memory', 'SKILL.md'))).toBe(true);
+            ? path.join(home, '.pi', 'agent', 'packages', 'baton')
+            : path.join(project, '.pi', 'packages', 'baton');
+          expect(existsSync(path.join(packagePath, 'extensions', 'baton.js'))).toBe(true);
+          expect(existsSync(path.join(packagePath, 'skills', 'baton-memory', 'SKILL.md'))).toBe(true);
           expect(spawnSync).toHaveBeenCalledWith('pi',
             global ? ['install', packagePath, '--approve'] : ['install', packagePath, '-l', '--approve'],
             expect.any(Object));
           expect(p.log.info).toHaveBeenCalledWith(expect.stringContaining('pi: run `pi mcp list`'));
           expect(p.log.info).not.toHaveBeenCalledWith(expect.stringContaining('Pi has no MCP'));
           if (mcp === 'http') {
-            expect(p.log.info).toHaveBeenCalledWith(expect.stringContaining('memorix background start'));
+            expect(p.log.info).toHaveBeenCalledWith(expect.stringContaining('baton background start'));
           }
         });
       }
@@ -110,9 +110,9 @@ describe('Pi native MCP setup', () => {
           const config = JSON.parse(readFileSync(file, 'utf-8'));
           expect(config.autoEnableCodemode).toBe(false);
           expect(config.mcpServers.other).toEqual(other);
-          expect(Object.keys(config.mcpServers)).toEqual(['other', 'memorix']);
-          expect(config.mcpServers.memorix).toEqual(mcp === 'stdio'
-            ? { command: 'memorix', args: ['serve', '--mode', 'lite'] }
+          expect(Object.keys(config.mcpServers)).toEqual(['other', 'baton']);
+          expect(config.mcpServers.baton).toEqual(mcp === 'stdio'
+            ? { command: 'baton', args: ['serve', '--mode', 'lite'] }
             : { url: 'http://localhost:3211/mcp' });
         }
       });
@@ -129,17 +129,17 @@ describe('Pi native MCP setup', () => {
   ] as const)('installs shared skills on setup and reinstall (global=$global, mcp=$mcp)', async ({ global, mcp }) => {
     const plan = buildSetupPlan({ agent: 'pi', global, mcp });
     const skillsRoot = global
-      ? path.join(home, '.pi', 'agent', 'packages', 'memorix', 'skills')
-      : path.join(project, '.pi', 'packages', 'memorix', 'skills');
+      ? path.join(home, '.pi', 'agent', 'packages', 'baton', 'skills')
+      : path.join(project, '.pi', 'packages', 'baton', 'skills');
     for (let install = 0; install < 2; install++) {
       await installAgentSetup('pi', plan, global);
-      expect(readdirSync(skillsRoot).sort()).toEqual(OFFICIAL_MEMORIX_SKILLS.map(skill => skill.name).sort());
-      for (const { name, content } of OFFICIAL_MEMORIX_SKILLS) {
+      expect(readdirSync(skillsRoot).sort()).toEqual(OFFICIAL_BATON_SKILLS.map(skill => skill.name).sort());
+      for (const { name, content } of OFFICIAL_BATON_SKILLS) {
         expect(readFileSync(path.join(skillsRoot, name, 'SKILL.md'), 'utf-8'), name).toBe(content);
       }
       if (install === 0) {
         // Reinstall must replace legacy Pi-specific guidance with the shared skills.
-        writeFileSync(path.join(skillsRoot, 'memorix-memory', 'SKILL.md'), '# Legacy Pi-only skill\n');
+        writeFileSync(path.join(skillsRoot, 'baton-memory', 'SKILL.md'), '# Legacy Pi-only skill\n');
       }
     }
   });
@@ -149,12 +149,12 @@ describe('Pi native MCP setup', () => {
     expect(plan.mcp).toBe('stdio');
     expect(plan.actions).not.toContain('pi-package');
     await installAgentSetup('pi', plan, false);
-    expect(JSON.parse(readFileSync(configPath(false), 'utf-8')).mcpServers.memorix.command).toBe('memorix');
+    expect(JSON.parse(readFileSync(configPath(false), 'utf-8')).mcpServers.baton.command).toBe('baton');
     expect(spawnSync).not.toHaveBeenCalled();
   });
 
   it('advertises both native transports in the integration registry', () => {
-    const entry = MEMORIX_INTEGRATIONS.find(entry => entry.agent === 'pi');
+    const entry = BATON_INTEGRATIONS.find(entry => entry.agent === 'pi');
     expect(entry?.capabilities.transport).toMatchObject({ supported: ['stdio', 'http'], default: 'stdio' });
     expect(entry?.capabilities.source.generatedBy).toContain('src/workspace/mcp-adapters/pi.ts');
   });

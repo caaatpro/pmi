@@ -51,7 +51,7 @@ export default defineCommand({
 
         case 'leave': {
           if (!selectedAgentId) {
-            emitError('an active CLI identity or agentId is required for "memorix team leave"', asJson);
+            emitError('an active CLI identity or agentId is required for "baton team leave"', asJson);
             return;
           }
           const left = teamStore.leaveAgent(selectedAgentId);
@@ -105,9 +105,9 @@ export default defineCommand({
           console.log('Agent identity commands');
           console.log('');
           console.log('Usage:');
-          console.log('  memorix team status [--all]');
-          console.log('  memorix team join --agentType codex [--name codex-main --instanceId abc]');
-          console.log('  memorix team leave --agentId <id>');
+          console.log('  baton team status [--all]');
+          console.log('  baton team join --agentType codex [--name codex-main --instanceId abc]');
+          console.log('  baton team leave --agentId <id>');
       }
     } catch (error) {
       emitError(error instanceof Error ? error.message : String(error), asJson);

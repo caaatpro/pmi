@@ -15,7 +15,7 @@ describe('current project facts', () => {
   });
 
   it('does not describe an invalid .git directory as a clean worktree', () => {
-    const root = mkdtempSync(path.join(tmpdir(), 'memorix-current-facts-invalid-git-'));
+    const root = mkdtempSync(path.join(tmpdir(), 'baton-current-facts-invalid-git-'));
     roots.push(root);
     mkdirSync(path.join(root, '.git'), { recursive: true });
 
@@ -26,7 +26,7 @@ describe('current project facts', () => {
   });
 
   it('keeps valid Git worktree facts available', () => {
-    const root = mkdtempSync(path.join(tmpdir(), 'memorix-current-facts-valid-git-'));
+    const root = mkdtempSync(path.join(tmpdir(), 'baton-current-facts-valid-git-'));
     roots.push(root);
     execFileSync('git', ['init'], { cwd: root, stdio: 'ignore' });
     writeFileSync(path.join(root, 'pending.ts'), 'export const pending = true;\n', 'utf8');

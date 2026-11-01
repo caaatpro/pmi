@@ -31,7 +31,7 @@ function run(args, cwd) {
       env: {
         ...process.env,
         // The benchmark measures code providers, not an embedding download.
-        MEMORIX_EMBEDDING: process.env.MEMORIX_EMBEDDING ?? 'off',
+        BATON_EMBEDDING: process.env.BATON_EMBEDDING ?? 'off',
       },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -43,13 +43,13 @@ function run(args, cwd) {
     child.on('close', (code) => {
       const elapsedMs = Math.round(performance.now() - started);
       if (code !== 0) {
-        reject(new Error(`memorix ${args.join(' ')} exited ${code}: ${stderr.trim() || stdout.trim()}`));
+        reject(new Error(`baton ${args.join(' ')} exited ${code}: ${stderr.trim() || stdout.trim()}`));
         return;
       }
       try {
         resolve({ elapsedMs, value: JSON.parse(stdout) });
       } catch (error) {
-        reject(new Error(`memorix returned invalid JSON: ${error instanceof Error ? error.message : String(error)}`));
+        reject(new Error(`baton returned invalid JSON: ${error instanceof Error ? error.message : String(error)}`));
       }
     });
   });

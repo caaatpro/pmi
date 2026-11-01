@@ -15,7 +15,7 @@ import { join } from 'node:path';
  *     "mcp": {
  *       "name": {
  *         "type": "local",
- *         "command": ["memorix", "serve"],
+ *         "command": ["baton", "serve"],
  *         "environment": { "KEY": "value" },
  *         "enabled": true
  *       }

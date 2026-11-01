@@ -4,7 +4,7 @@ import { getByID, insert, search } from '@orama/orama';
 import { resetProvider } from '../../src/embedding/provider.js';
 import { resetConfigCache } from '../../src/config.js';
 
-const previousEmbedding = process.env.MEMORIX_EMBEDDING;
+const previousEmbedding = process.env.BATON_EMBEDDING;
 
 // Minimal observation shape matching what hydrateIndex expects
 function makeObs(id: number, status: string, title: string) {
@@ -29,7 +29,7 @@ function makeObs(id: number, status: string, title: string) {
 
 describe('hydrateIndex – status handling', () => {
   beforeAll(() => {
-    process.env.MEMORIX_EMBEDDING = 'off';
+    process.env.BATON_EMBEDDING = 'off';
     resetConfigCache();
     resetProvider();
   });
@@ -41,8 +41,8 @@ describe('hydrateIndex – status handling', () => {
   });
 
   afterAll(() => {
-    if (previousEmbedding === undefined) delete process.env.MEMORIX_EMBEDDING;
-    else process.env.MEMORIX_EMBEDDING = previousEmbedding;
+    if (previousEmbedding === undefined) delete process.env.BATON_EMBEDDING;
+    else process.env.BATON_EMBEDDING = previousEmbedding;
     resetConfigCache();
     resetProvider();
   });

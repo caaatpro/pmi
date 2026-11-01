@@ -23,7 +23,7 @@ let testDir: string;
 const PROJECT_ID = 'test/consolidation';
 
 beforeEach(async () => {
-  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-consol-'));
+  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-consol-'));
   await resetDb();
   await initObservations(testDir);
 });

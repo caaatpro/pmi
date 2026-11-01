@@ -171,7 +171,7 @@ ${existingList}`;
     };
   } catch (err) {
     // LLM failed — fall back to heuristic
-    console.error(`[memorix] LLM compact failed, falling back to heuristic:`, (err as Error)?.message ?? err);
+    console.error(`[baton] LLM compact failed, falling back to heuristic:`, (err as Error)?.message ?? err);
     return heuristicCompact(newMemory, existingMemories);
   }
 }
@@ -305,12 +305,12 @@ function mergeFacts(oldFactsStr: string, newFactsStr: string): string[] {
   return merged;
 }
 
-// ─── Batch Dedup (for memorix_deduplicate tool) ──────────────────────
+// ─── Batch Dedup (for baton_deduplicate tool) ──────────────────────
 
 /**
  * LLM-powered dedup for batch cleanup.
  * Compares a new memory against existing ones and returns a decision.
- * Used by memorix_deduplicate tool.
+ * Used by baton_deduplicate tool.
  */
 export async function deduplicateMemory(
   newMemory: { title: string; narrative: string; facts: string[] },

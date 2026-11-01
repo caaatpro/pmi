@@ -1,5 +1,5 @@
 /**
- * Binds the sync engine's `SyncStorePort` to the real Memorix store: the
+ * Binds the sync engine's `SyncStorePort` to the real Baton store: the
  * canonical `ObservationStore` for rows, plus the additive `sync_row_state` /
  * `sync_meta` tables (created here, never altering `observations`).
  *
@@ -37,7 +37,7 @@ export function localDeviceId(db: any, fingerprint = defaultDeviceFingerprint())
 }
 
 function defaultDeviceFingerprint(): string {
-  return process.env.MEMORIX_SYNC_DEVICE_FINGERPRINT?.trim() || `${process.platform}|${os.hostname()}|${os.homedir()}`;
+  return process.env.BATON_SYNC_DEVICE_FINGERPRINT?.trim() || `${process.platform}|${os.hostname()}|${os.homedir()}`;
 }
 
 export interface SqliteSyncStore extends SyncStorePort {
@@ -109,10 +109,10 @@ export function createSqliteSyncStore(
       return;
     }
     const row = getMeta.get(FINGERPRINT_KEY) as { value: string } | undefined;
-    if (!row?.value) throw new Error('[memorix] sync device identity is unknown; run `memorix sync store device rotate` before publishing');
+    if (!row?.value) throw new Error('[baton] sync device identity is unknown; run `baton sync store device rotate` before publishing');
     if (row?.value && row.value !== deviceFingerprint) {
       throw new Error(
-        '[memorix] sync device clone detected; run `memorix sync store device rotate` before publishing from this data directory',
+        '[baton] sync device clone detected; run `baton sync store device rotate` before publishing from this data directory',
       );
     }
   }
@@ -232,9 +232,9 @@ export function createSqliteSyncStore(
         const existing = await tx.getById(row.id);
         if (existing) {
           if (existing.projectId !== row.projectId) {
-            throw new Error('[memorix] sync refused to overwrite an observation from another project');
+            throw new Error('[baton] sync refused to overwrite an observation from another project');
           }
-          throw new Error('[memorix] sync insert collided with an existing local observation id');
+          throw new Error('[baton] sync insert collided with an existing local observation id');
         }
         await tx.insert(row);
         upState.run(state);
@@ -245,7 +245,7 @@ export function createSqliteSyncStore(
       await store.atomic(async (tx) => {
         const existing = await tx.getById(row.id);
         if (existing && existing.projectId !== row.projectId) {
-          throw new Error('[memorix] sync refused to overwrite an observation from another project');
+          throw new Error('[baton] sync refused to overwrite an observation from another project');
         }
         if (existing) await tx.update(row);
         else await tx.insert(row);
@@ -260,10 +260,10 @@ export function createSqliteSyncStore(
           ? sourceProjectIdFromSyncKey(state.syncKey)
           : state.projectId;
         if (!expectedProjectId) {
-          throw new Error('[memorix] sync refused to remove an observation without a project-scoped sync key');
+          throw new Error('[baton] sync refused to remove an observation without a project-scoped sync key');
         }
         if (existing && existing.projectId !== expectedProjectId) {
-          throw new Error('[memorix] sync refused to remove an observation from another project');
+          throw new Error('[baton] sync refused to remove an observation from another project');
         }
         await tx.remove(id);
         upState.run(state);

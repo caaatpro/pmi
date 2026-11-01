@@ -14,7 +14,7 @@ import { tmpdir } from 'node:os';
 import { resolveGitDir, resolveHooksDir, ensureHooksDir } from '../../src/git/hooks-path.js';
 
 describe('resolveGitDir', () => {
-  const base = join(tmpdir(), 'memorix-git-test-' + Date.now());
+  const base = join(tmpdir(), 'baton-git-test-' + Date.now());
 
   afterEach(() => {
     try { rmSync(base, { recursive: true, force: true }); } catch { /* ignore */ }
@@ -72,7 +72,7 @@ describe('resolveGitDir', () => {
 });
 
 describe('resolveHooksDir', () => {
-  const base = join(tmpdir(), 'memorix-hooks-test-' + Date.now());
+  const base = join(tmpdir(), 'baton-hooks-test-' + Date.now());
 
   afterEach(() => {
     try { rmSync(base, { recursive: true, force: true }); } catch { /* ignore */ }
@@ -117,7 +117,7 @@ describe('resolveHooksDir', () => {
 });
 
 describe('ensureHooksDir', () => {
-  const base = join(tmpdir(), 'memorix-ensure-hooks-test-' + Date.now());
+  const base = join(tmpdir(), 'baton-ensure-hooks-test-' + Date.now());
 
   afterEach(() => {
     try { rmSync(base, { recursive: true, force: true }); } catch { /* ignore */ }

@@ -24,8 +24,8 @@ export interface McpDiscoverResult {
 
 export function getMcpServerInfo(): McpServerInfo {
   return {
-    name: 'memorix',
-    version: typeof __MEMORIX_VERSION__ !== 'undefined' ? __MEMORIX_VERSION__ : '1.0.1',
+    name: 'baton',
+    version: typeof __BATON_VERSION__ !== 'undefined' ? __BATON_VERSION__ : '1.0.1',
   };
 }
 

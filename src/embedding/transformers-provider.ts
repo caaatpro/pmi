@@ -36,7 +36,7 @@ function cacheKey(text: string): string {
 }
 
 function maxCachePayloadBytes(): number {
-    const raw = Number.parseInt(process.env.MEMORIX_EMBEDDING_CACHE_MAX_BYTES ?? '', 10);
+    const raw = Number.parseInt(process.env.BATON_EMBEDDING_CACHE_MAX_BYTES ?? '', 10);
     return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_CACHE_PAYLOAD_BYTES;
 }
 

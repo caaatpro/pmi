@@ -1,9 +1,9 @@
 /**
- * Agent identity tool inherited from Memorix (team profile): team_manage.
+ * Agent identity tool inherited from Baton (team profile): team_manage.
  *
  * An agent that joins gets an agent_id that attributes its observations and
  * unlocks personal/team memory visibility. Task, message, lock, poll and
- * handoff coordination was removed; PMI sessions and handoff replace it.
+ * handoff coordination was removed; Baton sessions and handoff replace it.
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';

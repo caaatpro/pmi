@@ -13,10 +13,10 @@ describe('OmpMCPAdapter', () => {
     const servers = adapter.parse(JSON.stringify({
       disabledServers: ['remote'],
       mcpServers: {
-        memorix: {
-          command: 'memorix',
+        baton: {
+          command: 'baton',
           args: ['serve'],
-          env: { MEMORIX_MODE: 'full' },
+          env: { BATON_MODE: 'full' },
         },
         remote: {
           url: 'https://example.test/mcp',
@@ -27,10 +27,10 @@ describe('OmpMCPAdapter', () => {
 
     expect(servers).toHaveLength(2);
     expect(servers[0]).toMatchObject({
-      name: 'memorix',
-      command: 'memorix',
+      name: 'baton',
+      command: 'baton',
       args: ['serve'],
-      env: { MEMORIX_MODE: 'full' },
+      env: { BATON_MODE: 'full' },
     });
     expect(servers[1]).toMatchObject({
       name: 'remote',
@@ -41,7 +41,7 @@ describe('OmpMCPAdapter', () => {
 
   it('generates Oh-my-Pi config with schema and HTTP type', () => {
     const servers: MCPServerEntry[] = [
-      { name: 'memorix', command: 'memorix', args: ['serve'] },
+      { name: 'baton', command: 'baton', args: ['serve'] },
       {
         name: 'remote',
         command: '',
@@ -54,8 +54,8 @@ describe('OmpMCPAdapter', () => {
 
     const parsed = JSON.parse(adapter.generate(servers));
     expect(parsed.$schema).toContain('mcp-schema.json');
-    expect(parsed.mcpServers.memorix).toMatchObject({
-      command: 'memorix',
+    expect(parsed.mcpServers.baton).toMatchObject({
+      command: 'baton',
       args: ['serve'],
     });
     expect(parsed.mcpServers.remote).toMatchObject({

@@ -12,14 +12,14 @@ describe('ClaudeCodeMCPAdapter', () => {
         it('should parse stdio servers', () => {
             const config = JSON.stringify({
                 mcpServers: {
-                    memorix: { command: 'npx', args: ['-y', 'memorix', 'serve'] },
+                    baton: { command: 'npx', args: ['-y', 'baton', 'serve'] },
                 },
             });
             const servers = adapter.parse(config);
             expect(servers).toHaveLength(1);
-            expect(servers[0].name).toBe('memorix');
+            expect(servers[0].name).toBe('baton');
             expect(servers[0].command).toBe('npx');
-            expect(servers[0].args).toEqual(['-y', 'memorix', 'serve']);
+            expect(servers[0].args).toEqual(['-y', 'baton', 'serve']);
         });
 
         it('should parse HTTP servers with url', () => {
@@ -97,7 +97,7 @@ describe('ClaudeCodeMCPAdapter', () => {
         it('should survive parse → generate → parse', () => {
             const original = JSON.stringify({
                 mcpServers: {
-                    memorix: { command: 'npx', args: ['-y', 'memorix'], env: { DEBUG: '1' } },
+                    baton: { command: 'npx', args: ['-y', 'baton'], env: { DEBUG: '1' } },
                 },
             });
             const servers = adapter.parse(original);

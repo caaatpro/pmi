@@ -1,14 +1,14 @@
 /**
- * PMI CLI (`pmi`, alias `memorix`)
+ * Baton Hub CLI (`baton`)
  *
- * Command-line interface for Project Memory Infrastructure.
+ * Command-line interface for Baton Hub.
  * Built with: citty (1.1K stars, zero-deps) + @clack/prompts (7.4K stars)
  *
  * Commands:
- *   memorix         — Usage summary (TTY) or MCP stdio server (piped)
- *   memorix serve   — Start MCP Server on stdio
- *   memorix status  — Show project info + rules sync status
- *   memorix sync    — Interactive cross-agent rule sync
+ *   baton         — Usage summary (TTY) or MCP stdio server (piped)
+ *   baton serve   — Start MCP Server on stdio
+ *   baton status  — Show project info + rules sync status
+ *   baton sync    — Interactive cross-agent rule sync
  */
 
 import { defineCommand, runMain } from 'citty';
@@ -20,7 +20,7 @@ import { shouldDefaultToMcp } from './default-mode.js';
 
 installCliPipeErrorGuard();
 
-const NO_GIT_MSG = 'Memorix requires a git repo to establish project identity. Run `git init` in this workspace first.';
+const NO_GIT_MSG = 'Baton requires a git repo to establish project identity. Run `git init` in this workspace first.';
 
 // ============================================================
 // Main command
@@ -43,14 +43,14 @@ async function runMemoryShortcut(action: string, args: Record<string, unknown>):
 
 const main = defineCommand({
   meta: {
-    name: 'pmi',
+    name: 'baton',
     version: getCliVersion(),
     description: 'Local-first memory control plane for AI coding agents through CLI, MCP, and local workflows',
   },
   subCommands: {
     // One-shot product commands (primary user paths)
     search: () => Promise.resolve(defineCommand({
-      meta: { name: 'search', description: 'Shortcut for `memorix memory search`' },
+      meta: { name: 'search', description: 'Shortcut for `baton memory search`' },
       args: {
         query: { type: 'string', description: 'Search query (also accepts the first positional argument)', required: false },
         limit: { type: 'string', description: 'Maximum results' },
@@ -67,7 +67,7 @@ const main = defineCommand({
       },
     })),
     remember: () => Promise.resolve(defineCommand({
-      meta: { name: 'remember', description: 'Shortcut for `memorix memory store`' },
+      meta: { name: 'remember', description: 'Shortcut for `baton memory store`' },
       args: {
         text: { type: 'positional', description: 'Text to remember', required: true },
         title: { type: 'string', description: 'Optional observation title' },
@@ -86,7 +86,7 @@ const main = defineCommand({
       },
     })),
     recent: () => Promise.resolve(defineCommand({
-      meta: { name: 'recent', description: 'Shortcut for `memorix memory recent`' },
+      meta: { name: 'recent', description: 'Shortcut for `baton memory recent`' },
       args: {
         limit: { type: 'string', description: 'Maximum results' },
         json: { type: 'boolean', description: 'Emit machine-readable JSON output' },
@@ -106,7 +106,7 @@ const main = defineCommand({
     init: () => import('./commands/init.js').then(m => m.default),
     setup: () => import('./commands/setup.js').then(m => m.default),
     config: () => Promise.resolve(defineCommand({
-      meta: { name: 'config', description: 'Inspect Memorix TOML configuration' },
+      meta: { name: 'config', description: 'Inspect Baton TOML configuration' },
       subCommands: {
         path: () => import('./commands/config-path.js').then(m => m.default),
         get: () => import('./commands/config-get.js').then(m => m.default),
@@ -191,23 +191,23 @@ const main = defineCommand({
     }
 
     // Fallback: show usage hint
-    console.error(`PMI v${getCliVersion()} — Project Memory Infrastructure\n`);
-    console.error('Usage: pmi <command>   (alias: memorix)\n');
+    console.error(`Baton Hub v${getCliVersion()}\n`);
+    console.error('Usage: baton <command>\n');
     console.error('Commands:');
-    console.error('  help       Show action-oriented help (`memorix memory --help`)');
-    console.error('  login      Save a token for a PMI server (Connected mode)');
+    console.error('  help       Show action-oriented help (`baton memory --help`)');
+    console.error('  login      Save a token for a Baton server (Connected mode)');
     console.error('  project    Link this working copy to a server project');
-    console.error('  sync       Sync memory with the PMI server (push/pull/status); rules/workspace sync');
+    console.error('  sync       Sync memory with the Baton server (push/pull/status); rules/workspace sync');
     console.error('  background Start/stop/status background control plane');
     console.error('  session    Start/checkpoint/handoff/list/resume/finish coding sessions');
     console.error('  daemon     Automatic session checkpoints (start/stop/status)');
     console.error('  workspace  Snapshot uncommitted work; restore it on another machine');
     console.error('  git        Analyze new commits incrementally into project memory');
-    console.error('  backup     Back up / restore the local store (pmi backup <dir>, pmi restore <dir>)');
+    console.error('  backup     Back up / restore the local store (baton backup <dir>, baton restore <dir>)');
     console.error('  memory     Search/store/detail/timeline/resolve observations');
     console.error('  context    Show the Memory Autopilot brief for this project');
     console.error('  resume     Resume prior work with one bounded project brief');
-    console.error('  explain    Explain where Memorix project context comes from');
+    console.error('  explain    Explain where Baton project context comes from');
     console.error('  codegraph  Refresh/status/context-pack for CodeGraph Memory');
     console.error('  checkpoint Inspect native compact continuity checkpoints');
     console.error('  knowledge  Review source-backed knowledge pages and project workflows');
@@ -226,8 +226,8 @@ const main = defineCommand({
     console.error('  serve-http Start the HTTP MCP control plane');
     console.error('  serve      Start MCP server on stdio');
     console.error('  init       Create global defaults or project config');
-    console.error('  setup      Install Memorix plugin/MCP/rules/hooks for an agent');
-    console.error('  repair     Repair Memorix-owned agent integration files');
+    console.error('  setup      Install Baton plugin/MCP/rules/hooks for an agent');
+    console.error('  repair     Repair Baton-owned agent integration files');
     console.error('  config     Show TOML config paths and resolved values');
     console.error('  integrate  Install one IDE integration into the current repo');
     console.error('  status     Show project info + stats');
@@ -244,6 +244,6 @@ try {
     runMain(main);
   }
 } catch (error) {
-  console.error(`Memorix CLI invocation error: ${error instanceof Error ? error.message : String(error)}`);
+  console.error(`Baton CLI invocation error: ${error instanceof Error ? error.message : String(error)}`);
   process.exitCode = 1;
 }

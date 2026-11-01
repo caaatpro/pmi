@@ -1,0 +1,15 @@
+{
+  "name": "baton",
+  "version": "1.10.2",
+  "mcpServers": {
+    "baton": {
+      "command": "baton",
+      "args": [
+        "serve",
+        "--mode",
+        "lite"
+      ]
+    }
+  },
+  "contextFileName": "GEMINI.md"
+}

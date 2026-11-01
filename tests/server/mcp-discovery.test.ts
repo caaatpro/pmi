@@ -8,7 +8,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { closeAllDatabases } from '../../src/store/sqlite-db.js';
 import { resetDb } from '../../src/store/orama-store.js';
 import { resetObservationStore } from '../../src/store/obs-store.js';
-import { createMemorixServer } from '../../src/server.js';
+import { createBatonServer } from '../../src/server.js';
 import {
   MCP_LEGACY_PROTOCOL_VERSION,
   MCP_MODERN_PROTOCOL_VERSION,
@@ -21,7 +21,7 @@ let projectRoot = '';
 let previousHome: string | undefined;
 let previousUserProfile: string | undefined;
 let previousDataDir: string | undefined;
-let server: Awaited<ReturnType<typeof createMemorixServer>>['server'] | undefined;
+let server: Awaited<ReturnType<typeof createBatonServer>>['server'] | undefined;
 let handleTransportClose: (() => void) | undefined;
 let transport: StdioServerTransport | undefined;
 
@@ -57,18 +57,18 @@ async function createFakeGitRepo(root: string): Promise<void> {
 beforeEach(async () => {
   previousHome = process.env.HOME;
   previousUserProfile = process.env.USERPROFILE;
-  previousDataDir = process.env.MEMORIX_DATA_DIR;
-  tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-mcp-discovery-'));
+  previousDataDir = process.env.BATON_DATA_DIR;
+  tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-mcp-discovery-'));
   projectRoot = path.join(tempRoot, 'project');
   await fs.mkdir(projectRoot, { recursive: true });
   await createFakeGitRepo(projectRoot);
   process.env.HOME = path.join(tempRoot, 'home');
   process.env.USERPROFILE = process.env.HOME;
-  process.env.MEMORIX_DATA_DIR = path.join(tempRoot, 'data');
+  process.env.BATON_DATA_DIR = path.join(tempRoot, 'data');
   resetObservationStore();
   await resetDb();
 
-  const created = await createMemorixServer(projectRoot, undefined, undefined, {
+  const created = await createBatonServer(projectRoot, undefined, undefined, {
     toolProfile: 'micro',
     deferProjectRuntimeInit: true,
   });
@@ -88,8 +88,8 @@ afterEach(async () => {
   await resetDb();
   process.env.HOME = previousHome;
   process.env.USERPROFILE = previousUserProfile;
-  if (previousDataDir === undefined) delete process.env.MEMORIX_DATA_DIR;
-  else process.env.MEMORIX_DATA_DIR = previousDataDir;
+  if (previousDataDir === undefined) delete process.env.BATON_DATA_DIR;
+  else process.env.BATON_DATA_DIR = previousDataDir;
   await fs.rm(tempRoot, { recursive: true, force: true });
 });
 
@@ -115,7 +115,7 @@ describe('MCP discovery compatibility at the production server entry', () => {
       ttlMs: 0,
       cacheScope: 'private',
       _meta: {
-        'io.modelcontextprotocol/serverInfo': { name: 'memorix' },
+        'io.modelcontextprotocol/serverInfo': { name: 'baton' },
       },
     });
 
@@ -125,14 +125,14 @@ describe('MCP discovery compatibility at the production server entry', () => {
       method: 'tools/list',
     });
     expect((list.result as Record<string, any>).tools).toEqual(expect.arrayContaining([
-      expect.objectContaining({ name: 'memorix_codegraph_status' }),
+      expect.objectContaining({ name: 'baton_codegraph_status' }),
     ]));
 
     const call = await sendMessage(input, output, {
       jsonrpc: '2.0',
       id: 3,
       method: 'tools/call',
-      params: { name: 'memorix_codegraph_status', arguments: {} },
+      params: { name: 'baton_codegraph_status', arguments: {} },
     });
     expect(call.error).toBeUndefined();
     expect(call.result).toMatchObject({ content: [{ type: 'text' }] });
@@ -158,7 +158,7 @@ describe('MCP discovery compatibility at the production server entry', () => {
     expect(response.error).toBeUndefined();
     expect(response.result).toMatchObject({
       protocolVersion: MCP_LEGACY_PROTOCOL_VERSION,
-      serverInfo: { name: 'memorix' },
+      serverInfo: { name: 'baton' },
     });
   });
 });

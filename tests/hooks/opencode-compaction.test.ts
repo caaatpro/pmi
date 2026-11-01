@@ -19,12 +19,12 @@ import path from 'node:path';
 import os from 'node:os';
 import { pathToFileURL } from 'node:url';
 
-const originalAuditFile = process.env.MEMORIX_AUDIT_FILE;
+const originalAuditFile = process.env.BATON_AUDIT_FILE;
 
 async function createOpenCodeProject(prefix: string): Promise<{ tmpDir: string; auditFile: string }> {
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
   const gitDir = path.join(tmpDir, '.git');
-  const auditFile = path.join(tmpDir, '.memorix', 'audit.json');
+  const auditFile = path.join(tmpDir, '.baton', 'audit.json');
 
   // A remote in the fixture lets project detection use its fast path without
   // spawning git once for every audit record written during installation.
@@ -34,18 +34,18 @@ async function createOpenCodeProject(prefix: string): Promise<{ tmpDir: string; 
     '  repositoryformatversion = 0',
     '  bare = false',
     '[remote "origin"]',
-    '  url = https://github.com/AVIDS2/memorix-test-fixture.git',
+    '  url = https://github.com/AVIDS2/baton-test-fixture.git',
     '  fetch = +refs/heads/*:refs/remotes/origin/*',
     '',
   ].join('\n'), 'utf-8');
-  process.env.MEMORIX_AUDIT_FILE = auditFile;
+  process.env.BATON_AUDIT_FILE = auditFile;
 
   return { tmpDir, auditFile };
 }
 
 function restoreAuditFile(): void {
-  if (originalAuditFile === undefined) delete process.env.MEMORIX_AUDIT_FILE;
-  else process.env.MEMORIX_AUDIT_FILE = originalAuditFile;
+  if (originalAuditFile === undefined) delete process.env.BATON_AUDIT_FILE;
+  else process.env.BATON_AUDIT_FILE = originalAuditFile;
 }
 
 describe('Issue #45: OpenCode compaction', () => {
@@ -78,7 +78,7 @@ describe('Issue #45: OpenCode compaction', () => {
     let tmpDir: string;
 
     beforeEach(async () => {
-      ({ tmpDir } = await createOpenCodeProject('memorix-oc-test-'));
+      ({ tmpDir } = await createOpenCodeProject('baton-oc-test-'));
     });
 
     afterEach(async () => {
@@ -103,7 +103,7 @@ describe('Issue #45: OpenCode compaction', () => {
 
     it('should write plugin file with session.compacted as direct event key (not catch-all event handler)', async () => {
       await installHooks('opencode', tmpDir);
-      const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'memorix.js');
+      const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'baton.js');
       const content = await fs.readFile(pluginPath, 'utf-8');
       // v4+ uses individual event-name keys, NOT catch-all `event` handler
       expect(content).toContain("'session.compacted'");
@@ -115,11 +115,11 @@ describe('Issue #45: OpenCode compaction', () => {
 
     it('should emit the OpenCode v2 default plugin contract while retaining the v1 export', async () => {
       await installHooks('opencode', tmpDir);
-      const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'memorix.js');
+      const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'baton.js');
       const content = await fs.readFile(pluginPath, 'utf-8');
       expect(content).toContain('@generated-version 9');
-      expect(content).toContain("export default { id: 'memorix', server: MemorixPlugin, setup }");
-      expect(content).toContain('export const MemorixPlugin = async');
+      expect(content).toContain("export default { id: 'baton', server: BatonPlugin, setup }");
+      expect(content).toContain('export const BatonPlugin = async');
       expect(content).toContain('event: handleEvent');
       expect(content).toContain('ctx.event.subscribe');
       expect(content).toContain("ctx.tool.hook('execute.after'");
@@ -130,17 +130,17 @@ describe('Issue #45: OpenCode compaction', () => {
 
     it('should expose loadable v1 and v2 plugin exports', async () => {
       await installHooks('opencode', tmpDir);
-      const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'memorix.js');
+      const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'baton.js');
       const module = await import(`${pathToFileURL(pluginPath).href}?contract-test=${Date.now()}`);
-      expect(module.MemorixPlugin).toBeTypeOf('function');
-      expect(module.default).toMatchObject({ id: 'memorix' });
-      expect(module.default.server).toBe(module.MemorixPlugin);
+      expect(module.BatonPlugin).toBeTypeOf('function');
+      expect(module.default).toMatchObject({ id: 'baton' });
+      expect(module.default.server).toBe(module.BatonPlugin);
       expect(module.default.setup).toBeTypeOf('function');
     });
 
     it('should expose the v1 generic event hook for lifecycle events', async () => {
       await installHooks('opencode', tmpDir);
-      const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'memorix.js');
+      const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'baton.js');
       const content = await fs.readFile(pluginPath, 'utf-8');
       expect(content).toContain("case 'session.created':");
       expect(content).toContain("case 'session.idle':");
@@ -152,7 +152,7 @@ describe('Issue #45: OpenCode compaction', () => {
 
     it('should register the v2 tool hook and event subscription with cleanup', async () => {
       await installHooks('opencode', tmpDir);
-      const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'memorix.js');
+      const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'baton.js');
       const module = await import(`${pathToFileURL(pluginPath).href}?setup-test=${Date.now()}`);
       const registeredTools: string[] = [];
       let subscribed = false;
@@ -177,19 +177,19 @@ describe('Issue #45: OpenCode compaction', () => {
       cleanup();
     });
 
-    it('compaction prompt should NOT promise memorix_store auto-invocation', async () => {
+    it('compaction prompt should NOT promise baton_store auto-invocation', async () => {
       await installHooks('opencode', tmpDir);
-      const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'memorix.js');
+      const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'baton.js');
       const content = await fs.readFile(pluginPath, 'utf-8');
-      expect(content).not.toContain('memorix_store');
-      expect(content).not.toContain('memorix_session_start');
+      expect(content).not.toContain('baton_store');
+      expect(content).not.toContain('baton_session_start');
     });
 
     it('compaction prompt should use structured continuation format', async () => {
       await installHooks('opencode', tmpDir);
-      const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'memorix.js');
+      const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'baton.js');
       const content = await fs.readFile(pluginPath, 'utf-8');
-      expect(content).toContain('Continuation Context (Memorix)');
+      expect(content).toContain('Continuation Context (Baton)');
       expect(content).toContain('Current task');
       expect(content).toContain('Key decisions');
       expect(content).toContain('Next steps');
@@ -202,7 +202,7 @@ describe('Issue #80: OpenCode plugin must use correct event keys', () => {
   let auditFile: string;
 
   beforeEach(async () => {
-    ({ tmpDir, auditFile } = await createOpenCodeProject('memorix-oc80-'));
+    ({ tmpDir, auditFile } = await createOpenCodeProject('baton-oc80-'));
   });
 
   afterEach(async () => {
@@ -214,7 +214,7 @@ describe('Issue #80: OpenCode plugin must use correct event keys', () => {
 
   it('should use session.created as direct hook key (not catch-all event handler)', async () => {
     await installHooks('opencode', tmpDir);
-    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'memorix.js');
+    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'baton.js');
     const content = await fs.readFile(pluginPath, 'utf-8');
     expect(content).toContain("'session.created':");
     expect(content).not.toContain("event.type === 'session.created'");
@@ -222,7 +222,7 @@ describe('Issue #80: OpenCode plugin must use correct event keys', () => {
 
   it('should use file.edited as direct hook key', async () => {
     await installHooks('opencode', tmpDir);
-    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'memorix.js');
+    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'baton.js');
     const content = await fs.readFile(pluginPath, 'utf-8');
     expect(content).toContain("'file.edited':");
     expect(content).not.toContain("event.type === 'file.edited'");
@@ -230,7 +230,7 @@ describe('Issue #80: OpenCode plugin must use correct event keys', () => {
 
   it('should use command.executed as direct hook key', async () => {
     await installHooks('opencode', tmpDir);
-    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'memorix.js');
+    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'baton.js');
     const content = await fs.readFile(pluginPath, 'utf-8');
     expect(content).toContain("'command.executed':");
     expect(content).not.toContain("event.type === 'command.executed'");
@@ -238,7 +238,7 @@ describe('Issue #80: OpenCode plugin must use correct event keys', () => {
 
   it('should use session.idle as direct hook key', async () => {
     await installHooks('opencode', tmpDir);
-    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'memorix.js');
+    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'baton.js');
     const content = await fs.readFile(pluginPath, 'utf-8');
     expect(content).toContain("'session.idle':");
     expect(content).not.toContain("event.type === 'session.idle'");
@@ -246,14 +246,14 @@ describe('Issue #80: OpenCode plugin must use correct event keys', () => {
 
   it('should use tool.execute.after as direct hook key', async () => {
     await installHooks('opencode', tmpDir);
-    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'memorix.js');
+    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'baton.js');
     const content = await fs.readFile(pluginPath, 'utf-8');
     expect(content).toContain("'tool.execute.after':");
   });
 
   it('should use message.updated as direct hook key', async () => {
     await installHooks('opencode', tmpDir);
-    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'memorix.js');
+    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'baton.js');
     const content = await fs.readFile(pluginPath, 'utf-8');
     expect(content).toContain("'message.updated':");
     expect(content).toContain('pendingAssistantResponse');
@@ -262,7 +262,7 @@ describe('Issue #80: OpenCode plugin must use correct event keys', () => {
 
   it('should NOT contain catch-all event handler', async () => {
     await installHooks('opencode', tmpDir);
-    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'memorix.js');
+    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'baton.js');
     const content = await fs.readFile(pluginPath, 'utf-8');
     // The old v3 plugin had: event: async ({ event }) => { if (event.type === ...) }
     expect(content).not.toMatch(/\bevent:\s*async\s*\(\s*\{\s*event\s*\}\s*\)/);
@@ -272,7 +272,7 @@ describe('Issue #80: OpenCode plugin must use correct event keys', () => {
 
   it('should use child_process.spawnSync for hook invocation (cross-runtime)', async () => {
     await installHooks('opencode', tmpDir);
-    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'memorix.js');
+    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'baton.js');
     const content = await fs.readFile(pluginPath, 'utf-8');
     expect(content).toContain('spawnSync');
     expect(content).toContain("import { spawnSync } from 'node:child_process'");
@@ -284,25 +284,25 @@ describe('Issue #80: OpenCode plugin must use correct event keys', () => {
   });
 
   it('resolves the Windows npm shim before OpenCode starts', () => {
-    expect(resolveOpenCodeHookCommand('win32', () => 'C:\\Users\\example\\AppData\\Roaming\\npm\\memorix.cmd'))
-      .toBe('C:\\Users\\example\\AppData\\Roaming\\npm\\memorix.cmd');
-    expect(resolveOpenCodeHookCommand('win32', () => null)).toBe('memorix.cmd');
-    expect(resolveOpenCodeHookCommand('linux', () => 'ignored')).toBe('memorix');
+    expect(resolveOpenCodeHookCommand('win32', () => 'C:\\Users\\example\\AppData\\Roaming\\npm\\baton.cmd'))
+      .toBe('C:\\Users\\example\\AppData\\Roaming\\npm\\baton.cmd');
+    expect(resolveOpenCodeHookCommand('win32', () => null)).toBe('baton.cmd');
+    expect(resolveOpenCodeHookCommand('linux', () => 'ignored')).toBe('baton');
   });
 
-  it('should embed the resolved Memorix command in the generated plugin', async () => {
+  it('should embed the resolved Baton command in the generated plugin', async () => {
     await installHooks('opencode', tmpDir);
-    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'memorix.js');
+    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'baton.js');
     const content = await fs.readFile(pluginPath, 'utf-8');
     expect(content).toContain(`const hookCommand = ${JSON.stringify(resolveOpenCodeHookCommand())};`);
   });
 
   it('keeps hook delivery failures out of the normal OpenCode conversation', async () => {
     await installHooks('opencode', tmpDir);
-    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'memorix.js');
+    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'baton.js');
     const content = await fs.readFile(pluginPath, 'utf-8');
-    expect(content).toContain('[memorix-plugin]');
-    expect(content).toContain("process.env.MEMORIX_HOOK_DEBUG !== '1'");
+    expect(content).toContain('[baton-plugin]');
+    expect(content).toContain("process.env.BATON_HOOK_DEBUG !== '1'");
     expect(content).toContain('hookFailureReported');
   });
 
@@ -310,7 +310,7 @@ describe('Issue #80: OpenCode plugin must use correct event keys', () => {
 
   it('should generate version 9 plugin (v1/v2 contract + stable Windows command)', async () => {
     await installHooks('opencode', tmpDir);
-    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'memorix.js');
+    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'baton.js');
     const content = await fs.readFile(pluginPath, 'utf-8');
     expect(content).toContain('@generated-version 9');
   });
@@ -337,11 +337,11 @@ describe('Issue #80: OpenCode plugin must use correct event keys', () => {
   });
 
   it('should detect the v6 OpenCode plugin with the Windows PATH bug as outdated', async () => {
-    // v6 used a bare memorix.cmd lookup from OpenCode's own PATH.
+    // v6 used a bare baton.cmd lookup from OpenCode's own PATH.
     const pluginDir = path.join(tmpDir, '.opencode', 'plugins');
     await fs.mkdir(pluginDir, { recursive: true });
-    const pluginPath = path.join(pluginDir, 'memorix.js');
-    await fs.writeFile(pluginPath, '// @generated-version 6\nexport const MemorixPlugin = async () => ({});', 'utf-8');
+    const pluginPath = path.join(pluginDir, 'baton.js');
+    await fs.writeFile(pluginPath, '// @generated-version 6\nexport const BatonPlugin = async () => ({});', 'utf-8');
 
     const statuses = await getHookStatus(tmpDir);
     const oc = statuses.find(s => s.agent === 'opencode');
@@ -351,26 +351,26 @@ describe('Issue #80: OpenCode plugin must use correct event keys', () => {
 
   // ─── Install paths ───
 
-  it('should install plugin to .opencode/plugins/memorix.js (project level)', async () => {
+  it('should install plugin to .opencode/plugins/baton.js (project level)', async () => {
     await installHooks('opencode', tmpDir);
-    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'memorix.js');
+    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'baton.js');
     const stat = await fs.stat(pluginPath);
     expect(stat.isFile()).toBe(true);
   });
 
-  it('should install plugin to ~/.config/opencode/plugins/memorix.js (global level)', async () => {
+  it('should install plugin to ~/.config/opencode/plugins/baton.js (global level)', async () => {
     const result = await installHooks('opencode', tmpDir, true);
     // Global path should be under ~/.config/opencode/plugins/
     expect(result.configPath).toContain('opencode');
     expect(result.configPath).toContain('plugins');
-    expect(result.configPath).toContain('memorix.js');
+    expect(result.configPath).toContain('baton.js');
   });
 
   // ─── Uninstall ───
 
   it('should uninstall OpenCode plugin completely', async () => {
     await installHooks('opencode', tmpDir);
-    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'memorix.js');
+    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'baton.js');
     await fs.access(pluginPath); // exists
 
     const uninstalled = await uninstallHooks('opencode', tmpDir);
@@ -382,7 +382,7 @@ describe('Issue #80: OpenCode plugin must use correct event keys', () => {
 
   it('should uninstall OpenCode plugin even if the audit ledger is missing', async () => {
     await installHooks('opencode', tmpDir);
-    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'memorix.js');
+    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'baton.js');
     await fs.access(pluginPath);
     await fs.rm(auditFile, { force: true });
 
@@ -398,7 +398,7 @@ describe('Issue #80: OpenCode plugin must use correct event keys', () => {
     await uninstallHooks('opencode', tmpDir);
     await installHooks('opencode', tmpDir);
 
-    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'memorix.js');
+    const pluginPath = path.join(tmpDir, '.opencode', 'plugins', 'baton.js');
     const content = await fs.readFile(pluginPath, 'utf-8');
     expect(content).toContain('@generated-version 9');
     expect(content).toContain("'session.created':");

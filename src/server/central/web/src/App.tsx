@@ -15,7 +15,7 @@ import { Projects } from './pages/Projects';
 import { Search } from './pages/Search';
 import { Session } from './pages/Session';
 
-const LANG_KEY = 'pmi.lang';
+const LANG_KEY = 'baton.lang';
 
 function initialLang(): Lang {
   try {
@@ -118,11 +118,11 @@ export function App() {
             <Group h="100%" px="md" justify="space-between" wrap="nowrap">
               <Group gap="md" wrap="nowrap">
                 <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" aria-label="Menu" />
-                <Anchor href={href.projects()} underline="never" c="inherit"><Text fw={800} size="lg">PMI</Text></Anchor>
+                <Anchor href={href.projects()} underline="never" c="inherit"><Text fw={800} size="lg">Baton Hub</Text></Anchor>
                 <Anchor href={href.projects()} size="sm" c="dimmed" visibleFrom="sm">{i18n.t('projects')}</Anchor>
               </Group>
               <Group gap="xs" wrap="nowrap">
-                <div className="pmi-header-search">{searchBox}</div>
+                <div className="baton-header-search">{searchBox}</div>
                 <Tooltip label={i18n.t('theme')}>
                   <ActionIcon variant="subtle" onClick={() => setColorScheme(scheme === 'dark' ? 'light' : 'dark')} aria-label={i18n.t('theme')}>
                     {scheme === 'dark' ? <IconSun size={18} /> : <IconMoon size={18} />}

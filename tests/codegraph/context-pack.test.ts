@@ -337,7 +337,7 @@ describe('buildContextPackPrompt', () => {
   });
 
   it('marks Context Pack as a distinct bounded delivery target', async () => {
-    const dataDir = mkdtempSync(path.join(tmpdir(), 'memorix-context-pack-receipt-'));
+    const dataDir = mkdtempSync(path.join(tmpdir(), 'baton-context-pack-receipt-'));
     try {
       const pack = await attachTaskWorkset({
         pack: {

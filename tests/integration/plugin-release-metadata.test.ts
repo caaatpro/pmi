@@ -4,15 +4,15 @@ import { describe, expect, it } from 'vitest';
 import { getCliVersion } from '../../src/cli/version.js';
 
 const versionedPluginManifests = [
-  { path: 'plugins/antigravity/memorix/plugin.json', format: 'json' },
-  { path: 'plugins/claude/memorix/.claude-plugin/plugin.json', format: 'json' },
-  { path: 'plugins/codex/memorix/.codex-plugin/plugin.json', format: 'json' },
-  { path: 'plugins/copilot/memorix/plugin.json', format: 'json' },
-  { path: 'plugins/gemini/memorix/gemini-extension.json', format: 'json' },
-  { path: 'plugins/hermes/memorix/plugin.yaml', format: 'yaml' },
-  { path: 'plugins/omp/memorix/package.json', format: 'json' },
-  { path: 'plugins/openclaw/memorix/.codex-plugin/plugin.json', format: 'json' },
-  { path: 'plugins/pi/memorix/package.json', format: 'json' },
+  { path: 'plugins/antigravity/baton/plugin.json', format: 'json' },
+  { path: 'plugins/claude/baton/.claude-plugin/plugin.json', format: 'json' },
+  { path: 'plugins/codex/baton/.codex-plugin/plugin.json', format: 'json' },
+  { path: 'plugins/copilot/baton/plugin.json', format: 'json' },
+  { path: 'plugins/gemini/baton/gemini-extension.json', format: 'json' },
+  { path: 'plugins/hermes/baton/plugin.yaml', format: 'yaml' },
+  { path: 'plugins/omp/baton/package.json', format: 'json' },
+  { path: 'plugins/openclaw/baton/.codex-plugin/plugin.json', format: 'json' },
+  { path: 'plugins/pi/baton/package.json', format: 'json' },
 ];
 
 describe('shipped plugin release metadata', () => {

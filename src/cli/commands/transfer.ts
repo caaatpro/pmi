@@ -110,13 +110,13 @@ export default defineCommand({
         }
 
         default:
-          console.log('Memorix Transfer Commands');
+          console.log('Baton Transfer Commands');
           console.log('');
           console.log('Usage:');
-          console.log('  memorix transfer export [--format json|markdown] [--out ./.memorix-export.json]');
-          console.log('  memorix transfer import --file ./.memorix-export.json');
-          console.log('  memorix transfer import --stdin');
-          console.log('  memorix transfer import --data "<json>"');
+          console.log('  baton transfer export [--format json|markdown] [--out ./.baton-export.json]');
+          console.log('  baton transfer import --file ./.baton-export.json');
+          console.log('  baton transfer import --stdin');
+          console.log('  baton transfer import --data "<json>"');
       }
     } catch (error) {
       emitError(error instanceof Error ? error.message : String(error), asJson);

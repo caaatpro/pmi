@@ -6,9 +6,9 @@ import { createServer } from 'node:net';
 
 const root = process.cwd();
 const cli = path.join(root, 'dist', 'cli', 'index.js');
-const home = await mkdtemp(path.join(tmpdir(), 'memorix-1.8-http-home-'));
-const projectRoot = await mkdtemp(path.join(tmpdir(), 'memorix-1.8-projects-'));
-const dataDir = path.join(home, '.memorix', 'data');
+const home = await mkdtemp(path.join(tmpdir(), 'baton-1.8-http-home-'));
+const projectRoot = await mkdtemp(path.join(tmpdir(), 'baton-1.8-projects-'));
+const dataDir = path.join(home, '.baton', 'data');
 const projectA = path.join(projectRoot, 'project-a');
 const projectB = path.join(projectRoot, 'project-b');
 
@@ -38,9 +38,9 @@ async function start() {
       HOME: home,
       USERPROFILE: home,
       HOMEPATH: home,
-      MEMORIX_DATA_DIR: dataDir,
-      MEMORIX_EMBEDDING: 'off',
-      __MEMORIX_HEAP: '1',
+      BATON_DATA_DIR: dataDir,
+      BATON_EMBEDDING: 'off',
+      __BATON_HEAP: '1',
     },
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
@@ -94,7 +94,7 @@ async function rpc(port, body, extraHeaders = {}) {
         ...(body.params && typeof body.params === 'object' ? body.params : {}),
         _meta: {
           'io.modelcontextprotocol/protocolVersion': '2026-07-28',
-          'io.modelcontextprotocol/clientInfo': { name: 'memorix-stateless-http-smoke', version: '1' },
+          'io.modelcontextprotocol/clientInfo': { name: 'baton-stateless-http-smoke', version: '1' },
           'io.modelcontextprotocol/clientCapabilities': {},
         },
       },
@@ -142,11 +142,11 @@ try {
   assert(handleA?.startsWith('mxh_'), 'modern discovery did not return a durable project handle extension');
 
   const listA = await rpc(server.port, { jsonrpc: '2.0', method: 'tools/list', id: 2 }, { ...protocol, 'Mcp-Project-Handle': handleA });
-  assert(listA.response.ok && listA.json?.result?.tools?.some(tool => tool.name === 'memorix_evidence'), `stateless follow-up did not expose Evidence tool: ${listA.text}`);
+  assert(listA.response.ok && listA.json?.result?.tools?.some(tool => tool.name === 'baton_evidence'), `stateless follow-up did not expose Evidence tool: ${listA.text}`);
 
   const storedA = await rpc(server.port, {
     jsonrpc: '2.0', method: 'tools/call', id: 3,
-    params: { name: 'memorix_store', arguments: { entityName: 'smoke-a', type: 'decision', title: 'Project A memory', narrative: 'A must not leak into B.' } },
+    params: { name: 'baton_store', arguments: { entityName: 'smoke-a', type: 'decision', title: 'Project A memory', narrative: 'A must not leak into B.' } },
   }, { ...protocol, 'Mcp-Project-Handle': handleA });
   assert(storedA.response.ok && !storedA.json?.result?.isError, `stateless store failed: ${storedA.text}`);
 
@@ -188,7 +188,7 @@ try {
   server = await start();
   const resumed = await rpc(server.port, {
     jsonrpc: '2.0', method: 'tools/call', id: 10,
-    params: { name: 'memorix_search', arguments: { query: 'Project A memory', limit: 5 } },
+    params: { name: 'baton_search', arguments: { query: 'Project A memory', limit: 5 } },
   }, { ...protocol, 'Mcp-Project-Handle': handleA });
   assert(resumed.response.ok && toolText(resumed.json).includes('Project A memory'), 'durable handle did not restore project memory after restart');
 

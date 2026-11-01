@@ -33,14 +33,14 @@ function job(kind: MaintenanceJob['kind'], payload: Record<string, unknown> = {}
 }
 
 beforeEach(async () => {
-  sandbox = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-maintenance-workspace-'));
+  sandbox = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-maintenance-workspace-'));
   projectRoot = path.join(sandbox, 'repo');
   dataDir = path.join(sandbox, 'data');
   await fs.mkdir(projectRoot, { recursive: true });
   await fs.writeFile(path.join(projectRoot, 'README.md'), '# fixture\n', 'utf8');
   execFileSync('git', ['init'], { cwd: projectRoot, stdio: 'ignore' });
-  execFileSync('git', ['config', 'user.email', 'tests@memorix.local'], { cwd: projectRoot, stdio: 'ignore' });
-  execFileSync('git', ['config', 'user.name', 'Memorix Tests'], { cwd: projectRoot, stdio: 'ignore' });
+  execFileSync('git', ['config', 'user.email', 'tests@baton.local'], { cwd: projectRoot, stdio: 'ignore' });
+  execFileSync('git', ['config', 'user.name', 'Baton Tests'], { cwd: projectRoot, stdio: 'ignore' });
   execFileSync('git', ['add', '.'], { cwd: projectRoot, stdio: 'ignore' });
   execFileSync('git', ['commit', '-m', 'fixture'], { cwd: projectRoot, stdio: 'ignore' });
 });

@@ -6,7 +6,7 @@ import { parseCacheJsonInWorker } from '../../src/embedding/api-provider.ts';
 
 describe('parseCacheJsonInWorker', () => {
   it('parses a cache file without blocking the event loop', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'memorix-cache-worker-'));
+    const dir = await mkdtemp(join(tmpdir(), 'baton-cache-worker-'));
     const filePath = join(dir, '.embedding-api-cache.json');
     const entries: [string, number[]][] = [
       ['abc123', Array.from({ length: 8 }, (_, i) => i + 0.25)],

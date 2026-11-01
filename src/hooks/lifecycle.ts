@@ -1,5 +1,5 @@
 /**
- * Process-level lifecycle for `memorix hook`.
+ * Process-level lifecycle for `baton hook`.
  *
  * Hosts invoke this command on every agent event. It must read stdin, emit
  * one JSON object, and exit. Leftover hook processes are a bug: they reserve
@@ -33,7 +33,7 @@ function parseBoundedMs(
 
 export function resolveHookTimeoutMs(env: EnvMap = process.env): number {
   return parseBoundedMs(
-    env.MEMORIX_HOOK_TIMEOUT_MS,
+    env.BATON_HOOK_TIMEOUT_MS,
     DEFAULT_HOOK_TIMEOUT_MS,
     MIN_HOOK_TIMEOUT_MS,
     MAX_HOOK_TIMEOUT_MS,
@@ -42,7 +42,7 @@ export function resolveHookTimeoutMs(env: EnvMap = process.env): number {
 
 export function resolveHookStdinTimeoutMs(env: EnvMap = process.env): number {
   return parseBoundedMs(
-    env.MEMORIX_HOOK_STDIN_TIMEOUT_MS,
+    env.BATON_HOOK_STDIN_TIMEOUT_MS,
     DEFAULT_HOOK_STDIN_TIMEOUT_MS,
     MIN_HOOK_STDIN_TIMEOUT_MS,
     MAX_HOOK_STDIN_TIMEOUT_MS,
@@ -137,7 +137,7 @@ export async function runHookWithDeadline(options: HookDeadlineOptions): Promise
     const timer = setTimeout(() => {
       if (finished) return;
       try {
-        stderr.write(`[memorix] hook timed out after ${options.timeoutMs}ms\n`);
+        stderr.write(`[baton] hook timed out after ${options.timeoutMs}ms\n`);
       } catch {
         // stderr may already be closed
       }
@@ -156,7 +156,7 @@ export async function runHookWithDeadline(options: HookDeadlineOptions): Promise
         if (finished) return;
         try {
           const message = error instanceof Error ? error.message : String(error);
-          stderr.write(`[memorix] hook failed: ${message}\n`);
+          stderr.write(`[baton] hook failed: ${message}\n`);
         } catch {
           // stderr may already be closed
         }

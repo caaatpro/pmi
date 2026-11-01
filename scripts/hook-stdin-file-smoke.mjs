@@ -7,7 +7,7 @@ import path from 'node:path'
 
 const root = process.cwd()
 const distCli = path.resolve(root, 'dist', 'cli', 'index.js')
-const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'memorix-hook-stdin-file-'))
+const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'baton-hook-stdin-file-'))
 const project = path.join(tempRoot, 'project')
 const dataDir = path.join(tempRoot, 'data')
 const payloadPath = path.join(tempRoot, 'hook.json')
@@ -34,13 +34,13 @@ try {
       ...process.env,
       HOME: tempRoot,
       USERPROFILE: tempRoot,
-      MEMORIX_DATA_DIR: dataDir,
-      MEMORIX_EMBEDDING: 'off',
-      MEMORIX_LLM_API_KEY: '',
+      BATON_DATA_DIR: dataDir,
+      BATON_EMBEDDING: 'off',
+      BATON_LLM_API_KEY: '',
       OPENAI_API_KEY: '',
-      MEMORIX_LLM_PROVIDER: '',
-      MEMORIX_LLM_MODEL: '',
-      MEMORIX_HOOK_TIMEOUT_MS: '30000',
+      BATON_LLM_PROVIDER: '',
+      BATON_LLM_MODEL: '',
+      BATON_HOOK_TIMEOUT_MS: '30000',
       NO_COLOR: '1',
     },
     stdio: [inputFile.fd, 'pipe', 'pipe'],
@@ -67,7 +67,7 @@ try {
   assert.equal(timedOut, false, `hook timed out\n${stderr}`)
   assert.equal(result.code, 0, `hook exited with ${result.code} (${result.signal})\n${stderr}`)
   assert.deepEqual(JSON.parse(stdout), { continue: true })
-  assert.doesNotMatch(stderr, /\[memorix\] hook store failed/i, stderr)
+  assert.doesNotMatch(stderr, /\[baton\] hook store failed/i, stderr)
   assert.ok((await readdir(dataDir)).length > 0, 'the response observation should reach project detection and storage')
   console.log(JSON.stringify({ smoke: 'passed', stdin: 'regular-file', agent: 'pi', exitCode: result.code }))
 } finally {

@@ -30,14 +30,14 @@ import { scoreObservationForSessionContext } from '../../src/memory/session.js';
 import { runEvaluate } from '../../src/memory/formation/evaluate.js';
 import type { ExtractResult } from '../../src/memory/formation/types.js';
 import { coerceObservationType } from '../../src/cli/commands/operator-shared.js';
-import type { MemorixDocument, Observation } from '../../src/types.js';
+import type { BatonDocument, Observation } from '../../src/types.js';
 
 const PROJECT_ID = 'test/probe-type';
 
 let testDir: string;
 
 beforeEach(async () => {
-  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-probe-'));
+  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-probe-'));
   await resetDb();
   await initObservations(testDir);
 });
@@ -178,7 +178,7 @@ describe('Search: probe exclusion and inclusion', () => {
 // Retention
 
 describe('Retention: probe is short-lived', () => {
-  function makeDoc(overrides: Partial<MemorixDocument> = {}): MemorixDocument {
+  function makeDoc(overrides: Partial<BatonDocument> = {}): BatonDocument {
     return {
       id: 'obs-1',
       observationId: 1,

@@ -712,7 +712,7 @@ export function formatAutoProjectContextSummary(context: AutoProjectContext): st
   );
   const startHere = rankedStartHere(context);
   const lines = [
-    `Memorix Autopilot Brief for ${context.project.name}`,
+    `Baton Autopilot Brief for ${context.project.name}`,
     context.task ? `Task: ${context.task}` : '',
     lensLine(context),
     '',
@@ -804,7 +804,7 @@ export function formatAutoProjectContextPrompt(context: AutoProjectContext): str
 
 export function formatLegacyAutoProjectContextPrompt(context: AutoProjectContext): string {
   const lines = [
-    `Memorix Autopilot Brief for ${context.project.name}`,
+    `Baton Autopilot Brief for ${context.project.name}`,
     context.task ? `Task: ${context.task}` : '',
     lensLine(context),
     '',

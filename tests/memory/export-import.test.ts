@@ -25,7 +25,7 @@ let testDir: string;
 const PROJECT_ID = 'test/export-import';
 
 beforeEach(async () => {
-  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-export-'));
+  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-export-'));
   resetObservationStore();
   resetSessionStore();
   await resetDb();
@@ -127,7 +127,7 @@ describe('Export', () => {
 
     const md = await exportAsMarkdown(testDir, PROJECT_ID);
 
-    expect(md).toContain('# Memorix Export');
+    expect(md).toContain('# Baton Export');
     expect(md).toContain('Use JWT');
     expect(md).toContain('Expiry: 15min');
     expect(md).toContain('auth.ts');
@@ -145,7 +145,7 @@ describe('Import', () => {
     const exported = await exportAsJson(testDir, PROJECT_ID);
 
     // Create a fresh target
-    const targetDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-import-'));
+    const targetDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-import-'));
     await initObservations(targetDir);
 
     const result = await importFromJson(targetDir, exported);
@@ -174,7 +174,7 @@ describe('Import', () => {
     await endSession(testDir, 'import-s1', '## Goal\nSession 1');
     const exported = await exportAsJson(testDir, PROJECT_ID);
 
-    const targetDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-import-'));
+    const targetDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-import-'));
     resetObservationStore();
     resetSessionStore();
     await initObservationStore(targetDir);

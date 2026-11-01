@@ -26,7 +26,7 @@ describe('GitHub JSONL relay', () => {
       const method = init?.method ?? 'GET';
       calls.push(`${method} ${url}`);
       if (url.endsWith('/repos/acme/memory')) return new Response(JSON.stringify({ default_branch: 'main' }), { status: 200 });
-      if (url.includes('/git/ref/heads/memorix-sync')) {
+      if (url.includes('/git/ref/heads/baton-sync')) {
         return relayBranchExists
           ? new Response(JSON.stringify({ object: { sha: 'head' } }), { status: 200 })
           : new Response('{}', { status: 404 });
@@ -56,10 +56,10 @@ describe('GitHub JSONL relay', () => {
     }));
 
     const remote = createGitHubRemote('project-test', {
-      MEMORIX_SYNC_GITHUB_REPO: 'acme/memory',
-      MEMORIX_SYNC_GITHUB_TOKEN: 'test-token',
-      MEMORIX_SYNC_GITHUB_BRANCH: 'memorix-sync',
-      MEMORIX_SYNC_GITHUB_API_URL: 'https://api.github.test',
+      BATON_SYNC_GITHUB_REPO: 'acme/memory',
+      BATON_SYNC_GITHUB_TOKEN: 'test-token',
+      BATON_SYNC_GITHUB_BRANCH: 'baton-sync',
+      BATON_SYNC_GITHUB_API_URL: 'https://api.github.test',
     });
     await remote.init();
     await remote.push(batch(1));
@@ -71,10 +71,10 @@ describe('GitHub JSONL relay', () => {
     const second = await remote.pull({}, 1, first.nextPageToken);
     expect(second.batches.map((item) => item.sequence)).toEqual([2]);
     expect(second.hasMore).toBe(false);
-    expect(calls.some((call) => call.includes('memorix.db'))).toBe(false);
+    expect(calls.some((call) => call.includes('baton.db'))).toBe(false);
   });
 
   it('requires explicit repository credentials', () => {
-    expect(() => createGitHubRemote('project-test', {})).toThrow(/MEMORIX_SYNC_GITHUB_REPO/);
+    expect(() => createGitHubRemote('project-test', {})).toThrow(/BATON_SYNC_GITHUB_REPO/);
   });
 });

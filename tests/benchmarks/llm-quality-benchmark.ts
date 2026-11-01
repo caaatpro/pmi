@@ -8,7 +8,7 @@
  *
  * 运行: npx tsx tests/benchmarks/llm-quality-benchmark.ts
  *
- * 自动从 Memorix 配置读取 provider/model，不再硬编码。
+ * 自动从 Baton 配置读取 provider/model，不再硬编码。
  */
 
 import { promises as fs } from 'node:fs';
@@ -17,14 +17,14 @@ import os from 'node:os';
 import { getLLMApiKey, getLLMBaseUrl, getLLMModel, getLLMProvider, loadDotenv } from '../../src/config.ts';
 import { initProjectRoot } from '../../src/config/yaml-loader.ts';
 
-const DATA_DIR = process.env.MEMORIX_DATA_DIR || path.join(os.homedir(), '.memorix', 'data');
+const DATA_DIR = process.env.BATON_DATA_DIR || path.join(os.homedir(), '.baton', 'data');
 
 // ── Bootstrap config: load .env + set project root (same as production) ──
 const projectRoot = process.cwd();
 initProjectRoot(projectRoot);
 loadDotenv(projectRoot);
 
-// ── Resolve live LLM config from Memorix config chain ─────────────
+// ── Resolve live LLM config from Baton config chain ─────────────
 const PROVIDER_DEFAULTS: Record<string, { baseUrl: string; model: string }> = {
   openai: { baseUrl: 'https://api.openai.com/v1', model: 'gpt-4.1-nano' },
   anthropic: { baseUrl: 'https://api.anthropic.com/v1', model: 'claude-3-5-haiku-latest' },
@@ -40,8 +40,8 @@ const API_MODEL = getLLMModel(defs.model);
 
 if (!API_KEY) {
   console.error('❌ No LLM API key found.');
-  console.error('  Checked: MEMORIX_LLM_API_KEY, memorix.yml, config.json, OPENAI_API_KEY');
-  console.error('  Run `memorix init` or set MEMORIX_LLM_API_KEY to configure.');
+  console.error('  Checked: BATON_LLM_API_KEY, baton.yml, config.json, OPENAI_API_KEY');
+  console.error('  Run `baton init` or set BATON_LLM_API_KEY to configure.');
   process.exit(1);
 }
 
@@ -375,7 +375,7 @@ async function benchmarkCJKRetrieval() {
 }
 
 async function main() {
-  console.log('🔬 Memorix LLM Quality Benchmark');
+  console.log('🔬 Baton LLM Quality Benchmark');
   console.log(`Provider: ${provider}`);
   console.log(`Model: ${API_MODEL}`);
   console.log(`Base URL: ${API_BASE}`);

@@ -1,7 +1,7 @@
 /**
  * Topic Key Upsert Tests
  *
- * Tests that memorix_store with topicKey updates existing observations
+ * Tests that baton_store with topicKey updates existing observations
  * instead of creating duplicates. Inspired by Engram's topic_key upsert.
  */
 
@@ -25,7 +25,7 @@ let testDir: string;
 const PROJECT_ID = 'test/topic-upsert';
 
 beforeEach(async () => {
-  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-upsert-'));
+  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-upsert-'));
   await resetDb();
   await initObservations(testDir);
 });

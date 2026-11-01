@@ -1,5 +1,5 @@
 /**
- * CLI Command: memorix hooks status
+ * CLI Command: baton hooks status
  *
  * Show hook installation status for all agents.
  * Status marks:
@@ -25,7 +25,7 @@ export default defineCommand({
 
     const statuses = await getHookStatus(cwd);
 
-    console.log('\nMemorix Hooks Status');
+    console.log('\nBaton Hooks Status');
     console.log('-'.repeat(50));
 
     let hasOutdated = false;
@@ -41,7 +41,7 @@ export default defineCommand({
       const suffix = !runtimeReady && installed
         ? ' (installed but runtime NOT ready — missing pwsh on Windows)'
         : outdated
-          ? ' (outdated - re-run `memorix hooks install`)'
+          ? ' (outdated - re-run `baton hooks install`)'
           : (!verified && installed ? ' (plugin file installed, runtime load unverified)' : '');
       console.log(`${icon} ${tierLabel} ${label.padEnd(12)} ${installed ? configPath + suffix : '(not installed)'}`);
       if (outdated) hasOutdated = true;
@@ -52,12 +52,12 @@ export default defineCommand({
     console.log('\nSupport tiers: [core] core | [extended] extended | [community] community');
 
     if (hasOutdated) {
-      console.log('\n[warn] Outdated hooks detected. Run `memorix hooks install` to update.');
+      console.log('\n[warn] Outdated hooks detected. Run `baton hooks install` to update.');
     }
     if (hasUnverified) {
       console.log('\n[info] [??] = plugin file installed but runtime load unverified.');
       console.log('       For OpenCode: verify by running `opencode --log-level DEBUG` and checking');
-      console.log('       for [memorix-plugin] messages in the log output.');
+      console.log('       for [baton-plugin] messages in the log output.');
     }
     if (hasRuntimeIssue) {
       console.log('\n[warn] [!!] = installed but runtime will fail.');
@@ -66,6 +66,6 @@ export default defineCommand({
       console.log('       Without pwsh, Copilot hooks will fail at runtime with "spawn pwsh.exe ENOENT".');
     }
 
-    console.log('\nRun `memorix hooks install` to set up hooks for detected agents.');
+    console.log('\nRun `baton hooks install` to set up hooks for detected agents.');
   },
 });

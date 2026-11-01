@@ -29,7 +29,7 @@ let sandbox = '';
 
 describe('guidance content exam', () => {
   beforeEach(() => {
-    sandbox = mkdtempSync(path.join(tmpdir(), 'memorix-guidance-'));
+    sandbox = mkdtempSync(path.join(tmpdir(), 'baton-guidance-'));
   });
 
   afterEach(() => {

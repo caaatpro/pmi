@@ -7,7 +7,7 @@
  * String format:
  *   obs:42          — observation #42
  *   skill:3         — legacy mini-skill #3, now the coding_convention memory
- *                     with topicKey mini-skill/3/<fingerprint> (PMI migration pmi-5)
+ *                     with topicKey mini-skill/3/<fingerprint> (Baton migration baton-5)
  *   obs:42@org/proj — observation #42 in project org/proj
  *
  * Legacy support:

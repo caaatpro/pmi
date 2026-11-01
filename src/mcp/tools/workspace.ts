@@ -1,5 +1,5 @@
 /**
- * Workspace Recovery tools for the local MCP server (docs/PMI/API.md §2):
+ * Workspace Recovery tools for the local MCP server (docs/baton/API.md §2):
  * workspace_snapshot and workspace_restore. Restores go into a new git
  * worktree unless the agent explicitly asks for in place, which is refused
  * on a working copy with any uncommitted change.
@@ -33,7 +33,7 @@ export function registerWorkspaceTools(server: McpServer, ctx: Pick<SessionToolC
         try {
           await uploadSnapshot(connection.api, connection.link.projectId, snapshots, snapshot.id);
           uploaded = true;
-        } catch { /* kept locally; the next checkpoint or `pmi workspace upload` retries */ }
+        } catch { /* kept locally; the next checkpoint or `baton workspace upload` retries */ }
       }
       const m = snapshot.manifest;
       return {

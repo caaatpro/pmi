@@ -9,7 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 function makeTmpDir(): string {
-  return fsSync.mkdtempSync(path.join(os.tmpdir(), 'memorix-grok-hooks-'));
+  return fsSync.mkdtempSync(path.join(os.tmpdir(), 'baton-grok-hooks-'));
 }
 
 describe('Grok Build hooks', () => {
@@ -23,16 +23,16 @@ describe('Grok Build hooks', () => {
     await fs.rm(tmpDir, { recursive: true, force: true });
   });
 
-  it('writes a standalone memorix.json for project installs', async () => {
+  it('writes a standalone baton.json for project installs', async () => {
     const result = await installHooks('grok', tmpDir, false);
-    const hooksPath = path.join(tmpDir, '.grok', 'hooks', 'memorix.json');
+    const hooksPath = path.join(tmpDir, '.grok', 'hooks', 'baton.json');
     expect(result.configPath).toBe(hooksPath);
     expect(getProjectConfigPath('grok', tmpDir)).toBe(hooksPath);
 
     const config = JSON.parse(await fs.readFile(hooksPath, 'utf-8'));
     const expectedCmd = process.platform === 'win32'
-      ? 'memorix.cmd hook --agent grok'
-      : 'memorix hook --agent grok';
+      ? 'baton.cmd hook --agent grok'
+      : 'baton hook --agent grok';
     expect(config.hooks.UserPromptSubmit[0].hooks[0].command).toBe(expectedCmd);
     expect(config.hooks.UserPromptSubmit[0].hooks[0].command.includes(' ')).toBe(true);
     expect(config.hooks.SessionStart[0].hooks[0].timeout).toBe(10);
@@ -48,7 +48,7 @@ describe('Grok Build hooks', () => {
   });
 
   it('preserves unrelated Grok hooks when installing and uninstalling', async () => {
-    const hooksPath = path.join(tmpDir, '.grok', 'hooks', 'memorix.json');
+    const hooksPath = path.join(tmpDir, '.grok', 'hooks', 'baton.json');
     await fs.mkdir(path.dirname(hooksPath), { recursive: true });
     await fs.writeFile(hooksPath, JSON.stringify({
       custom: 'keep-me',
@@ -74,7 +74,7 @@ describe('Grok Build hooks', () => {
   });
 
   it('does not overwrite an invalid Grok hook file', async () => {
-    const hooksPath = path.join(tmpDir, '.grok', 'hooks', 'memorix.json');
+    const hooksPath = path.join(tmpDir, '.grok', 'hooks', 'baton.json');
     await fs.mkdir(path.dirname(hooksPath), { recursive: true });
     await fs.writeFile(hooksPath, '{invalid json', 'utf-8');
 
@@ -82,9 +82,9 @@ describe('Grok Build hooks', () => {
     expect(await fs.readFile(hooksPath, 'utf-8')).toBe('{invalid json');
   });
 
-  it('points global install at ~/.grok/hooks/memorix.json, not RuleSync dest', () => {
+  it('points global install at ~/.grok/hooks/baton.json, not RuleSync dest', () => {
     const globalPath = getGlobalConfigPath('grok');
-    expect(globalPath).toBe(path.join(os.homedir(), '.grok', 'hooks', 'memorix.json'));
+    expect(globalPath).toBe(path.join(os.homedir(), '.grok', 'hooks', 'baton.json'));
     expect(globalPath.includes('rulesync.json')).toBe(false);
   });
 
@@ -93,7 +93,7 @@ describe('Grok Build hooks', () => {
     const grokHome = path.join(tmpDir, 'custom-grok-home');
     process.env.GROK_HOME = grokHome;
     try {
-      expect(getGlobalConfigPath('grok')).toBe(path.join(grokHome, 'hooks', 'memorix.json'));
+      expect(getGlobalConfigPath('grok')).toBe(path.join(grokHome, 'hooks', 'baton.json'));
       expect(getAgentRulesPath('grok', os.homedir(), true)).toBe(path.join(grokHome, 'AGENTS.md'));
     } finally {
       if (previous === undefined) delete process.env.GROK_HOME;
@@ -102,29 +102,29 @@ describe('Grok Build hooks', () => {
   });
 
   it('normalizes the official Grok camelCase payload shape', () => {
-    const prompt = normalizeHookInput({ hookEventName: 'user_prompt_submit', sessionId: 's', workspaceRoot: tmpDir, prompt: 'continue the release', _memorix_agent: 'grok' });
+    const prompt = normalizeHookInput({ hookEventName: 'user_prompt_submit', sessionId: 's', workspaceRoot: tmpDir, prompt: 'continue the release', _baton_agent: 'grok' });
     expect(prompt.event).toBe('user_prompt');
     expect(prompt.sessionId).toBe('s');
     expect(prompt.cwd).toBe(tmpDir);
     expect(prompt.userPrompt).toBe('continue the release');
 
-    const tool = normalizeHookInput({ hookEventName: 'post_tool_use', sessionId: 's', workspaceRoot: tmpDir, toolName: 'run_terminal_command', toolInput: { command: 'git status' }, toolResult: { stdout: 'clean' }, _memorix_agent: 'grok' });
+    const tool = normalizeHookInput({ hookEventName: 'post_tool_use', sessionId: 's', workspaceRoot: tmpDir, toolName: 'run_terminal_command', toolInput: { command: 'git status' }, toolResult: { stdout: 'clean' }, _baton_agent: 'grok' });
     expect(tool.event).toBe('post_tool');
     expect(tool.agent).toBe('grok');
     expect(tool.cwd).toBe(tmpDir);
     expect(tool.command).toBe('git status');
     expect(tool.toolResult).toBe('{"stdout":"clean"}');
 
-    const edit = normalizeHookInput({ hookEventName: 'post_tool_use', sessionId: 's', cwd: tmpDir, toolName: 'search_replace', toolInput: { path: 'src/index.ts' }, _memorix_agent: 'grok' });
+    const edit = normalizeHookInput({ hookEventName: 'post_tool_use', sessionId: 's', cwd: tmpDir, toolName: 'search_replace', toolInput: { path: 'src/index.ts' }, _baton_agent: 'grok' });
     expect(edit.filePath).toBe('src/index.ts');
   });
 
   it('normalizes Grok compaction and failure events without inventing summaries', () => {
-    const compact = normalizeHookInput({ hookEventName: 'pre_compact', sessionId: 's', cwd: tmpDir, reason: 'auto', tokensBefore: 1234, _memorix_agent: 'grok' });
+    const compact = normalizeHookInput({ hookEventName: 'pre_compact', sessionId: 's', cwd: tmpDir, reason: 'auto', tokensBefore: 1234, _baton_agent: 'grok' });
     expect(compact.event).toBe('pre_compact');
     expect(compact.compaction).toEqual({ reason: 'auto', tokensBefore: 1234 });
 
-    const failure = normalizeHookInput({ hookEventName: 'post_tool_use_failure', sessionId: 's', cwd: tmpDir, toolName: 'run_terminal_command', toolInput: { command: 'npm test' }, error: 'failed', _memorix_agent: 'grok' });
+    const failure = normalizeHookInput({ hookEventName: 'post_tool_use_failure', sessionId: 's', cwd: tmpDir, toolName: 'run_terminal_command', toolInput: { command: 'npm test' }, error: 'failed', _baton_agent: 'grok' });
     expect(failure.event).toBe('post_tool');
     expect(failure.command).toBe('npm test');
     expect(failure.toolResult).toBe('failed');
@@ -148,9 +148,9 @@ describe('Grok Build hooks', () => {
     });
   });
 
-  it('uninstalls the project memorix.json', async () => {
+  it('uninstalls the project baton.json', async () => {
     await installHooks('grok', tmpDir, false);
-    const hooksPath = path.join(tmpDir, '.grok', 'hooks', 'memorix.json');
+    const hooksPath = path.join(tmpDir, '.grok', 'hooks', 'baton.json');
     expect(fsSync.existsSync(hooksPath)).toBe(true);
     await uninstallHooks('grok', tmpDir);
     expect(fsSync.existsSync(hooksPath)).toBe(false);

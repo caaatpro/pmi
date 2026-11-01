@@ -50,7 +50,7 @@ export default defineCommand({
       const actor = String(args.actor || identity?.agentId || '').trim() || undefined;
       if (action === 'start') {
         if (!args.task) {
-          emitError('task is required for "memorix continuity start"', asJson);
+          emitError('task is required for "baton continuity start"', asJson);
           return;
         }
         const result = store.start({
@@ -138,16 +138,16 @@ export default defineCommand({
         emitResult({ project, ...result }, 'Continuity closed: ' + status, asJson);
         return;
       }
-      console.log('Memorix Task Continuity');
+      console.log('Baton Task Continuity');
       console.log('');
       console.log('Usage:');
-      console.log('  memorix continuity start --task "..." [--requirements "a,b"]');
-      console.log('  memorix continuity record --taskId <id> --kind decision --content "..."');
-      console.log('  memorix continuity record --taskId <id> --kind verification --verificationStatus passed --content "..."');
+      console.log('  baton continuity start --task "..." [--requirements "a,b"]');
+      console.log('  baton continuity record --taskId <id> --kind decision --content "..."');
+      console.log('  baton continuity record --taskId <id> --kind verification --verificationStatus passed --content "..."');
       console.log('    Use --verificationId <id> to transition an existing verification obligation.');
-      console.log('  memorix continuity show --taskId <id>');
-      console.log('  memorix continuity list [--limit 20]');
-      console.log('  memorix continuity close --taskId <id> --status completed --content "..."');
+      console.log('  baton continuity show --taskId <id>');
+      console.log('  baton continuity list [--limit 20]');
+      console.log('  baton continuity close --taskId <id> --status completed --content "..."');
     } catch (error) {
       emitError(error instanceof Error ? error.message : String(error), asJson);
     }

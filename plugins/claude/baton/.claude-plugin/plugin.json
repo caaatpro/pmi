@@ -1,0 +1,19 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "baton",
+  "version": "1.10.2",
+  "description": "Shared workspace memory for Claude Code and other AI coding agents.",
+  "author": {
+    "name": "Baton Hub team",
+    "url": "https://github.com/caaatpro/pmi"
+  },
+  "homepage": "https://mem.rglens.com",
+  "skills": [
+    "./",
+    "./skills/baton-memory",
+    "./skills/baton-reasoning",
+    "./skills/baton-sessions",
+    "./skills/baton-git-memory",
+    "./skills/baton-troubleshooting"
+  ]
+}

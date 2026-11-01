@@ -4,7 +4,7 @@
  * buffered instead of failing loudly when the network is down.
  */
 
-export class PmiApiError extends Error {
+export class BatonApiError extends Error {
   constructor(
     readonly status: number,
     readonly code: string,
@@ -19,7 +19,7 @@ export class PmiApiError extends Error {
   }
 }
 
-export interface PmiApiClient {
+export interface BatonApiClient {
   readonly server: string;
   get<T>(path: string): Promise<T>;
   post<T>(path: string, body: unknown): Promise<T>;
@@ -29,7 +29,7 @@ export interface PmiApiClient {
   getBinary(path: string): Promise<Buffer>;
 }
 
-export function createApiClient(server: string, token: string | undefined, options: { timeoutMs?: number } = {}): PmiApiClient {
+export function createApiClient(server: string, token: string | undefined, options: { timeoutMs?: number } = {}): BatonApiClient {
   const timeoutMs = options.timeoutMs ?? 30_000;
 
   async function send(method: string, path: string, body: string | Buffer | undefined, contentType: string | undefined): Promise<Response> {
@@ -44,17 +44,17 @@ export function createApiClient(server: string, token: string | undefined, optio
         signal: AbortSignal.timeout(timeoutMs),
       });
     } catch (error) {
-      throw new PmiApiError(0, 'offline', `PMI server ${server} is unreachable: ${(error as Error).message}`);
+      throw new BatonApiError(0, 'offline', `Baton server ${server} is unreachable: ${(error as Error).message}`);
     }
   }
 
-  async function failure(res: Response): Promise<PmiApiError> {
+  async function failure(res: Response): Promise<BatonApiError> {
     const text = await res.text();
     try {
       const error = JSON.parse(text)?.error ?? {};
-      return new PmiApiError(res.status, error.code ?? 'http_error', error.message ?? `HTTP ${res.status}`, error.details);
+      return new BatonApiError(res.status, error.code ?? 'http_error', error.message ?? `HTTP ${res.status}`, error.details);
     } catch {
-      return new PmiApiError(res.status, 'http_error', `HTTP ${res.status}`);
+      return new BatonApiError(res.status, 'http_error', `HTTP ${res.status}`);
     }
   }
 
@@ -68,7 +68,7 @@ export function createApiClient(server: string, token: string | undefined, optio
     try {
       payload = text ? JSON.parse(text) : {};
     } catch {
-      throw new PmiApiError(res.status, 'bad_response', `PMI server returned non-JSON (HTTP ${res.status})`);
+      throw new BatonApiError(res.status, 'bad_response', `Baton server returned non-JSON (HTTP ${res.status})`);
     }
     return payload as T;
   }

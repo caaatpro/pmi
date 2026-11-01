@@ -184,7 +184,7 @@ describe('Formation Stage 2: Resolve', () => {
         observationId: 17,
         title: 'Debug log dump',
         entityName: 'kilo-conversation',
-        narrative: 'Long trace with generic technical terms: error plugin session memorix config store file trace command output.',
+        narrative: 'Long trace with generic technical terms: error plugin session baton config store file trace command output.',
         facts: 'Debug trace captured from plugin runtime',
         score: 272.71,
       })],
@@ -192,7 +192,7 @@ describe('Formation Stage 2: Resolve', () => {
         id: 17,
         title: 'Debug log dump',
         entityName: 'kilo-conversation',
-        narrative: 'Long trace with generic technical terms: error plugin session memorix config store file trace command output.',
+        narrative: 'Long trace with generic technical terms: error plugin session baton config store file trace command output.',
         facts: ['Debug trace captured from plugin runtime'],
       }),
     );

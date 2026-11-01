@@ -23,7 +23,7 @@ describe('serve-http session timeout configuration', () => {
     expect(_testing.parseSessionTimeoutMs(undefined)).toBe(12 * 60 * 60 * 1000);
   });
 
-  it('accepts an explicit MEMORIX_SESSION_TIMEOUT_MS value', () => {
+  it('accepts an explicit BATON_SESSION_TIMEOUT_MS value', () => {
     expect(_testing.parseSessionTimeoutMs('86400000')).toBe(24 * 60 * 60 * 1000);
   });
 
@@ -37,12 +37,12 @@ describe('serve-http session timeout configuration', () => {
   it('requires an explicit policy before a non-loopback bind', () => {
     expect(_testing.isLoopbackHost('127.0.0.1')).toBe(true);
     expect(_testing.isLoopbackHost('0.0.0.0')).toBe(false);
-    expect(() => _testing.validateHttpBindSecurity('0.0.0.0', {})).toThrow(/MEMORIX_HTTP_AUTH_TOKEN/);
-    expect(_testing.validateHttpBindSecurity('0.0.0.0', { MEMORIX_HTTP_AUTH_TOKEN: 'secret' })).toEqual({
+    expect(() => _testing.validateHttpBindSecurity('0.0.0.0', {})).toThrow(/BATON_HTTP_AUTH_TOKEN/);
+    expect(_testing.validateHttpBindSecurity('0.0.0.0', { BATON_HTTP_AUTH_TOKEN: 'secret' })).toEqual({
       requiresAuth: true,
       explicitlyUnauthenticated: false,
     });
-    expect(_testing.validateHttpBindSecurity('0.0.0.0', { MEMORIX_HTTP_ALLOW_UNAUTHENTICATED_BIND: '1' })).toEqual({
+    expect(_testing.validateHttpBindSecurity('0.0.0.0', { BATON_HTTP_ALLOW_UNAUTHENTICATED_BIND: '1' })).toEqual({
       requiresAuth: false,
       explicitlyUnauthenticated: true,
     });

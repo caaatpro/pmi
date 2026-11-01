@@ -3,13 +3,13 @@ import { buildCliHeapBannerPrelude } from './src/cli/heap.js';
 
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8')) as { version: string };
 
-export const define = { __MEMORIX_VERSION__: JSON.stringify(pkg.version) };
+export const define = { __BATON_VERSION__: JSON.stringify(pkg.version) };
 
 export const cliBanner = [
   // serve / index keep a large heap; hook uses a small default (see src/cli/heap.ts).
   buildCliHeapBannerPrelude(),
-  'import {createRequire as __memorix_cjsRequire} from "module";',
-  'const require = __memorix_cjsRequire(import.meta.url);',
+  'import {createRequire as __baton_cjsRequire} from "module";',
+  'const require = __baton_cjsRequire(import.meta.url);',
 ].join('\n');
 
 export const cliExternal = [

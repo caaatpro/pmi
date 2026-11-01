@@ -4,7 +4,7 @@
  * Extracts engineering knowledge from git commits, diffs, and logs.
  * This is the Git→Memory direction — no other memory project does this.
  *
- * Git records code changes. Memorix records engineering knowledge.
+ * Git records code changes. Baton records engineering knowledge.
  * This module bridges the gap.
  */
 

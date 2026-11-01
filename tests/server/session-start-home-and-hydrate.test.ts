@@ -19,7 +19,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { createMemorixServer } from '../../src/server.js';
+import { createBatonServer } from '../../src/server.js';
 import { closeAllDatabases } from '../../src/store/sqlite-db.js';
 import { resetObservationStore } from '../../src/store/obs-store.js';
 import { resetSessionStore } from '../../src/store/session-store.js';
@@ -58,7 +58,7 @@ async function removeTempDir(dir: string): Promise<void> {
 }
 
 beforeEach(async () => {
-  tempHome = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-session-home-'));
+  tempHome = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-session-home-'));
   process.env.HOME = tempHome;
   process.env.USERPROFILE = tempHome;
   resetObservationStore();
@@ -75,28 +75,28 @@ afterEach(async () => {
   await removeTempDir(tempHome);
 });
 
-describe('memorix_session_start home bind and hydrate', () => {
-  it('refuses $HOME as projectRoot and does not create ~/memorix.db', async () => {
-    const { server } = await createMemorixServer(tempHome, undefined, undefined, {
+describe('baton_session_start home bind and hydrate', () => {
+  it('refuses $HOME as projectRoot and does not create ~/baton.db', async () => {
+    const { server } = await createBatonServer(tempHome, undefined, undefined, {
       allowUntrackedFallback: false,
       deferProjectInitUntilBound: true,
       deferProjectRuntimeInit: true,
     });
-    const sessionStart = getHandler(server as any, 'memorix_session_start');
+    const sessionStart = getHandler(server as any, 'baton_session_start');
     const result = await sessionStart({ projectRoot: tempHome, agent: 'cursor' });
 
     expect(result.isError).toBe(true);
     expect(getText(result)).toContain('Refusing to bind $HOME');
-    expect(existsSync(path.join(tempHome, 'memorix.db'))).toBe(false);
+    expect(existsSync(path.join(tempHome, 'baton.db'))).toBe(false);
   });
 
   it('binds a git project without loadAll() of the observation corpus', async () => {
-    const work = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-session-work-'));
+    const work = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-session-work-'));
     const project = path.join(work, 'app');
     await fs.mkdir(project, { recursive: true });
     await createFakeGitRepo(project, 'https://github.com/AVIDS2/session-fast.git');
 
-    const { server, handleTransportClose } = await createMemorixServer(tempHome, undefined, undefined, {
+    const { server, handleTransportClose } = await createBatonServer(tempHome, undefined, undefined, {
       allowUntrackedFallback: false,
       deferProjectInitUntilBound: true,
       deferProjectRuntimeInit: true,
@@ -117,7 +117,7 @@ describe('memorix_session_start home bind and hydrate', () => {
       return [];
     });
     try {
-      const sessionStart = getHandler(server as any, 'memorix_session_start');
+      const sessionStart = getHandler(server as any, 'baton_session_start');
       const started = Date.now();
       const result = await sessionStart({ projectRoot: project, agent: 'cursor' });
       const text = getText(result);
@@ -150,7 +150,7 @@ describe('memorix_session_start home bind and hydrate', () => {
       expect(result.structuredContent.binding.handle.idHash).toMatch(/^sha256:[0-9a-f]{64}$/);
       expect(JSON.stringify(result.structuredContent.binding)).not.toContain(project);
       expect(elapsedMs).toBeLessThan(5_000);
-      expect(existsSync(path.join(tempHome, 'memorix.db'))).toBe(false);
+      expect(existsSync(path.join(tempHome, 'baton.db'))).toBe(false);
     } finally {
       releaseLoadAll?.();
       loadAll.mockRestore();

@@ -1,0 +1,15 @@
+{
+  "name": "baton",
+  "version": "1.10.2",
+  "description": "Local-first project memory for CodeBuddy Code and other coding agents.",
+  "author": {
+    "name": "Baton Hub team",
+    "url": "https://github.com/caaatpro/pmi"
+  },
+  "homepage": "https://mem.rglens.com",
+  "repository": "https://github.com/caaatpro/pmi",
+  "license": "MIT",
+  "skills": "./skills",
+  "hooks": "./hooks/hooks.json",
+  "mcpServers": "./.mcp.json"
+}

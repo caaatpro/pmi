@@ -24,7 +24,7 @@ vi.mock('../../src/config.js', () => ({
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createMemorixServer } from '../../src/server.js';
+import { createBatonServer } from '../../src/server.js';
 import { resetDb } from '../../src/store/orama-store.js';
 import { resetObservationStore } from '../../src/store/obs-store.js';
 import { closeAllDatabases } from '../../src/store/sqlite-db.js';
@@ -45,18 +45,18 @@ function toolText(result: any): string {
 }
 
 describe('long-term memory through the MCP micro profile', () => {
-  const previousDataDir = process.env.MEMORIX_DATA_DIR;
+  const previousDataDir = process.env.BATON_DATA_DIR;
   let root = '';
   let projectDir = '';
   let dataDir = '';
 
   beforeEach(async () => {
-    root = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-long-term-mcp-'));
+    root = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-long-term-mcp-'));
     projectDir = path.join(root, 'project');
     dataDir = path.join(root, 'data');
     await fs.mkdir(path.join(projectDir, '.git'), { recursive: true });
     await fs.writeFile(path.join(projectDir, 'package.json'), JSON.stringify({ name: 'long-term-mcp-test', version: '1.0.0' }));
-    process.env.MEMORIX_DATA_DIR = dataDir;
+    process.env.BATON_DATA_DIR = dataDir;
     resetTomlConfigCache();
     resetResolvedConfigCache();
     resetObservationStore();
@@ -64,8 +64,8 @@ describe('long-term memory through the MCP micro profile', () => {
   });
 
   afterEach(async () => {
-    if (previousDataDir === undefined) delete process.env.MEMORIX_DATA_DIR;
-    else process.env.MEMORIX_DATA_DIR = previousDataDir;
+    if (previousDataDir === undefined) delete process.env.BATON_DATA_DIR;
+    else process.env.BATON_DATA_DIR = previousDataDir;
     resetTomlConfigCache();
     resetResolvedConfigCache();
     resetObservationStore();
@@ -75,16 +75,16 @@ describe('long-term memory through the MCP micro profile', () => {
   });
 
   it('auto-qualifies an explicit store long-term memory and delivers it immediately', async () => {
-    const { server, projectId } = await createMemorixServer(
+    const { server, projectId } = await createBatonServer(
       projectDir,
       undefined,
       undefined,
       { toolProfile: 'micro' } as any,
     );
     expect(Object.keys((server as any)._registeredTools ?? {})).toHaveLength(8);
-    const store = getHandler(server as any, 'memorix_store');
-    const projectContext = getHandler(server as any, 'memorix_project_context');
-    const detail = getHandler(server as any, 'memorix_detail');
+    const store = getHandler(server as any, 'baton_store');
+    const projectContext = getHandler(server as any, 'baton_project_context');
+    const detail = getHandler(server as any, 'baton_detail');
 
     const stored = await store({
       entityName: 'release',

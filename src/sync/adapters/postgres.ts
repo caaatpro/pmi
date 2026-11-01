@@ -27,14 +27,14 @@ export class PostgresSyncRemote implements SyncRemote {
   async init(options: { create?: boolean } = {}): Promise<void> {
     if (options.create === false) {
       const [row] = await this.sql.query<{ name?: string | null }>(
-        `SELECT to_regclass('memorix_sync_batches') AS name`,
+        `SELECT to_regclass('baton_sync_batches') AS name`,
         [],
       );
       this.available = typeof row?.name === 'string' && row.name.length > 0;
       return;
     }
     await this.sql.exec(
-      `CREATE TABLE IF NOT EXISTS memorix_sync_batches (
+      `CREATE TABLE IF NOT EXISTS baton_sync_batches (
         namespace text NOT NULL,
         device_id text NOT NULL,
         sequence bigint NOT NULL,
@@ -48,13 +48,13 @@ export class PostgresSyncRemote implements SyncRemote {
     // stay quarantined under a non-project namespace; a fresh scoped sync never
     // accidentally imports them.
     await this.sql.exec(
-      `ALTER TABLE memorix_sync_batches
+      `ALTER TABLE baton_sync_batches
        ADD COLUMN IF NOT EXISTS namespace text NOT NULL DEFAULT 'legacy'`,
       [],
     );
     await this.sql.exec(
-      `CREATE UNIQUE INDEX IF NOT EXISTS memorix_sync_batches_scope_key
-       ON memorix_sync_batches(namespace, device_id, sequence)`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS baton_sync_batches_scope_key
+       ON baton_sync_batches(namespace, device_id, sequence)`,
       [],
     );
     this.available = true;
@@ -62,15 +62,15 @@ export class PostgresSyncRemote implements SyncRemote {
 
   async push(batch: ChangeBatch): Promise<void> {
     assertBatchNamespace(batch, this.namespace);
-    if (!this.available) throw new Error('[memorix] Postgres sync remote is not initialized for writes');
+    if (!this.available) throw new Error('[baton] Postgres sync remote is not initialized for writes');
     await this.sql.exec(
-      `INSERT INTO memorix_sync_batches (namespace, device_id, sequence, produced_at, payload)
+      `INSERT INTO baton_sync_batches (namespace, device_id, sequence, produced_at, payload)
        VALUES ($1, $2, $3, $4, $5::jsonb)
        ON CONFLICT (namespace, device_id, sequence) DO NOTHING`,
       [this.namespace, batch.deviceId, batch.sequence, batch.producedAt, JSON.stringify(batch)],
     );
     const [stored] = await this.sql.query<{ payload: ChangeBatch | string }>(
-      `SELECT payload FROM memorix_sync_batches
+      `SELECT payload FROM baton_sync_batches
        WHERE namespace = $1 AND device_id = $2 AND sequence = $3`,
       [this.namespace, batch.deviceId, batch.sequence],
     );
@@ -78,7 +78,7 @@ export class PostgresSyncRemote implements SyncRemote {
       ? JSON.parse(stored.payload) as ChangeBatch
       : stored?.payload;
     if (!payload || stableJson(payload) !== stableJson(batch)) {
-      throw new Error('[memorix] Postgres relay event path already contains a different payload');
+      throw new Error('[baton] Postgres relay event path already contains a different payload');
     }
   }
 
@@ -112,7 +112,7 @@ export class PostgresSyncRemote implements SyncRemote {
     params.push(limit + 1);
     const rows = await this.sql.query<BatchRow>(
       `SELECT device_id, sequence, produced_at, payload
-       FROM memorix_sync_batches
+       FROM baton_sync_batches
        WHERE namespace = $1 AND ${filters.join(' AND ')}
        ORDER BY device_id, sequence
        LIMIT $${params.length}`,
@@ -158,9 +158,9 @@ export class PostgresSyncRemote implements SyncRemote {
       clauses.push(`(device_id = $${params.length - 1} AND sequence <= $${params.length})`);
     }
     const where = `namespace = $1 AND (${clauses.join(' OR ')})`;
-    const [row] = await this.sql.query<{ count: number | string }>(`SELECT COUNT(*) AS count FROM memorix_sync_batches WHERE ${where}`, params);
+    const [row] = await this.sql.query<{ count: number | string }>(`SELECT COUNT(*) AS count FROM baton_sync_batches WHERE ${where}`, params);
     const candidates = Number(row?.count ?? 0);
-    if (!options.dryRun && candidates > 0) await this.sql.exec(`DELETE FROM memorix_sync_batches WHERE ${where}`, params);
+    if (!options.dryRun && candidates > 0) await this.sql.exec(`DELETE FROM baton_sync_batches WHERE ${where}`, params);
     return { candidates, deleted: options.dryRun ? 0 : candidates };
   }
 
@@ -171,16 +171,16 @@ export class PostgresSyncRemote implements SyncRemote {
 
 function assertBatchNamespace(batch: ChangeBatch, namespace: string): void {
   if (batch.namespace !== namespace) {
-    throw new Error('[memorix] sync batch namespace does not match the Postgres relay');
+    throw new Error('[baton] sync batch namespace does not match the Postgres relay');
   }
   if (!isSafeSyncDeviceId(batch.deviceId)) {
-    throw new Error('[memorix] sync batch has an invalid device id');
+    throw new Error('[baton] sync batch has an invalid device id');
   }
 }
 
 function assertLimit(limit: number): void {
   if (!Number.isSafeInteger(limit) || limit < 1) {
-    throw new Error('[memorix] sync pull limit must be a positive integer');
+    throw new Error('[baton] sync pull limit must be a positive integer');
   }
 }
 
@@ -206,36 +206,36 @@ interface PgModule {
 }
 
 export async function createPgSqlClient(env: NodeJS.ProcessEnv = process.env): Promise<SqlClient> {
-  const connectionString = env.MEMORIX_SYNC_PG_URL;
+  const connectionString = env.BATON_SYNC_PG_URL;
   let config: Record<string, unknown>;
 
   if (connectionString) {
     config = { connectionString };
   } else {
     const required = [
-      'MEMORIX_SYNC_PG_HOST',
-      'MEMORIX_SYNC_PG_PORT',
-      'MEMORIX_SYNC_PG_DB',
-      'MEMORIX_SYNC_PG_USER',
-      'MEMORIX_SYNC_PG_PASSWORD',
+      'BATON_SYNC_PG_HOST',
+      'BATON_SYNC_PG_PORT',
+      'BATON_SYNC_PG_DB',
+      'BATON_SYNC_PG_USER',
+      'BATON_SYNC_PG_PASSWORD',
     ] as const;
     const missing = required.filter((name) => !env[name]);
     if (missing.length > 0) {
       throw new Error(
-        `Postgres sync requires MEMORIX_SYNC_PG_URL or all discrete settings; missing ${missing.join(', ')}`,
+        `Postgres sync requires BATON_SYNC_PG_URL or all discrete settings; missing ${missing.join(', ')}`,
       );
     }
 
-    const port = Number(env.MEMORIX_SYNC_PG_PORT);
+    const port = Number(env.BATON_SYNC_PG_PORT);
     if (!Number.isInteger(port) || port <= 0) {
-      throw new Error('MEMORIX_SYNC_PG_PORT must be a positive integer');
+      throw new Error('BATON_SYNC_PG_PORT must be a positive integer');
     }
     config = {
-      host: env.MEMORIX_SYNC_PG_HOST,
+      host: env.BATON_SYNC_PG_HOST,
       port,
-      database: env.MEMORIX_SYNC_PG_DB,
-      user: env.MEMORIX_SYNC_PG_USER,
-      password: env.MEMORIX_SYNC_PG_PASSWORD,
+      database: env.BATON_SYNC_PG_DB,
+      user: env.BATON_SYNC_PG_USER,
+      password: env.BATON_SYNC_PG_PASSWORD,
     };
   }
 

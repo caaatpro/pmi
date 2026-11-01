@@ -46,7 +46,7 @@ async function seedCandidate(title: string): Promise<string> {
 
 describe('long-term auto maintenance exam', () => {
   beforeEach(() => {
-    dataDir = mkdtempSync(path.join(tmpdir(), 'memorix-lt-maintain-'));
+    dataDir = mkdtempSync(path.join(tmpdir(), 'baton-lt-maintain-'));
   });
 
   afterEach(() => {

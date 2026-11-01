@@ -86,7 +86,7 @@ export async function main(): Promise<void> {
     const result = await executeMaintenanceRequest(request);
     process.stdout.write(`${MAINTENANCE_RESULT_PREFIX}${JSON.stringify(result)}\n`);
   } catch (error) {
-    process.stderr.write(`[memorix] maintenance runner failed: ${error instanceof Error ? error.message : String(error)}\n`);
+    process.stderr.write(`[baton] maintenance runner failed: ${error instanceof Error ? error.message : String(error)}\n`);
     process.exitCode = 1;
   } finally {
     closeAllDatabases();

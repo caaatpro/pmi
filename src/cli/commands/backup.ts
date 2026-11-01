@@ -1,5 +1,5 @@
 /**
- * `pmi backup <dir>` / `pmi restore <dir> [--force]` — the local store of
+ * `baton backup <dir>` / `baton restore <dir> [--force]` — the local store of
  * this machine: the SQLite database (copied with VACUUM INTO and
  * integrity-checked) and the snapshot blob store. Tokens are not included;
  * log in again after restoring on a new machine.
@@ -34,7 +34,7 @@ function integrityOk(dbPath: string): boolean {
 export function backupLocalStore(dataDir: string, out: string): { database: string; blobs: number; manifest: string } {
   if (fs.existsSync(out) && fs.readdirSync(out).length) throw new Error(`${out} is not empty`);
   fs.mkdirSync(out, { recursive: true });
-  const dbCopy = path.join(out, 'memorix.db');
+  const dbCopy = path.join(out, 'baton.db');
   getDatabase(dataDir).prepare('VACUUM INTO ?').run(dbCopy);
   if (!integrityOk(dbCopy)) throw new Error('the database copy failed its integrity check');
   let blobs = 0;
@@ -46,7 +46,7 @@ export function backupLocalStore(dataDir: string, out: string): { database: stri
     blobs = walk(path.join(out, 'blobs'));
   }
   const manifest = path.join(out, 'MANIFEST.json');
-  fs.writeFileSync(manifest, JSON.stringify({ createdAt: new Date().toISOString(), database: { file: 'memorix.db', sha256: sha256File(dbCopy) }, blobs }, null, 2));
+  fs.writeFileSync(manifest, JSON.stringify({ createdAt: new Date().toISOString(), database: { file: 'baton.db', sha256: sha256File(dbCopy) }, blobs }, null, 2));
   return { database: dbCopy, blobs, manifest };
 }
 
@@ -55,7 +55,7 @@ export function restoreLocalStore(dataDir: string, src: string, force: boolean):
   const dbFile = path.join(src, manifest.database.file);
   if (sha256File(dbFile) !== manifest.database.sha256) throw new Error('the backup database does not match its checksum');
   if (!integrityOk(dbFile)) throw new Error('the backup database failed its integrity check');
-  const hasData = fs.existsSync(path.join(dataDir, 'memorix.db'));
+  const hasData = fs.existsSync(path.join(dataDir, 'baton.db'));
   if (hasData && !force) throw new Error(`${dataDir} already holds a store; pass --force to move it aside and restore`);
   closeAllDatabases();
   let movedAside: string | null = null;
@@ -64,13 +64,13 @@ export function restoreLocalStore(dataDir: string, src: string, force: boolean):
     fs.renameSync(dataDir, movedAside);
   }
   fs.mkdirSync(dataDir, { recursive: true });
-  fs.copyFileSync(dbFile, path.join(dataDir, 'memorix.db'));
+  fs.copyFileSync(dbFile, path.join(dataDir, 'baton.db'));
   if (fs.existsSync(path.join(src, 'blobs'))) fs.cpSync(path.join(src, 'blobs'), path.join(dataDir, 'blobs'), { recursive: true });
   return { movedAside };
 }
 
 export const backup = defineCommand({
-  meta: { name: 'backup', description: 'Back up the local PMI store (database and snapshot blobs) to a directory' },
+  meta: { name: 'backup', description: 'Back up the local Baton store (database and snapshot blobs) to a directory' },
   args: { dir: { type: 'positional', required: true }, json: { type: 'boolean', default: false } },
   async run({ args }) {
     try {
@@ -83,7 +83,7 @@ export const backup = defineCommand({
 });
 
 export const restore = defineCommand({
-  meta: { name: 'restore', description: 'Restore the local PMI store from a `pmi backup` directory (current store is moved aside)' },
+  meta: { name: 'restore', description: 'Restore the local Baton store from a `baton backup` directory (current store is moved aside)' },
   args: { dir: { type: 'positional', required: true }, force: { type: 'boolean', default: false }, json: { type: 'boolean', default: false } },
   async run({ args }) {
     try {

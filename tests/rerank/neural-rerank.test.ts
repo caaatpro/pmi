@@ -14,13 +14,13 @@ const TMP = join(process.cwd(), '.tmp-neural-rerank-test');
 const HOME = join(TMP, 'home');
 
 const ENV_KEYS = [
-  'MEMORIX_RERANK_PROVIDER',
-  'MEMORIX_RERANK_MODEL',
-  'MEMORIX_RERANK_BASE_URL',
-  'MEMORIX_RERANK_API_KEY',
-  'MEMORIX_LLM_BASE_URL',
-  'MEMORIX_LLM_API_KEY',
-  'MEMORIX_API_KEY',
+  'BATON_RERANK_PROVIDER',
+  'BATON_RERANK_MODEL',
+  'BATON_RERANK_BASE_URL',
+  'BATON_RERANK_API_KEY',
+  'BATON_LLM_BASE_URL',
+  'BATON_LLM_API_KEY',
+  'BATON_API_KEY',
   'OPENAI_API_KEY',
   'ANTHROPIC_API_KEY',
   'OPENROUTER_API_KEY',
@@ -53,14 +53,14 @@ describe('neural rerank lane', () => {
   });
 
   it('is off by default', async () => {
-    mkdirSync(join(HOME, '.memorix'), { recursive: true });
+    mkdirSync(join(HOME, '.baton'), { recursive: true });
     const { isNeuralRerankEnabled } = await loadLane();
     expect(isNeuralRerankEnabled({ projectRoot: null, homeDir: HOME })).toBe(false);
   });
 
   it('inherits base URL and bearer from the memory LLM lane', async () => {
-    mkdirSync(join(HOME, '.memorix'), { recursive: true });
-    writeFileSync(join(HOME, '.memorix', 'config.toml'), [
+    mkdirSync(join(HOME, '.baton'), { recursive: true });
+    writeFileSync(join(HOME, '.baton', 'config.toml'), [
       '[memory.llm]',
       'base_url = "https://llm.example/v1"',
       'api_key = "llm-from-memory"',
@@ -79,8 +79,8 @@ describe('neural rerank lane', () => {
   });
 
   it('keeps an explicit public host enabled when configured', async () => {
-    mkdirSync(join(HOME, '.memorix'), { recursive: true });
-    writeFileSync(join(HOME, '.memorix', 'config.toml'), [
+    mkdirSync(join(HOME, '.baton'), { recursive: true });
+    writeFileSync(join(HOME, '.baton', 'config.toml'), [
       '[rerank]',
       'provider = "http"',
       'base_url = "https://api.example.com/v1"',
@@ -98,11 +98,11 @@ describe('neural rerank lane', () => {
   });
 
   it('reorders candidates from a Cohere-shaped response', async () => {
-    process.env.MEMORIX_RERANK_PROVIDER = 'http';
-    process.env.MEMORIX_RERANK_BASE_URL = 'https://api.example.com/v1';
-    process.env.MEMORIX_RERANK_MODEL = 'rerank-model';
-    process.env.MEMORIX_RERANK_API_KEY = 'rerank-key';
-    mkdirSync(join(HOME, '.memorix'), { recursive: true });
+    process.env.BATON_RERANK_PROVIDER = 'http';
+    process.env.BATON_RERANK_BASE_URL = 'https://api.example.com/v1';
+    process.env.BATON_RERANK_MODEL = 'rerank-model';
+    process.env.BATON_RERANK_API_KEY = 'rerank-key';
+    mkdirSync(join(HOME, '.baton'), { recursive: true });
 
     const fetchImpl = vi.fn(async () => new Response(JSON.stringify({
       results: [
@@ -126,8 +126,8 @@ describe('neural rerank lane', () => {
   });
 
   it('does not transmit the memory LLM key to a different rerank endpoint', async () => {
-    mkdirSync(join(HOME, '.memorix'), { recursive: true });
-    writeFileSync(join(HOME, '.memorix', 'config.toml'), [
+    mkdirSync(join(HOME, '.baton'), { recursive: true });
+    writeFileSync(join(HOME, '.baton', 'config.toml'), [
       '[memory.llm]',
       'base_url = "https://llm.example/v1"',
       'api_key = "llm-from-memory"',
@@ -166,8 +166,8 @@ describe('neural rerank lane', () => {
   });
 
   it('sends the dedicated rerank key, not the memory LLM key, to a different host', async () => {
-    mkdirSync(join(HOME, '.memorix'), { recursive: true });
-    writeFileSync(join(HOME, '.memorix', 'config.toml'), [
+    mkdirSync(join(HOME, '.baton'), { recursive: true });
+    writeFileSync(join(HOME, '.baton', 'config.toml'), [
       '[memory.llm]',
       'base_url = "https://llm.example/v1"',
       'api_key = "llm-from-memory"',

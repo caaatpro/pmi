@@ -1,5 +1,5 @@
 /**
- * CLI Command: memorix git-hook install
+ * CLI Command: baton git-hook install
  *
  * Installs a git post-commit hook that automatically ingests commits as memories.
  * This is the Git→Memory automation — every commit becomes a searchable memory.
@@ -12,7 +12,7 @@ import * as p from '@clack/prompts';
 import { existsSync, readFileSync, writeFileSync, chmodSync } from 'node:fs';
 import { ensureHooksDir } from '../../git/hooks-path.js';
 
-const HOOK_MARKER = '# [memorix-git-hook]';
+const HOOK_MARKER = '# [baton-git-hook]';
 
 export default defineCommand({
   meta: {
@@ -51,17 +51,17 @@ export default defineCommand({
       const existing = readFileSync(hookPath, 'utf-8');
 
       if (existing.includes(HOOK_MARKER)) {
-        p.log.warn('Memorix git hook is already installed.');
-        p.outro('Use `memorix git-hook uninstall` to remove it first.');
+        p.log.warn('Baton git hook is already installed.');
+        p.outro('Use `baton git-hook uninstall` to remove it first.');
         return;
       }
 
-      // Existing non-memorix hook — ask to append
+      // Existing non-baton hook — ask to append
       if (!args.force) {
         const action = await p.select({
           message: 'A post-commit hook already exists. What would you like to do?',
           options: [
-            { value: 'append', label: 'Append', hint: 'Add memorix hook after existing content' },
+            { value: 'append', label: 'Append', hint: 'Add baton hook after existing content' },
             { value: 'skip', label: 'Skip', hint: 'Do not modify the existing hook' },
           ],
         });
@@ -77,7 +77,7 @@ export default defineCommand({
       writeFileSync(hookPath, appended, 'utf-8');
       try { chmodSync(hookPath, 0o755); } catch { /* Windows doesn't need chmod */ }
 
-      p.log.success('Memorix hook appended to existing post-commit hook.');
+      p.log.success('Baton hook appended to existing post-commit hook.');
     } else {
       // Create new hook
       const script = '#!/bin/sh\n' + generateHookScript();
@@ -102,7 +102,7 @@ export default defineCommand({
     }
 
     p.log.info(`Hook path: ${hookPath} (+ post-merge, post-checkout)`);
-    p.log.info('New commits are analyzed incrementally from the last analyzed commit (pmi git analyze).');
+    p.log.info('New commits are analyzed incrementally from the last analyzed commit (baton git analyze).');
     p.log.info('Memories are tagged with source="git" and include the commit hash.');
     p.outro('Done! Try making a commit to see it in action.');
   },
@@ -114,11 +114,11 @@ export default defineCommand({
  */
 export function generateHookScript(): string {
   return `${HOOK_MARKER}
-# PMI: analyze new commits incrementally (pmi git analyze)
+# Baton: analyze new commits incrementally (baton git analyze)
 # Runs in background — does not block your git workflow.
-# To remove: memorix git-hook uninstall
-if command -v memorix >/dev/null 2>&1; then
-  memorix git analyze --auto >/dev/null 2>&1 &
+# To remove: baton git-hook uninstall
+if command -v baton >/dev/null 2>&1; then
+  baton git analyze --auto >/dev/null 2>&1 &
 fi
 `;
 }

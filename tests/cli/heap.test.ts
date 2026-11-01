@@ -8,7 +8,7 @@ import {
 } from '../../src/cli/heap.js';
 
 describe('CLI heap selection', () => {
-  it('uses a small heap for memorix hook and keeps the large heap for serve', () => {
+  it('uses a small heap for baton hook and keeps the large heap for serve', () => {
     expect(isHookCliInvocation(['hook'])).toBe(true);
     expect(isHookCliInvocation(['hook', '--agent', 'claude'])).toBe(true);
     expect(isHookCliInvocation(['--cwd', '/tmp/project', 'hook'])).toBe(true);
@@ -24,11 +24,11 @@ describe('CLI heap selection', () => {
     expect(DEFAULT_CLI_HEAP_MB).toBe(4096);
   });
 
-  it('lets MEMORIX_HOOK_HEAP_MB override only the hook command', () => {
-    expect(resolveCliHeapMb(['hook'], { MEMORIX_HOOK_HEAP_MB: '256' })).toBe(256);
-    expect(resolveCliHeapMb(['serve'], { MEMORIX_HOOK_HEAP_MB: '256' })).toBe(DEFAULT_CLI_HEAP_MB);
-    expect(resolveCliHeapMb(['hook'], { MEMORIX_HOOK_HEAP_MB: 'nope' })).toBe(DEFAULT_HOOK_HEAP_MB);
-    expect(resolveCliHeapMb(['serve'], { MEMORIX_HEAP_MB: '2048' })).toBe(2048);
+  it('lets BATON_HOOK_HEAP_MB override only the hook command', () => {
+    expect(resolveCliHeapMb(['hook'], { BATON_HOOK_HEAP_MB: '256' })).toBe(256);
+    expect(resolveCliHeapMb(['serve'], { BATON_HOOK_HEAP_MB: '256' })).toBe(DEFAULT_CLI_HEAP_MB);
+    expect(resolveCliHeapMb(['hook'], { BATON_HOOK_HEAP_MB: 'nope' })).toBe(DEFAULT_HOOK_HEAP_MB);
+    expect(resolveCliHeapMb(['serve'], { BATON_HEAP_MB: '2048' })).toBe(2048);
   });
 
   it('bakes hook-aware heap selection into the CLI respawn banner', () => {
@@ -37,6 +37,6 @@ describe('CLI heap selection', () => {
     expect(banner).toContain('__cmd==="hook"');
     expect(banner).toContain(String(DEFAULT_HOOK_HEAP_MB));
     expect(banner).toContain(String(DEFAULT_CLI_HEAP_MB));
-    expect(banner).toContain('MEMORIX_HOOK_HEAP_MB');
+    expect(banner).toContain('BATON_HOOK_HEAP_MB');
   });
 });

@@ -43,14 +43,14 @@ async function runCommand(command: any, args: Record<string, unknown>) {
 
 describe('project context CLI commands', () => {
   const originalCwd = process.cwd();
-  const originalDataDir = process.env.MEMORIX_DATA_DIR;
-  const originalEmbedding = process.env.MEMORIX_EMBEDDING;
+  const originalDataDir = process.env.BATON_DATA_DIR;
+  const originalEmbedding = process.env.BATON_EMBEDDING;
   let sandboxRoot = '';
   let repoDir = '';
   let dataDir = '';
 
   beforeEach(() => {
-    sandboxRoot = mkdtempSync(path.join(tmpdir(), 'memorix-context-cli-'));
+    sandboxRoot = mkdtempSync(path.join(tmpdir(), 'baton-context-cli-'));
     repoDir = path.join(sandboxRoot, 'repo');
     dataDir = path.join(sandboxRoot, 'data');
     mkdirSync(path.join(repoDir, 'src'), { recursive: true });
@@ -59,8 +59,8 @@ describe('project context CLI commands', () => {
     writeFileSync(path.join(repoDir, 'src', 'worker.py'), 'def dispatch_job(name: str):\n    return name.upper()\n', 'utf8');
     execSync('git init', { cwd: repoDir, stdio: 'ignore' });
     process.chdir(repoDir);
-    process.env.MEMORIX_DATA_DIR = dataDir;
-    process.env.MEMORIX_EMBEDDING = 'off';
+    process.env.BATON_DATA_DIR = dataDir;
+    process.env.BATON_EMBEDDING = 'off';
     resetTomlConfigCache();
     resetResolvedConfigCache();
   });
@@ -68,14 +68,14 @@ describe('project context CLI commands', () => {
   afterEach(async () => {
     process.chdir(originalCwd);
     if (originalDataDir === undefined) {
-      delete process.env.MEMORIX_DATA_DIR;
+      delete process.env.BATON_DATA_DIR;
     } else {
-      process.env.MEMORIX_DATA_DIR = originalDataDir;
+      process.env.BATON_DATA_DIR = originalDataDir;
     }
     if (originalEmbedding === undefined) {
-      delete process.env.MEMORIX_EMBEDDING;
+      delete process.env.BATON_EMBEDDING;
     } else {
-      process.env.MEMORIX_EMBEDDING = originalEmbedding;
+      process.env.BATON_EMBEDDING = originalEmbedding;
     }
     resetObservationStore();
     resetSessionStore();
@@ -142,7 +142,7 @@ describe('project context CLI commands', () => {
     const result = await runCommand(contextCommand, {});
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('Memorix Autopilot Brief');
+    expect(result.stdout).toContain('Baton Autopilot Brief');
     expect(result.stdout).toContain('Project state');
     expect(result.stdout).toContain('Reliable memory');
     expect(result.stdout).toContain('Start here');
@@ -216,7 +216,7 @@ describe('project context CLI commands', () => {
     expect(parsed).toMatchObject({
       schemaVersion: '1',
       task: 'continue the auth fix',
-      brief: expect.stringContaining('Memorix Autopilot Brief'),
+      brief: expect.stringContaining('Baton Autopilot Brief'),
       receipt: expect.objectContaining({ target: 'project-context' }),
       code: expect.objectContaining({ selected: 'semantic', quality: 'semantic' }),
       loadout: expect.objectContaining({ agent: 'codex' }),
@@ -467,7 +467,7 @@ describe('project context CLI commands', () => {
       filesModified: ['src/auth.ts'],
       projectId: 'local/repo',
     });
-    writeFileSync(path.join(repoDir, 'memorix.toml'), '[codegraph]\nexclude_patterns = ["vendor/**"]\n', 'utf8');
+    writeFileSync(path.join(repoDir, 'baton.toml'), '[codegraph]\nexclude_patterns = ["vendor/**"]\n', 'utf8');
     resetTomlConfigCache();
     resetResolvedConfigCache();
 

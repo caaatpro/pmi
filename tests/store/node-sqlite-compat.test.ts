@@ -2,19 +2,19 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createDatabase, resetSqliteDriverForTests } from '../../src/store/bun-sqlite-compat.js';
 
 describe('node:sqlite compatibility fallback', () => {
-  const originalDriver = process.env.MEMORIX_SQLITE_DRIVER;
+  const originalDriver = process.env.BATON_SQLITE_DRIVER;
 
   afterEach(() => {
     if (originalDriver === undefined) {
-      delete process.env.MEMORIX_SQLITE_DRIVER;
+      delete process.env.BATON_SQLITE_DRIVER;
     } else {
-      process.env.MEMORIX_SQLITE_DRIVER = originalDriver;
+      process.env.BATON_SQLITE_DRIVER = originalDriver;
     }
     resetSqliteDriverForTests();
   });
 
   it('keeps better-sqlite3 pragma, statement, and transaction contracts on Node 22', () => {
-    process.env.MEMORIX_SQLITE_DRIVER = 'node';
+    process.env.BATON_SQLITE_DRIVER = 'node';
     resetSqliteDriverForTests();
     const db = createDatabase(':memory:');
     try {

@@ -4,7 +4,7 @@ export type KnowledgeWorkspaceStatus = 'ready' | 'needs-review' | 'error';
 export interface KnowledgeWorkspace {
   id: string;
   projectId: string;
-  /** Local Memorix data directory used for the operational SQLite index. */
+  /** Local Baton data directory used for the operational SQLite index. */
   dataDir?: string;
   mode: KnowledgeWorkspaceMode;
   rootPath: string;

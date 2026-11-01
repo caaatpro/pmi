@@ -1,6 +1,6 @@
 /**
- * Memory write tools inherited from Memorix: memorix_store, memorix_suggest_topic_key,
- * memorix_resolve, memorix_store_reasoning, memorix_deduplicate, memorix_consolidate.
+ * Memory write tools inherited from Baton: baton_store, baton_suggest_topic_key,
+ * baton_resolve, baton_store_reasoning, baton_deduplicate, baton_consolidate.
  *
  * Split out of src/server.ts without behaviour changes; connection state comes
  * from `ServerToolContext`.
@@ -28,17 +28,17 @@ import { COMPACT_ON_WRITE_TIMEOUT_MS, COMPRESSION_TIMEOUT_MS, FORMATION_TIMEOUT_
 
 export function registerMemoryTools(server: McpServer, ctx: ServerToolContext): void {
   // ================================================================
-  // Memorix Extended Tools (3-layer Progressive Disclosure)
+  // Baton Extended Tools (3-layer Progressive Disclosure)
   // ================================================================
 
   /**
-   * memorix_store — Store a new observation
+   * baton_store — Store a new observation
    *
    * Primary write API. Agents call this to persist knowledge.
    * Auto-assigns ID, counts tokens, indexes for search.
    */
   server.registerTool(
-    'memorix_store',
+    'baton_store',
     {
       title: 'Store Memory',
       description:
@@ -61,7 +61,7 @@ export function registerMemoryTools(server: McpServer, ctx: ServerToolContext): 
         topicKey: z.string().optional().describe(
           'Optional topic identifier for upserts (e.g., "architecture/auth-model"). ' +
           'If an observation with the same topicKey already exists in this project, it will be UPDATED instead of creating a new one. ' +
-          'Use memorix_suggest_topic_key to generate a stable key. Good for evolving decisions, architecture docs, etc.',
+          'Use baton_suggest_topic_key to generate a stable key. Good for evolving decisions, architecture docs, etc.',
         ),
         progress: z.object({
           feature: z.string().describe('Feature or task name'),
@@ -71,7 +71,7 @@ export function registerMemoryTools(server: McpServer, ctx: ServerToolContext): 
         relatedCommits: z.array(z.string()).optional().describe('Git commit hashes this memory relates to (links ground truth ↔ reasoning)'),
         relatedEntities: z.array(z.string()).optional().describe('Other entity names this memory cross-references'),
         visibility: z.enum(['personal', 'project', 'team']).optional().describe(
-          'Retrieval scope. Project is the normal shared default; personal/team require memorix_session_start with joinTeam=true.',
+          'Retrieval scope. Project is the normal shared default; personal/team require baton_session_start with joinTeam=true.',
         ),
         longTerm: z.object({
           kind: z.enum(['episodic', 'semantic', 'procedural']).describe('Cognitive kind for an additional long-term candidate.'),
@@ -86,7 +86,7 @@ export function registerMemoryTools(server: McpServer, ctx: ServerToolContext): 
           modality: z.enum(['image', 'audio', 'video', 'document']),
           url: z.string().describe(
             'Public HTTPS provenance reference without query parameters or fragments. ' +
-            'Memorix does not fetch this URL: attachment metadata is persisted and BM25-searchable, while observation vectors remain text-only.',
+            'Baton does not fetch this URL: attachment metadata is persisted and BM25-searchable, while observation vectors remain text-only.',
           ),
           mimeType: z.string().optional(),
           name: z.string().optional(),
@@ -113,7 +113,7 @@ export function registerMemoryTools(server: McpServer, ctx: ServerToolContext): 
       const reader = ctx.getObservationReader();
       if (effectiveVisibility !== 'project' && !ctx.currentAgentId) {
         return {
-          content: [{ type: 'text' as const, text: 'Personal or team memory requires memorix_session_start with joinTeam=true so Memorix can bind an owner.' }],
+          content: [{ type: 'text' as const, text: 'Personal or team memory requires baton_session_start with joinTeam=true so Baton can bind an owner.' }],
           isError: true as const,
         };
       }
@@ -147,8 +147,8 @@ export function registerMemoryTools(server: McpServer, ctx: ServerToolContext): 
       // - active: Formation decides storage behavior (new/merge/evolve/discard) [default]
       // - fallback: old compact decides (safe rollback)
       let formationMode: 'shadow' | 'active' | 'fallback' = 'active';
-      if (process.env.MEMORIX_FORMATION_MODE) {
-        formationMode = process.env.MEMORIX_FORMATION_MODE as typeof formationMode;
+      if (process.env.BATON_FORMATION_MODE) {
+        formationMode = process.env.BATON_FORMATION_MODE as typeof formationMode;
       } else {
         try {
           const { getBehaviorConfig } = await import('../../config/behavior.js');
@@ -242,10 +242,10 @@ export function registerMemoryTools(server: McpServer, ctx: ServerToolContext): 
           const elapsedMs = Date.now() - formationStartTime;
           const stageSummary = formatFormationStageDurations(completedFormationStages);
           console.error(
-            `[memorix] Formation ${isTimeout ? 'timed out' : 'failed'} in memorix_store after ${elapsedMs}ms/${FORMATION_TIMEOUT_MS}ms at stage ${currentFormationStage}${stageSummary ? ` | completed: ${stageSummary}` : ''}`,
+            `[baton] Formation ${isTimeout ? 'timed out' : 'failed'} in baton_store after ${elapsedMs}ms/${FORMATION_TIMEOUT_MS}ms at stage ${currentFormationStage}${stageSummary ? ` | completed: ${stageSummary}` : ''}`,
           );
           if (!isTimeout && formationErr instanceof Error) {
-            console.error(`[memorix] Formation error: ${formationErr.message}`);
+            console.error(`[baton] Formation error: ${formationErr.message}`);
           }
           formationNote = `\n[WARN] Formation ${isTimeout ? 'timed out' : 'failed'} — storing base observation without enrichment`;
         }
@@ -545,7 +545,7 @@ export function registerMemoryTools(server: McpServer, ctx: ServerToolContext): 
             } catch { /* maintenance is optional; the record already qualified */ }
           }
           longTermNote = autoQualified
-            ? `\nLong-term memory: ${promoted.memory.id} (${promoted.memory.kind}/${promoted.memory.scope}, auto-qualified) and now enters briefs as durable context. Audit with \`memorix memory long-term list\`.`
+            ? `\nLong-term memory: ${promoted.memory.id} (${promoted.memory.kind}/${promoted.memory.scope}, auto-qualified) and now enters briefs as durable context. Audit with \`baton memory long-term list\`.`
             : `\nLong-term candidate: ${promoted.memory.id} (${promoted.memory.kind}/${promoted.memory.scope}). Review it with the CLI before it is delivered automatically.`;
         } catch (longTermError) {
           longTermNote = `\n[WARN] Observation stored, but long-term candidate was not created: ${longTermError instanceof Error ? longTermError.message : 'unknown error'}`;
@@ -689,17 +689,17 @@ export function registerMemoryTools(server: McpServer, ctx: ServerToolContext): 
   );
 
   /**
-   * memorix_suggest_topic_key — Suggest a stable topic key for upserts
+   * baton_suggest_topic_key — Suggest a stable topic key for upserts
    *
-   * Use before memorix_store when you want evolving topics to upsert
+   * Use before baton_store when you want evolving topics to upsert
    * into a single observation instead of creating duplicates.
    */
   server.registerTool(
-    'memorix_suggest_topic_key',
+    'baton_suggest_topic_key',
     {
       title: 'Suggest Topic Key',
       description:
-        'Suggest a stable topic_key for memory upserts. Use this before memorix_store when you want evolving topics ' +
+        'Suggest a stable topic_key for memory upserts. Use this before baton_store when you want evolving topics ' +
         '(like architecture decisions, config docs) to update a single observation over time instead of creating duplicates. ' +
         'Returns a key like "architecture/auth-model" or "bug/timeout-in-api-gateway".',
       inputSchema: {
@@ -719,19 +719,19 @@ export function registerMemoryTools(server: McpServer, ctx: ServerToolContext): 
       }
 
       return {
-        content: [{ type: 'text' as const, text: `Suggested topic_key: \`${key}\`\n\nUse this as the \`topicKey\` parameter in \`memorix_store\` to enable upsert behavior.` }],
+        content: [{ type: 'text' as const, text: `Suggested topic_key: \`${key}\`\n\nUse this as the \`topicKey\` parameter in \`baton_store\` to enable upsert behavior.` }],
       };
     },
   );
 
   /**
-   * memorix_resolve — Mark memories as resolved/completed
+   * baton_resolve — Mark memories as resolved/completed
    *
    * Prevents resolved memories from polluting future searches.
    * Default search only returns 'active' memories.
    */
   server.registerTool(
-    'memorix_resolve',
+    'baton_resolve',
     {
       title: 'Resolve Memories',
       description:
@@ -767,7 +767,7 @@ export function registerMemoryTools(server: McpServer, ctx: ServerToolContext): 
         parts.push(`[WARN] Skipped ${deniedCount} observation(s) outside this session's write scope.`);
       }
       parts.push('\nResolved memories are hidden from default search. Use status="all" to include them.');
-      parts.push('[STATS] Run `memorix_retention` with `action: "report"` to check remaining cleanup status.');
+      parts.push('[STATS] Run `baton_retention` with `action: "report"` to check remaining cleanup status.');
 
       return {
         content: [{ type: 'text' as const, text: parts.join('\n') }],
@@ -776,7 +776,7 @@ export function registerMemoryTools(server: McpServer, ctx: ServerToolContext): 
   );
 
   /**
-   * memorix_store_reasoning — System 2 Reasoning Memory
+   * baton_store_reasoning — System 2 Reasoning Memory
    *
    * Store WHY a decision was made, what alternatives were considered,
    * and what the expected outcome is. This is the "reasoning trace" —
@@ -785,7 +785,7 @@ export function registerMemoryTools(server: McpServer, ctx: ServerToolContext): 
    * Inspired by Cipher's dual-memory (Knowledge + Reflection).
    */
   server.registerTool(
-    'memorix_store_reasoning',
+    'baton_store_reasoning',
     {
       title: 'Store Reasoning Trace',
       description:
@@ -885,19 +885,19 @@ export function registerMemoryTools(server: McpServer, ctx: ServerToolContext): 
   );
 
   /**
-   * memorix_deduplicate — LLM-powered batch deduplication
+   * baton_deduplicate — LLM-powered batch deduplication
    *
    * Scans active memories for duplicates/contradictions and auto-resolves them.
-   * Requires LLM to be configured (MEMORIX_LLM_API_KEY or OPENAI_API_KEY).
+   * Requires LLM to be configured (BATON_LLM_API_KEY or OPENAI_API_KEY).
    */
   server.registerTool(
-    'memorix_deduplicate',
+    'baton_deduplicate',
     {
       title: 'Deduplicate Memories',
       description:
         'Scan active memories for duplicates, contradictions, and outdated information using LLM analysis. ' +
         'Automatically resolves redundant memories. Requires LLM to be configured ' +
-        '(set MEMORIX_LLM_API_KEY or OPENAI_API_KEY environment variable). ' +
+        '(set BATON_LLM_API_KEY or OPENAI_API_KEY environment variable). ' +
         'Without LLM, falls back to basic similarity-based consolidation.',
       inputSchema: {
         query: z.string().optional().describe('Optional query to scope dedup to a topic (default: scan all)'),
@@ -920,8 +920,8 @@ export function registerMemoryTools(server: McpServer, ctx: ServerToolContext): 
         return {
           content: [{
             type: 'text' as const,
-            text: '[WARN] LLM not configured. Set MEMORIX_LLM_API_KEY or OPENAI_API_KEY to enable intelligent dedup.\n\n' +
-              'Tip: Use memorix_consolidate for basic similarity-based merging without LLM.',
+            text: '[WARN] LLM not configured. Set BATON_LLM_API_KEY or OPENAI_API_KEY to enable intelligent dedup.\n\n' +
+              'Tip: Use baton_consolidate for basic similarity-based merging without LLM.',
           }],
         };
       }
@@ -975,10 +975,10 @@ export function registerMemoryTools(server: McpServer, ctx: ServerToolContext): 
   // ============================================================
 
   /**
-   * memorix_consolidate — Merge similar observations to reduce bloat
+   * baton_consolidate — Merge similar observations to reduce bloat
    */
   server.registerTool(
-    'memorix_consolidate',
+    'baton_consolidate',
     {
       title: 'Consolidate Memories',
       description:

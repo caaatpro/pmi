@@ -9,7 +9,7 @@
  */
 
 import { components, create, insert, insertMultiple, search, remove, update, count, getByID, type AnyOrama } from '@orama/orama';
-import type { DocumentType, MemorixDocument, SearchOptions, IndexEntry, KnowledgeLayer, Observation, ObservationReader } from '../types.js';
+import type { DocumentType, BatonDocument, SearchOptions, IndexEntry, KnowledgeLayer, Observation, ObservationReader } from '../types.js';
 import { OBSERVATION_ICONS, type ObservationType } from '../types.js';
 import { canReadObservation } from '../memory/visibility.js';
 import {
@@ -207,7 +207,7 @@ async function shouldUsePersistentSearch(
 ): Promise<boolean> {
   const store = getOptionalObservationStore();
   if (!store?.hasLexicalIndex?.()) return false;
-  const rawThreshold = Number.parseInt(process.env.MEMORIX_ORAMA_HYDRATION_THRESHOLD ?? '', 10);
+  const rawThreshold = Number.parseInt(process.env.BATON_ORAMA_HYDRATION_THRESHOLD ?? '', 10);
   const threshold = Number.isSafeInteger(rawThreshold) && rawThreshold > 0 ? rawThreshold : 10_000;
   const ids = projectIds ?? (projectId ? [projectId] : null);
   if (ids) {
@@ -221,10 +221,10 @@ async function shouldUsePersistentSearch(
 const COMMAND_LOG_TITLE = /^(Ran:|Command:|Executed:)\s/i;
 // Soft demotion: titles containing shell-specific patterns get a score penalty.
 const COMMAND_STYLE_TITLE = /(\bfindstr\b|\bSelect-String\b|\bGet-Content\b|\bnpx\s+vitest\b|\bnpx\s+tsc\b|\b2>&1\b)/i;
-const COMMAND_LIKE_QUERY = /\b(git|npm|npx|pnpm|yarn|node|bash|powershell|curl|memorix)\b/i;
+const COMMAND_LIKE_QUERY = /\b(git|npm|npx|pnpm|yarn|node|bash|powershell|curl|baton)\b/i;
 // Stricter pattern: query IS a command (tool word at start, e.g. "git status", "npm install").
-// Does NOT match natural language like "why is memorix search slow".
-const COMMAND_INTENT_QUERY = /^\s*(git|npm|npx|pnpm|yarn|node|bash|powershell|curl|memorix)\s/i;
+// Does NOT match natural language like "why is baton search slow".
+const COMMAND_INTENT_QUERY = /^\s*(git|npm|npx|pnpm|yarn|node|bash|powershell|curl|baton)\s/i;
 // Natural language markers — if ANY of these appear in the query, it is NOT a pure command.
 // Covers: question words, problem descriptors, reasoning words.
 const NATURAL_LANGUAGE_MARKERS = /\b(why|how|what|where|when|does|did|is|are|was|will|can|should|would|slow|fast|fail|error|bug|broken|issue|problem|wrong|crash|fix|work|performance|cause|reason|explain|understand)\b/i;
@@ -241,13 +241,13 @@ function makeEntryKey(projectId: string | undefined, observationId: number): str
   return `${projectId ?? ''}::${observationId}`;
 }
 
-function rememberObservationDoc(doc: MemorixDocument): MemorixDocument {
+function rememberObservationDoc(doc: BatonDocument): BatonDocument {
   const publicDoc = { ...doc };
   delete publicDoc.embedding;
   return publicDoc;
 }
 
-function observationToSearchDocument(observation: Observation): MemorixDocument {
+function observationToSearchDocument(observation: Observation): BatonDocument {
   return {
     id: makeOramaObservationId(observation.projectId, observation.id),
     observationId: observation.id,
@@ -286,7 +286,7 @@ function observationToSearchDocument(observation: Observation): MemorixDocument 
 type SearchHitLike = {
   id: string;
   score: number;
-  document: MemorixDocument;
+  document: BatonDocument;
 };
 
 type SearchResultLike = {
@@ -360,7 +360,7 @@ async function searchPersistentSemantically(
 
     const lexical = await searchPersistentLexically(options, projectIds, limit);
     const store = getObservationStore();
-    const documents = new Map<string, MemorixDocument>();
+    const documents = new Map<string, BatonDocument>();
     const vectorDocumentKeys = new Map<number, string>();
     const addObservation = (observation: Observation): void => {
       const document = observationToSearchDocument(observation);
@@ -477,7 +477,7 @@ function classifyQueryTier(query: string): QueryTier {
   const words = query.trim().split(/\s+/);
   if (words.length <= 1 && query.length <= 20) return 'fast';
   // Command-intent queries: fast path ("git status", "npm install")
-  // NOT triggered by natural language mentioning a tool ("why is memorix search slow")
+  // NOT triggered by natural language mentioning a tool ("why is baton search slow")
   if (isCommandIntentQuery(query)) return 'fast';
   // Long multi-word queries: heavy path
   if (words.length >= 5) return 'heavy';
@@ -691,7 +691,7 @@ export async function batchGenerateEmbeddings(texts: string[]): Promise<(number[
     return results;
   } catch (error) {
     console.error(
-      `[memorix] Batch embedding failed, falling back to null vectors: ${error instanceof Error ? error.message : error}`,
+      `[baton] Batch embedding failed, falling back to null vectors: ${error instanceof Error ? error.message : error}`,
     );
     return texts.map(() => null);
   }
@@ -731,7 +731,7 @@ function observationEmbeddingText(observation: any): string {
   ].join(' ');
 }
 
-function documentEmbeddingText(document: Pick<MemorixDocument, 'title' | 'narrative' | 'facts'>): string {
+function documentEmbeddingText(document: Pick<BatonDocument, 'title' | 'narrative' | 'facts'>): string {
   return [document.title ?? '', document.narrative ?? '', document.facts ?? ''].join(' ');
 }
 
@@ -778,7 +778,7 @@ async function attachCachedVectors(
         });
       }
       const id = makeOramaObservationId(batch[index].projectId, batch[index].id);
-      const existing = getByID(database, id) as MemorixDocument | undefined;
+      const existing = getByID(database, id) as BatonDocument | undefined;
       if (!existing || documentEmbeddingText(existing) !== observationEmbeddingText(batch[index])) continue;
       try {
         await update(database, id, { ...existing, embedding: vector });
@@ -812,7 +812,7 @@ export async function hydrateIndex(
     const cachedVectors = deferCachedVectors || options.skipCachedVectors
       ? batchObservations.map(() => null)
       : await getCachedEmbeddings(batchObservations.map(observationEmbeddingText));
-    const batch: MemorixDocument[] = [];
+    const batch: BatonDocument[] = [];
     for (let index = 0; index < batchObservations.length; index++) {
       const obs = batchObservations[index];
       try {
@@ -907,7 +907,7 @@ export function getDeferredCachedVectorHydration(): Promise<void> | null {
 /** Return whether the current in-memory index already has a usable vector. */
 export function hasObservationVector(projectId: string, observationId: number): boolean {
   if (!db || !embeddingEnabled || embeddingDimensions === null) return false;
-  const document = getByID(db, makeOramaObservationId(projectId, observationId)) as MemorixDocument | undefined;
+  const document = getByID(db, makeOramaObservationId(projectId, observationId)) as BatonDocument | undefined;
   return Array.isArray(document?.embedding) &&
     document.embedding.length === embeddingDimensions &&
     document.embedding.every(Number.isFinite);
@@ -916,7 +916,7 @@ export function hasObservationVector(projectId: string, observationId: number): 
 /**
  * Insert an observation document into the store.
  */
-export async function insertObservation(doc: MemorixDocument): Promise<void> {
+export async function insertObservation(doc: BatonDocument): Promise<void> {
   const database = await getDb();
   await insert(database, doc);
   rememberObservationDoc(doc);
@@ -930,11 +930,11 @@ export async function insertObservation(doc: MemorixDocument): Promise<void> {
 export async function updateObservationMetadata(
   projectId: string,
   observationId: number,
-  patch: Partial<Pick<MemorixDocument, 'admissionState' | 'admissionReason' | 'visibility' | 'createdByAgentId' | 'sharedWithAgentIds'>>,
+  patch: Partial<Pick<BatonDocument, 'admissionState' | 'admissionReason' | 'visibility' | 'createdByAgentId' | 'sharedWithAgentIds'>>,
 ): Promise<boolean> {
   const database = await getDb();
   const id = makeOramaObservationId(projectId, observationId);
-  const existing = getByID(database, id) as MemorixDocument | undefined;
+  const existing = getByID(database, id) as BatonDocument | undefined;
   if (!existing) return false;
   const next = { ...existing, ...patch };
   await update(database, id, next);
@@ -958,7 +958,7 @@ export async function removeObservation(oramaId: string): Promise<void> {
  */
 export async function searchObservations(options: SearchOptions): Promise<IndexEntry[]> {
   const searchStartedAt = Date.now();
-  const perf = !!process.env.MEMORIX_PERF;
+  const perf = !!process.env.BATON_PERF;
   const t0 = perf ? performance.now() : 0;
   const mark = (label: string) => { if (perf) { const now = performance.now(); process.stderr.write(`  [search-perf] ${label}: ${(now - t0).toFixed(0)}ms\n`); } };
   const modeKey = options.projectId ?? SEARCH_MODE_DEFAULT_KEY;
@@ -1083,7 +1083,7 @@ export async function searchObservations(options: SearchOptions): Promise<IndexE
             `fulltext (embedding dimension mismatch: provider ${provider.dimensions}d vs index ${activeVectorDimensions}d)`,
           );
           console.error(
-            `[memorix] Embedding provider dimension mismatch (${provider.dimensions}d provider vs ${activeVectorDimensions}d index); using fulltext search`,
+            `[baton] Embedding provider dimension mismatch (${provider.dimensions}d provider vs ${activeVectorDimensions}d index); using fulltext search`,
           );
         } else {
           // Embedding timeout: 15 seconds
@@ -1134,7 +1134,7 @@ export async function searchObservations(options: SearchOptions): Promise<IndexE
       fallbackUsed = true;
       fallbackReason = 'embedding failed or timed out; lexical search used';
       rememberSearchMode(modeKey, 'fulltext (embedding unavailable)');
-      console.error('[memorix] Embedding failed or timed out, falling back to fulltext search');
+      console.error('[baton] Embedding failed or timed out, falling back to fulltext search');
     }
   }
 
@@ -1178,7 +1178,7 @@ export async function searchObservations(options: SearchOptions): Promise<IndexE
     } catch (error) {
       if (queryVector && isVectorDimensionMismatchError(error)) {
         rememberSearchMode(modeKey, 'fulltext (embedding dimension mismatch)');
-        console.error('[memorix] Vector search dimension mismatch detected, retrying without embeddings');
+        console.error('[baton] Vector search dimension mismatch detected, retrying without embeddings');
         results = await search(database, stripVectorSearchParams(searchParams));
       } else {
         throw error;
@@ -1220,16 +1220,16 @@ export async function searchObservations(options: SearchOptions): Promise<IndexE
     // the `where` clause is present, so this keeps project isolation deterministic.
     .filter((hit) => {
       if (!projectIds) return true;
-      const doc = hit.document as unknown as MemorixDocument;
+      const doc = hit.document as unknown as BatonDocument;
       return projectIds.includes(doc.projectId);
     })
     // Visibility is enforced before scoring/ranking so private records cannot
     // affect result order, fallback behavior, or downstream detail reads.
-    .filter((hit) => canReadObservation(hit.document as unknown as MemorixDocument, options.reader, projectIds ?? undefined))
+    .filter((hit) => canReadObservation(hit.document as unknown as BatonDocument, options.reader, projectIds ?? undefined))
     // Post-filter by status (active/resolved/archived)
     .filter((hit) => {
       if (statusFilter === 'all') return true;
-      const doc = hit.document as unknown as MemorixDocument;
+      const doc = hit.document as unknown as BatonDocument;
       return (doc.status || 'active') === statusFilter;
     })
     // Post-filter: exclude probe observations from default search.
@@ -1237,11 +1237,11 @@ export async function searchObservations(options: SearchOptions): Promise<IndexE
     // Only included when the caller explicitly requests type: 'probe'.
     .filter((hit) => {
       if (options.type === 'probe') return true;
-      const doc = hit.document as unknown as MemorixDocument;
+      const doc = hit.document as unknown as BatonDocument;
       return doc.type !== 'probe';
     })
     .map((hit) => {
-      const doc = hit.document as unknown as MemorixDocument;
+      const doc = hit.document as unknown as BatonDocument;
       const obsType = doc.type as ObservationType;
       // Time decay: newer memories get higher boost
       const ageMs = Date.now() - new Date(doc.createdAt).getTime();
@@ -1356,7 +1356,7 @@ export async function searchObservations(options: SearchOptions): Promise<IndexE
 
   // ─── Project Affinity Scoring (mcp-memory-service style) ───
   // Penalize memories that don't reference the current project to prevent
-  // cross-project pollution (e.g., discussing Memorix in a test project workspace)
+  // cross-project pollution (e.g., discussing Baton in a test project workspace)
   if (options.projectId && intermediate.length > 0) {
     const projectName = options.projectId.split('/').pop() ?? options.projectId;
     const affinityContext: AffinityContext = {
@@ -1368,7 +1368,7 @@ export async function searchObservations(options: SearchOptions): Promise<IndexE
     // Build a map of memory content for affinity calculation
     const memoryContentMap = new Map<number, MemoryContent>();
     for (const hit of results.hits) {
-      const doc = hit.document as unknown as MemorixDocument;
+      const doc = hit.document as unknown as BatonDocument;
       memoryContentMap.set(doc.observationId, {
         title: doc.title,
         narrative: doc.narrative,
@@ -1526,7 +1526,7 @@ export async function searchObservations(options: SearchOptions): Promise<IndexE
   if (httpGate || llmGateWithoutHttp) {
     const narrativeMap = new Map<string, string>();
     for (const hit of results.hits) {
-      const doc = hit.document as unknown as MemorixDocument;
+      const doc = hit.document as unknown as BatonDocument;
       narrativeMap.set(makeEntryKey(doc.projectId, doc.observationId), doc.narrative);
     }
     const RERANK_TOP_K = 5;
@@ -1538,7 +1538,7 @@ export async function searchObservations(options: SearchOptions): Promise<IndexE
       score: e.score,
       narrative: narrativeMap.get(makeEntryKey(e.projectId, e.id)),
     }));
-    const RERANK_TIMEOUT_MS = parseRerankTimeoutMs(process.env.MEMORIX_RERANK_TIMEOUT_MS);
+    const RERANK_TIMEOUT_MS = parseRerankTimeoutMs(process.env.BATON_RERANK_TIMEOUT_MS);
     const candidateMap = new Map(candidates.map((candidate, index) => [candidate.id, toRerank[index]]));
     const { isNeuralRerankEnabled, neuralRerankCandidates } = await import('../rerank/index.js');
     const httpConfigured = isNeuralRerankEnabled();
@@ -1561,7 +1561,7 @@ export async function searchObservations(options: SearchOptions): Promise<IndexE
           }
         }
       } catch {
-        console.error('[memorix] neural rerank failed or timed out; keeping original order');
+        console.error('[baton] neural rerank failed or timed out; keeping original order');
       }
     } else if (!httpConfigured && llmGateWithoutHttp) {
       try {
@@ -1582,7 +1582,7 @@ export async function searchObservations(options: SearchOptions): Promise<IndexE
           }
         }
       } catch {
-        console.error('[memorix] LLM rerank failed or timed out, using original order');
+        console.error('[baton] LLM rerank failed or timed out, using original order');
       }
     } else {
       mark(`rerank(skipped,tier=${tier})`);
@@ -1596,7 +1596,7 @@ export async function searchObservations(options: SearchOptions): Promise<IndexE
   const candidateCount = entries.length;
 
   for (const hit of results.hits) {
-    const doc = hit.document as unknown as MemorixDocument;
+    const doc = hit.document as unknown as BatonDocument;
     if (canReadObservation(doc, options.reader, projectIds ?? undefined)) rememberObservationDoc(doc);
   }
 
@@ -1606,7 +1606,7 @@ export async function searchObservations(options: SearchOptions): Promise<IndexE
     const queryTokens = queryLower.split(/\s+/).filter(t => t.length > 1);
     const entryMap = new Map(entries.map(e => [makeEntryKey(e.projectId, e.id), e]));
     for (const hit of results.hits) {
-      const doc = hit.document as unknown as MemorixDocument;
+      const doc = hit.document as unknown as BatonDocument;
       const entry = entryMap.get(makeEntryKey(doc.projectId, doc.observationId));
       if (!entry) continue;
 
@@ -1626,9 +1626,9 @@ export async function searchObservations(options: SearchOptions): Promise<IndexE
       // This surfaces WHY this result is notable beyond the query match.
       const isGitEvidence = doc.sourceDetail === 'git-ingest' || doc.source === 'git';
       const isSynthesized = doc.sourceDetail === 'explicit' &&
-        // Note: relatedCommits not in MemorixDocument; flag is best-effort from sourceDetail alone.
+        // Note: relatedCommits not in BatonDocument; flag is best-effort from sourceDetail alone.
         // Full synthesized detection is handled in the detail/timeline path where we have the full obs.
-        false; // reserved — set explicitly if MemorixDocument gains relatedCommits in future
+        false; // reserved — set explicitly if BatonDocument gains relatedCommits in future
       const isCore = doc.valueCategory === 'core';
 
       if (isGitEvidence) {
@@ -1666,7 +1666,7 @@ export async function searchObservations(options: SearchOptions): Promise<IndexE
   if (options.trackAccess !== false) {
     const returnedKeys = new Set(entries.map((entry) => makeEntryKey(entry.projectId, entry.id)));
     const hitDocs = results.hits
-      .map((hit) => ({ id: hit.id, doc: hit.document as unknown as MemorixDocument }))
+      .map((hit) => ({ id: hit.id, doc: hit.document as unknown as BatonDocument }))
       .filter(({ doc }) => returnedKeys.has(makeEntryKey(doc.projectId, doc.observationId)));
     recordAccessBatch(hitDocs).catch(() => {});
   }
@@ -1682,11 +1682,11 @@ export async function searchObservations(options: SearchOptions): Promise<IndexE
 export async function getObservationsByIds(
   ids: number[],
   projectId?: string,
-): Promise<MemorixDocument[]> {
+): Promise<BatonDocument[]> {
   const database = await getDb();
 
   // Search for each ID individually and collect results
-  const results: MemorixDocument[] = [];
+  const results: BatonDocument[] = [];
 
   for (const id of ids) {
     const searchResult = await search(database, {
@@ -1700,7 +1700,7 @@ export async function getObservationsByIds(
     });
 
     if (searchResult.hits.length > 0) {
-      results.push(rememberObservationDoc(searchResult.hits[0].document as unknown as MemorixDocument));
+      results.push(rememberObservationDoc(searchResult.hits[0].document as unknown as BatonDocument));
     }
   }
 
@@ -1778,7 +1778,7 @@ export async function getTimeline(
  * Increments accessCount and updates lastAccessedAt.
  * Inspired by mcp-memory-service's record_access() pattern.
  */
-async function recordAccessBatch(hitDocs: { id: string; doc: MemorixDocument }[]): Promise<void> {
+async function recordAccessBatch(hitDocs: { id: string; doc: BatonDocument }[]): Promise<void> {
   const database = await getDb();
   const now = new Date().toISOString();
 

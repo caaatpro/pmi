@@ -1,5 +1,5 @@
 /**
- * PMI context engine (docs/PMI/CONTEXT_ENGINE.md §2, §4, §5): builds the
+ * Baton context engine (docs/baton/CONTEXT_ENGINE.md §2, §4, §5): builds the
  * smallest sufficient context for a task from project memory.
  *
  *   L1 — project overview: purpose, architecture, conventions, current state,

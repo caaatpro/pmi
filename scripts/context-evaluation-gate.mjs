@@ -42,7 +42,7 @@ run(npmCommand, [
   'tests/evaluation/context-task-runtime.test.ts',
 ], {
   env: {
-    MEMORIX_CONTEXT_EVAL_RUNTIME: '1',
-    MEMORIX_LARGE_STORE_EVIDENCE: JSON.stringify(report),
+    BATON_CONTEXT_EVAL_RUNTIME: '1',
+    BATON_LARGE_STORE_EVIDENCE: JSON.stringify(report),
   },
 });

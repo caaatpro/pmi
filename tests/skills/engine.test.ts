@@ -15,7 +15,7 @@ import { tmpdir } from 'node:os';
 import { SkillsEngine } from '../../src/skills/engine.js';
 
 function createTmpDir(): string {
-    const dir = join(tmpdir(), `memorix-skills-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    const dir = join(tmpdir(), `baton-skills-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     mkdirSync(dir, { recursive: true });
     return dir;
 }
@@ -227,7 +227,7 @@ describe('SkillsEngine', () => {
         it('should ignore low-signal command traces when generating skills', () => {
             const obs = [
                 { id: 1, entityName: 'npm', type: 'what-changed', title: 'Ran: npx vitest run', narrative: 'Command: npx vitest run tests/skills/engine.test.ts 2>&1 | Select-String vitest', source: 'agent' as const },
-                { id: 2, entityName: 'mcp_memorix_memorix_search', type: 'discovery', title: 'Ran: memorix_search', narrative: 'Command: memorix_search query=skills | Get-Content output.txt', source: 'agent' as const },
+                { id: 2, entityName: 'mcp_baton_baton_search', type: 'discovery', title: 'Ran: baton_search', narrative: 'Command: baton_search query=skills | Get-Content output.txt', source: 'agent' as const },
                 { id: 3, entityName: 'gh', type: 'what-changed', title: 'Ran: gh pr view', narrative: 'Command: gh pr view 17 && git status', source: 'manual' as const },
                 { id: 4, entityName: 'auth-module', type: 'gotcha', title: 'JWT expiry trap', narrative: 'Tokens expire silently', facts: ['Default TTL: 60s'], source: 'agent' as const },
                 { id: 5, entityName: 'auth-module', type: 'decision', title: 'Use refresh rotation', narrative: 'Reduces replay risk', source: 'agent' as const },
@@ -239,7 +239,7 @@ describe('SkillsEngine', () => {
             expect(skills).toHaveLength(1);
             expect(skills[0].name).toBe('auth-module');
             expect(skills[0].content).not.toContain('Ran: npx vitest run');
-            expect(skills[0].content).not.toContain('memorix_search');
+            expect(skills[0].content).not.toContain('baton_search');
             expect(skills[0].content).not.toContain('gh pr view');
         });
 

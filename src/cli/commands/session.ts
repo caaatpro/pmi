@@ -20,7 +20,7 @@ function splitList(value: unknown): string[] | undefined {
 function currentSessionId(store: LocalSessionStore, projectId: string, explicit: unknown): string {
   if (typeof explicit === 'string' && explicit) return explicit;
   const [live] = store.list({ projectId, statuses: LIVE_STATUSES, deviceOnly: true });
-  if (!live) throw new Error('no active PMI session on this device for this project; pass --sessionId or run `pmi session start`');
+  if (!live) throw new Error('no active Baton session on this device for this project; pass --sessionId or run `baton session start`');
   return live.id;
 }
 
@@ -40,23 +40,23 @@ export default defineCommand({
     sessionId: { type: 'string', description: 'Custom session ID (optional)' },
     summary: { type: 'string', description: 'Structured session summary for session end' },
     limit: { type: 'string', description: 'How many recent sessions to include' },
-    task: { type: 'string', description: 'PMI: what this session is doing' },
-    objective: { type: 'string', description: 'PMI: when the task counts as done' },
-    model: { type: 'string', description: 'PMI: model used by the agent (e.g. gpt-5, claude-opus)' },
-    modelProvider: { type: 'string', description: 'PMI: model provider (e.g. openai, anthropic)' },
-    done: { type: 'string', description: 'PMI: completed steps, separated by ";"' },
-    pending: { type: 'string', description: 'PMI: pending steps, separated by ";"' },
-    next: { type: 'string', description: 'PMI: the single next action' },
-    progress: { type: 'string', description: 'PMI: progress summary' },
-    percent: { type: 'string', description: 'PMI: progress percent' },
-    problem: { type: 'string', description: 'PMI: open problems, separated by ";"' },
-    to: { type: 'string', description: 'PMI handoff: reserve the session for this user (email)' },
-    failed: { type: 'boolean', description: 'PMI finish: mark the session failed' },
-    force: { type: 'boolean', description: 'PMI resume: take over a live session (maintainer)' },
-    all: { type: 'boolean', description: 'PMI list: every status, not only resumable ones' },
-    worktree: { type: 'string', description: 'PMI resume: restore the working copy into this new worktree path' },
-    'in-place': { type: 'boolean', description: 'PMI resume: restore into this working copy (clean, same HEAD only)' },
-    'no-restore': { type: 'boolean', description: 'PMI resume: take over the session without restoring files' },
+    task: { type: 'string', description: 'Baton: what this session is doing' },
+    objective: { type: 'string', description: 'Baton: when the task counts as done' },
+    model: { type: 'string', description: 'Baton: model used by the agent (e.g. gpt-5, claude-opus)' },
+    modelProvider: { type: 'string', description: 'Baton: model provider (e.g. openai, anthropic)' },
+    done: { type: 'string', description: 'Baton: completed steps, separated by ";"' },
+    pending: { type: 'string', description: 'Baton: pending steps, separated by ";"' },
+    next: { type: 'string', description: 'Baton: the single next action' },
+    progress: { type: 'string', description: 'Baton: progress summary' },
+    percent: { type: 'string', description: 'Baton: progress percent' },
+    problem: { type: 'string', description: 'Baton: open problems, separated by ";"' },
+    to: { type: 'string', description: 'Baton handoff: reserve the session for this user (email)' },
+    failed: { type: 'boolean', description: 'Baton finish: mark the session failed' },
+    force: { type: 'boolean', description: 'Baton resume: take over a live session (maintainer)' },
+    all: { type: 'boolean', description: 'Baton list: every status, not only resumable ones' },
+    worktree: { type: 'string', description: 'Baton resume: restore the working copy into this new worktree path' },
+    'in-place': { type: 'boolean', description: 'Baton resume: restore into this working copy (clean, same HEAD only)' },
+    'no-restore': { type: 'boolean', description: 'Baton resume: take over the session without restoring files' },
     json: { type: 'boolean', description: 'Emit machine-readable JSON output' },
   },
   run: async ({ args }) => {
@@ -75,7 +75,7 @@ export default defineCommand({
             return;
           }
           if (args.use && !args.agent && !args.agentType) {
-            emitError('use requires --agent or --agentType so Memorix can activate a coordination identity.', asJson);
+            emitError('use requires --agent or --agentType so Baton can activate a coordination identity.', asJson);
             return;
           }
           const shouldJoinTeam = !!args.joinTeam;
@@ -111,7 +111,7 @@ export default defineCommand({
             agent: args.agent as string | undefined,
             reader: contextReader,
           });
-          const pmiSession = await startPmiSession(dataDir, project, result.session.id, args);
+          const batonSession = await startBatonSession(dataDir, project, result.session.id, args);
 
           let identityActivated = false;
           if (args.use && agentRecord) {
@@ -146,7 +146,7 @@ export default defineCommand({
           const payload = {
             project,
             session: result.session,
-            pmi: pmiSession,
+            baton: batonSession,
             agent: agentRecord
               ? {
                   agentId: agentRecord.agent_id,
@@ -186,10 +186,10 @@ export default defineCommand({
             agentRecord && rescuedAgentIds.length > 0
               ? `Marked ${rescuedAgentIds.length} inactive agent(s) as left`
               : '',
-            pmiSession.resumable.length
-              ? `Resumable sessions in this project: ${pmiSession.resumable.map((item) => `${item.id} (${item.task || 'no task'})`).join(', ')} — continue one with: pmi session resume <id>`
+            batonSession.resumable.length
+              ? `Resumable sessions in this project: ${batonSession.resumable.map((item) => `${item.id} (${item.task || 'no task'})`).join(', ')} — continue one with: baton session resume <id>`
               : '',
-            pmiSession.daemonPid ? `PMI daemon: checkpoints run automatically (pid ${pmiSession.daemonPid})` : '',
+            batonSession.daemonPid ? `Baton daemon: checkpoints run automatically (pid ${batonSession.daemonPid})` : '',
             '',
             result.previousContext || 'No previous session context found.',
           ].filter(Boolean);
@@ -233,7 +233,7 @@ export default defineCommand({
           if (action === 'resume') {
             const sessionId = (args._ as string[])[1] ?? (args.sessionId as string | undefined);
             if (!sessionId) {
-              emitError('usage: pmi session resume <session-id> [--agent codex --model gpt-5] [--force]', asJson);
+              emitError('usage: baton session resume <session-id> [--agent codex --model gpt-5] [--force]', asJson);
               return;
             }
             const { pkg, local, restore, restoreError } = await service.resumeSession(store, {
@@ -263,9 +263,9 @@ export default defineCommand({
               restore
                 ? `${renderRestore(restore)}\nContinue in: ${restore.target}`
                 : restoreError
-                  ? `Working copy NOT restored: ${restoreError}\nRetry with: pmi workspace restore ${pkg.snapshot?.id} [--worktree <path>]`
+                  ? `Working copy NOT restored: ${restoreError}\nRetry with: baton workspace restore ${pkg.snapshot?.id} [--worktree <path>]`
                   : pkg.snapshot
-                    ? `Working copy not restored (--no-restore). Restore later with: pmi workspace restore ${pkg.snapshot.id}`
+                    ? `Working copy not restored (--no-restore). Restore later with: baton workspace restore ${pkg.snapshot.id}`
                     : 'No uncommitted work to restore: the session\'s changes are in git (check out the branch above).',
             ].join('\n');
             emitResult({ project: project.id, sessionId: local.id, ...pkg, restore: restore ?? null, restoreError: restoreError ?? null }, text, asJson);
@@ -311,7 +311,7 @@ export default defineCommand({
             emitResult(
               { sessionId, checkpoint: { id: result.checkpoint.id, seq: result.checkpoint.seq }, brief: result.brief, delivered, flush },
               [result.brief, '', delivered
-                ? `Handed off ${sessionId}. Continue elsewhere with: pmi session resume ${sessionId}`
+                ? `Handed off ${sessionId}. Continue elsewhere with: baton session resume ${sessionId}`
                 : flush.offline
                   ? 'Saved locally; the handoff completes on the next successful sync (server unreachable).'
                   : `The server refused the handoff: ${flush.rejected.map((item) => item.error).join('; ')}`].join('\n'),
@@ -333,17 +333,17 @@ export default defineCommand({
         case 'end': {
           const sessionId = args.sessionId as string | undefined;
           if (!sessionId) {
-            emitError('sessionId is required for "memorix session end"', asJson);
+            emitError('sessionId is required for "baton session end"', asJson);
             return;
           }
           const session = await endSession(dataDir, sessionId, args.summary as string | undefined);
           const { LocalSessionStore } = await import('../../session/local-store.js');
-          const pmiStore = new LocalSessionStore(dataDir);
-          const live = pmiStore.get(sessionId);
+          const batonStore = new LocalSessionStore(dataDir);
+          const live = batonStore.get(sessionId);
           if (live && LIVE_STATUSES.includes(live.status)) {
             const service = await import('../../session/service.js');
-            service.finishSession(pmiStore, sessionId, { summary: args.summary as string | undefined });
-            await service.flushOutbox(pmiStore);
+            service.finishSession(batonStore, sessionId, { summary: args.summary as string | undefined });
+            await service.flushOutbox(batonStore);
           }
           if (!session) {
             emitError(`Session "${sessionId}" not found`, asJson);
@@ -378,21 +378,21 @@ export default defineCommand({
         }
 
         default:
-          console.log('Memorix Session Commands');
+          console.log('Baton Session Commands');
           console.log('');
           console.log('Usage:');
-          console.log('  memorix session start [--agent codex --agentType codex --instanceId abc] [--projectRoot <path>] [--joinTeam --use]');
-          console.log('  memorix session end --sessionId <id> [--summary "..."]');
-          console.log('  memorix session context [--limit 3]');
+          console.log('  baton session start [--agent codex --agentType codex --instanceId abc] [--projectRoot <path>] [--joinTeam --use]');
+          console.log('  baton session end --sessionId <id> [--summary "..."]');
+          console.log('  baton session context [--limit 3]');
           console.log('');
-          console.log('PMI session continuity:');
-          console.log('  pmi session start --agent codex [--model gpt-5] [--task "..."] [--objective "..."]');
-          console.log('  pmi session checkpoint [--done "a; b"] [--pending "c"] [--next "..."] [--progress "..."]');
-          console.log('  pmi session handoff [--next "..."] [--to user@example.com]');
-          console.log('  pmi session list [--all]');
-          console.log('  pmi session resume <session-id> [--agent codex --model gpt-5] [--worktree <path> | --in-place | --no-restore] [--force]');
-          console.log('  pmi session finish [--failed] [--summary "..."]');
-          console.log('  pmi session show [--sessionId <id>]');
+          console.log('Baton session continuity:');
+          console.log('  baton session start --agent codex [--model gpt-5] [--task "..."] [--objective "..."]');
+          console.log('  baton session checkpoint [--done "a; b"] [--pending "c"] [--next "..."] [--progress "..."]');
+          console.log('  baton session handoff [--next "..."] [--to user@example.com]');
+          console.log('  baton session list [--all]');
+          console.log('  baton session resume <session-id> [--agent codex --model gpt-5] [--worktree <path> | --in-place | --no-restore] [--force]');
+          console.log('  baton session finish [--failed] [--summary "..."]');
+          console.log('  baton session show [--sessionId <id>]');
           console.log('');
           console.log('Options:');
           console.log('  --json              Emit JSON output');
@@ -406,10 +406,10 @@ export default defineCommand({
 });
 
 /**
- * Give a Memorix session its PMI continuity state, start the daemon in
+ * Give a Baton session its Baton continuity state, start the daemon in
  * Connected mode, and report sessions waiting to be resumed.
  */
-async function startPmiSession(
+async function startBatonSession(
   dataDir: string,
   project: { id: string; rootPath: string },
   sessionId: string,

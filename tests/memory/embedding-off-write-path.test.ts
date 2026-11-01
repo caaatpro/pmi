@@ -1,7 +1,7 @@
 /**
  * Ordinary store must stay on the lexical path when embeddings are off.
  * generateEmbedding() used to run on every write and pulled config + provider
- * init into the hot path even for MEMORIX_EMBEDDING=off.
+ * init into the hot path even for BATON_EMBEDDING=off.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -23,9 +23,9 @@ describe('embedding-off write path', () => {
   let previousEmbedding: string | undefined;
 
   beforeEach(async () => {
-    sandbox = mkdtempSync(path.join(tmpdir(), 'memorix-embed-off-write-'));
-    previousEmbedding = process.env.MEMORIX_EMBEDDING;
-    process.env.MEMORIX_EMBEDDING = 'off';
+    sandbox = mkdtempSync(path.join(tmpdir(), 'baton-embed-off-write-'));
+    previousEmbedding = process.env.BATON_EMBEDDING;
+    process.env.BATON_EMBEDDING = 'off';
     resetConfigCache();
     resetProvider();
     resetObservationRuntime();
@@ -40,8 +40,8 @@ describe('embedding-off write path', () => {
     await oramaStore.resetDb();
     closeAllDatabases();
     resetProvider();
-    if (previousEmbedding === undefined) delete process.env.MEMORIX_EMBEDDING;
-    else process.env.MEMORIX_EMBEDDING = previousEmbedding;
+    if (previousEmbedding === undefined) delete process.env.BATON_EMBEDDING;
+    else process.env.BATON_EMBEDDING = previousEmbedding;
     resetConfigCache();
     if (sandbox) rmSync(sandbox, { recursive: true, force: true });
     sandbox = '';

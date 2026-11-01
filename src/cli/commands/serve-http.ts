@@ -1,16 +1,16 @@
 /**
- * memorix serve-http - Start MCP Server on Streamable HTTP transport (Control Plane mode)
+ * baton serve-http - Start MCP Server on Streamable HTTP transport (Control Plane mode)
  *
- * Starts the Memorix Control Plane: a single HTTP server that provides:
+ * Starts the Baton Control Plane: a single HTTP server that provides:
  *   - MCP endpoint at /mcp (shared, multi-session access)
  *   - Health and protocol diagnostics at /health and /protocol-diagnostics
  *
- * The team web UI lives in pmi-server (/ui/), not here.
+ * The team web UI lives in baton-server (/ui/), not here.
  *
  * Usage:
- *   memorix serve-http                    # default port 3211
- *   memorix serve-http --port 3211        # custom port
- *   memorix serve-http --cwd /path/to/project
+ *   baton serve-http                    # default port 3211
+ *   baton serve-http --port 3211        # custom port
+ *   baton serve-http --cwd /path/to/project
  *
  * IDE config example (Claude Code):
  *   { "transport": "http", "url": "http://localhost:3211/mcp" }
@@ -88,12 +88,12 @@ export function validateHttpBindSecurity(
   host: string,
   env: NodeJS.ProcessEnv = process.env,
 ): { requiresAuth: boolean; explicitlyUnauthenticated: boolean } {
-  const hasToken = Boolean(env.MEMORIX_HTTP_AUTH_TOKEN?.trim());
-  const explicitlyUnauthenticated = env.MEMORIX_HTTP_ALLOW_UNAUTHENTICATED_BIND === '1';
+  const hasToken = Boolean(env.BATON_HTTP_AUTH_TOKEN?.trim());
+  const explicitlyUnauthenticated = env.BATON_HTTP_ALLOW_UNAUTHENTICATED_BIND === '1';
   if (!isLoopbackHost(host) && !hasToken && !explicitlyUnauthenticated) {
     throw new Error(
-      `[memorix] Refusing unauthenticated non-loopback HTTP bind on ${host}. `
-      + 'Set MEMORIX_HTTP_AUTH_TOKEN or explicitly set MEMORIX_HTTP_ALLOW_UNAUTHENTICATED_BIND=1.',
+      `[baton] Refusing unauthenticated non-loopback HTTP bind on ${host}. `
+      + 'Set BATON_HTTP_AUTH_TOKEN or explicitly set BATON_HTTP_ALLOW_UNAUTHENTICATED_BIND=1.',
     );
   }
   return { requiresAuth: hasToken, explicitlyUnauthenticated };
@@ -186,7 +186,7 @@ export function resolveServeHttpDefaults(
     return { port: 3211 };
   }
   const transportNotice = configured.transport === 'stdio'
-    ? '[memorix] config server.transport = "stdio"; serve-http continues on HTTP (the explicit command wins).'
+    ? '[baton] config server.transport = "stdio"; serve-http continues on HTTP (the explicit command wins).'
     : undefined;
   return { port, transportNotice };
 }
@@ -194,7 +194,7 @@ export function resolveServeHttpDefaults(
 export default defineCommand({
   meta: {
     name: 'serve-http',
-    description: 'Start the shared Memorix MCP control plane over HTTP',
+    description: 'Start the shared Baton MCP control plane over HTTP',
   },
   args: {
     port: {
@@ -227,7 +227,7 @@ export default defineCommand({
     const { isInitializeRequest } = await import(
       '@modelcontextprotocol/sdk/types.js'
     );
-    const { createMemorixServer } = await import('../../server.js');
+    const { createBatonServer } = await import('../../server.js');
     const { createProjectBindingController } = await import('../../server/request-context.js');
     const { findGitInSubdirs } = await import('../../project/detector.js');
     const { writeFileSync, mkdirSync } = await import('node:fs');
@@ -252,17 +252,17 @@ export default defineCommand({
     const port = resolved.port;
     const host = args.host || '127.0.0.1';
     const bindSecurity = validateHttpBindSecurity(host);
-    const httpAuthToken = process.env.MEMORIX_HTTP_AUTH_TOKEN?.trim() || '';
+    const httpAuthToken = process.env.BATON_HTTP_AUTH_TOKEN?.trim() || '';
     if (bindSecurity.explicitlyUnauthenticated && !isLoopbackHost(host)) {
-      console.error(`[memorix] WARNING: HTTP control plane is unauthenticated on ${host}; keep it behind a private network or authenticated proxy.`);
+      console.error(`[baton] WARNING: HTTP control plane is unauthenticated on ${host}; keep it behind a private network or authenticated proxy.`);
     }
     if (bindSecurity.requiresAuth) {
-      console.error('[memorix] HTTP control plane authentication is enabled (Bearer token).');
+      console.error('[baton] HTTP control plane authentication is enabled (Bearer token).');
     }
-    const toolProfile = resolveToolProfile({ explicit: args.mode, envValue: process.env.MEMORIX_MODE, fallback: 'team' });
+    const toolProfile = resolveToolProfile({ explicit: args.mode, envValue: process.env.BATON_MODE, fallback: 'team' });
 
-    // Priority: explicit --cwd arg > MEMORIX_PROJECT_ROOT env > process.cwd().
-    // $HOME is never a project root; inherit last-project-root instead of creating ~/memorix.db.
+    // Priority: explicit --cwd arg > BATON_PROJECT_ROOT env > process.cwd().
+    // $HOME is never a project root; inherit last-project-root instead of creating ~/baton.db.
     let safeCwd: string;
     try { safeCwd = process.cwd(); } catch { safeCwd = homedir(); }
     const { resolveServeProject } = await import('./serve-shared.js');
@@ -272,7 +272,7 @@ export default defineCommand({
     const serveResolution = resolveServeProject(
       {
         cwdArg: args.cwd,
-        envProjectRoot: process.env.MEMORIX_PROJECT_ROOT,
+        envProjectRoot: process.env.BATON_PROJECT_ROOT,
         processCwd: safeCwd,
         homeDir: homedir(),
       },
@@ -286,19 +286,19 @@ export default defineCommand({
       writeLastProjectRoot(serveResolution.detectedProject.rootPath);
     }
 
-    console.error(`[memorix] HTTP transport starting on ${host}:${port}`);
-    console.error(`[memorix] Project root: ${projectRoot}`);
-    const sessionTimeoutMs = parseSessionTimeoutMs(process.env.MEMORIX_SESSION_TIMEOUT_MS);
-    const httpBodyLimitBytes = parseHttpBodyLimit(process.env.MEMORIX_HTTP_MAX_BODY_BYTES);
-    const maxHttpSessions = parseMaxHttpSessions(process.env.MEMORIX_MAX_HTTP_SESSIONS);
+    console.error(`[baton] HTTP transport starting on ${host}:${port}`);
+    console.error(`[baton] Project root: ${projectRoot}`);
+    const sessionTimeoutMs = parseSessionTimeoutMs(process.env.BATON_SESSION_TIMEOUT_MS);
+    const httpBodyLimitBytes = parseHttpBodyLimit(process.env.BATON_HTTP_MAX_BODY_BYTES);
+    const maxHttpSessions = parseMaxHttpSessions(process.env.BATON_MAX_HTTP_SESSIONS);
     const eventLoopDelay = monitorEventLoopDelay({ resolution: 20 });
     eventLoopDelay.enable();
     console.error(
       sessionTimeoutMs === 0
-        ? '[memorix] HTTP session idle timeout: disabled'
-        : `[memorix] HTTP session idle timeout: ${Math.round(sessionTimeoutMs / 60000)}min (${sessionTimeoutMs}ms)`,
+        ? '[baton] HTTP session idle timeout: disabled'
+        : `[baton] HTTP session idle timeout: ${Math.round(sessionTimeoutMs / 60000)}min (${sessionTimeoutMs}ms)`,
     );
-    console.error(`[memorix] HTTP session limit: ${maxHttpSessions}`);
+    console.error(`[baton] HTTP session limit: ${maxHttpSessions}`);
 
     // TeamStore is resolved per MCP session/project. Sharing one mutable
     // singleton here made project A's coordination state visible to project B
@@ -385,16 +385,16 @@ export default defineCommand({
       onerror: error => {
         const message = error instanceof Error ? error.message : String(error);
         const stack = error instanceof Error ? error.stack : undefined;
-        console.error(`[memorix] modern MCP request failed: ${message}${stack ? `\n${stack}` : ''}`);
+        console.error(`[baton] modern MCP request failed: ${message}${stack ? `\n${stack}` : ''}`);
       },
     });
     const modernNodeHandler = toNodeHandler(modernMcpHandler);
 
     type SessionState = {
       transport: InstanceType<typeof StreamableHTTPServerTransport>;
-      server: Awaited<ReturnType<typeof createMemorixServer>>['server'];
-      activateProjectRuntime: Awaited<ReturnType<typeof createMemorixServer>>['activateProjectRuntime'];
-      switchProject: Awaited<ReturnType<typeof createMemorixServer>>['switchProject'];
+      server: Awaited<ReturnType<typeof createBatonServer>>['server'];
+      activateProjectRuntime: Awaited<ReturnType<typeof createBatonServer>>['activateProjectRuntime'];
+      switchProject: Awaited<ReturnType<typeof createBatonServer>>['switchProject'];
       binding: import('../../server/request-context.js').ProjectBindingController;
       leases: Array<{ release: () => void }>;
     };
@@ -418,7 +418,7 @@ export default defineCommand({
 
     function maybeProbeSummary() {
       if (suppressedProbeCount > 0 && Date.now() - lastProbeSummaryTime > PROBE_SUMMARY_INTERVAL_MS) {
-        console.error(`[memorix] ${suppressedProbeCount} probe connection(s) suppressed (short-lived / unresolved)`);
+        console.error(`[baton] ${suppressedProbeCount} probe connection(s) suppressed (short-lived / unresolved)`);
         suppressedProbeCount = 0;
         lastProbeSummaryTime = Date.now();
       }
@@ -644,7 +644,7 @@ export default defineCommand({
           }));
           return;
         }
-        // Modern MCP has no protocol handshake or session id. Memorix may
+        // Modern MCP has no protocol handshake or session id. Baton may
         // offer its own optional project handle so a client can stop sending
         // an absolute root on every request. The handle is issued only for a
         // verified Git project and remains a transport-neutral extension.
@@ -719,7 +719,7 @@ export default defineCommand({
             // Defer log — only emit if session survives past SESSION_LOG_DELAY_MS
             const timer = setTimeout(() => {
               pendingLogTimers.delete(sid);
-              console.error(`[memorix] HTTP session active: ${sid.slice(0, 8)}…`);
+              console.error(`[baton] HTTP session active: ${sid.slice(0, 8)}…`);
             }, SESSION_LOG_DELAY_MS);
             pendingLogTimers.set(sid, timer);
           },
@@ -737,7 +737,7 @@ export default defineCommand({
               suppressedProbeCount++;
               maybeProbeSummary();
             } else if (sessions.has(sid)) {
-              console.error(`[memorix] HTTP session closed: ${sid.slice(0, 8)}…`);
+              console.error(`[baton] HTTP session closed: ${sid.slice(0, 8)}…`);
             }
             sessions.delete(sid);
             sessionLastActivity.delete(sid);
@@ -751,13 +751,13 @@ export default defineCommand({
         // in this transport-neutral binding object, ready for stateless MCP.
         const binding = createProjectBindingController(projectRoot);
         // Create a fresh MCP server for this session (with shared team state)
-        let server: Awaited<ReturnType<typeof createMemorixServer>>['server'];
-        let activateProjectRuntime: Awaited<ReturnType<typeof createMemorixServer>>['activateProjectRuntime'];
-        let handleTransportClose: Awaited<ReturnType<typeof createMemorixServer>>['handleTransportClose'];
-        let getProjectDataDirForSession: Awaited<ReturnType<typeof createMemorixServer>>['getProjectDataDir'];
-        let switchProject: Awaited<ReturnType<typeof createMemorixServer>>['switchProject'];
+        let server: Awaited<ReturnType<typeof createBatonServer>>['server'];
+        let activateProjectRuntime: Awaited<ReturnType<typeof createBatonServer>>['activateProjectRuntime'];
+        let handleTransportClose: Awaited<ReturnType<typeof createBatonServer>>['handleTransportClose'];
+        let getProjectDataDirForSession: Awaited<ReturnType<typeof createBatonServer>>['getProjectDataDir'];
+        let switchProject: Awaited<ReturnType<typeof createBatonServer>>['switchProject'];
         try {
-          ({ server, activateProjectRuntime, switchProject, handleTransportClose, getProjectDataDir: getProjectDataDirForSession } = await createMemorixServer(
+          ({ server, activateProjectRuntime, switchProject, handleTransportClose, getProjectDataDir: getProjectDataDirForSession } = await createBatonServer(
             projectRoot,
             undefined,
             undefined,
@@ -766,7 +766,7 @@ export default defineCommand({
               deferProjectInitUntilBound: true,
               // Same as stdio: initialize/tools/list must not hydrate 40k+
               // observations on the HTTP thread. /health and the LaunchAgent
-              // watchdog die if createMemorixServer blocks here.
+              // watchdog die if createBatonServer blocks here.
               deferProjectRuntimeInit: true,
               dashboardMode: 'control-plane',
               dashboardPort: port,
@@ -795,10 +795,10 @@ export default defineCommand({
 
         const tryRootsSwitch = async () => {
           try {
-            // If session was explicitly bound via projectRoot in memorix_session_start,
+            // If session was explicitly bound via projectRoot in baton_session_start,
             // do NOT allow roots notifications to override the binding.
             if (binding.isExplicit()) {
-              console.error(`[memorix] Session ${transport.sessionId?.slice(0, 8) ?? 'pending'} roots switch skipped: session was explicitly bound via projectRoot`);
+              console.error(`[baton] Session ${transport.sessionId?.slice(0, 8) ?? 'pending'} roots switch skipped: session was explicitly bound via projectRoot`);
               return;
             }
             const { roots } = await server.server.listRoots();
@@ -811,7 +811,7 @@ export default defineCommand({
 
               const switched = await switchProject(rootPath);
               if (switched) {
-                console.error(`[memorix] Session ${transport.sessionId?.slice(0, 8) ?? 'pending'} roots switched to: ${rootPath}`);
+                console.error(`[baton] Session ${transport.sessionId?.slice(0, 8) ?? 'pending'} roots switched to: ${rootPath}`);
                 return;
               }
 
@@ -819,7 +819,7 @@ export default defineCommand({
               if (subGit) {
                 const subSwitched = await switchProject(subGit);
                 if (subSwitched) {
-                  console.error(`[memorix] Session ${transport.sessionId?.slice(0, 8) ?? 'pending'} roots switched via subdir: ${subGit}`);
+                  console.error(`[baton] Session ${transport.sessionId?.slice(0, 8) ?? 'pending'} roots switched via subdir: ${subGit}`);
                   return;
                 }
               }
@@ -853,7 +853,7 @@ export default defineCommand({
         // roots/list as unexpected, which can break MCP tool injection.
         // Project binding relies on:
         //   1. RootsListChangedNotification (client-initiated, then we respond)
-        //   2. memorix_session_start({ projectRoot }) for explicit binding
+        //   2. baton_session_start({ projectRoot }) for explicit binding
         //   3. cwd-based detection as fallback (deferred-binding mode)
         return;
       }
@@ -1051,7 +1051,7 @@ export default defineCommand({
               res.end('Method not allowed');
           }
         } catch (err) {
-          console.error('[memorix] HTTP handler error:', err);
+          console.error('[baton] HTTP handler error:', err);
           if (!res.headersSent) {
             const status = err instanceof HttpPayloadTooLargeError ? err.statusCode : 500;
             const message = err instanceof Error ? err.message : 'Internal server error';
@@ -1089,18 +1089,18 @@ export default defineCommand({
       httpReadyAt = new Date().toISOString();
       // Write readiness file — background start polls this for out-of-band readiness detection
       try {
-        const memorixDir = (process.env.HOME || process.env.USERPROFILE || '').replace(/\\/g, '/') + '/.memorix';
-        mkdirSync(memorixDir, { recursive: true });
-        writeFileSync(memorixDir + '/background.ready', JSON.stringify({ pid: process.pid, port, readyAt: Date.now() }));
+        const batonDir = (process.env.HOME || process.env.USERPROFILE || '').replace(/\\/g, '/') + '/.baton';
+        mkdirSync(batonDir, { recursive: true });
+        writeFileSync(batonDir + '/background.ready', JSON.stringify({ pid: process.pid, port, readyAt: Date.now() }));
       } catch { /* best-effort — HTTP /health is the primary signal */ }
 
-      console.error(`[memorix] ═══════════════════════════════════════════════════`);
-      console.error(`[memorix] Mode: Control Plane (HTTP MCP, multi-session)`);
-      console.error(`[memorix] MCP Server listening on http://${host}:${port}/mcp`);
-      console.error(`[memorix] Port:          ${port}`);
-      console.error(`[memorix] ═══════════════════════════════════════════════════`);
-      console.error(`[memorix] Sessions at startup: ${sessions.size} (live count available at /health)`);
-      console.error(`[memorix] Agents can connect via: { "transport": "http", "url": "http://localhost:${port}/mcp" }`);
+      console.error(`[baton] ═══════════════════════════════════════════════════`);
+      console.error(`[baton] Mode: Control Plane (HTTP MCP, multi-session)`);
+      console.error(`[baton] MCP Server listening on http://${host}:${port}/mcp`);
+      console.error(`[baton] Port:          ${port}`);
+      console.error(`[baton] ═══════════════════════════════════════════════════`);
+      console.error(`[baton] Sessions at startup: ${sessions.size} (live count available at /health)`);
+      console.error(`[baton] Agents can connect via: { "transport": "http", "url": "http://localhost:${port}/mcp" }`);
         resolve();
       };
       if (typeof (httpServer as any).once === 'function') {
@@ -1115,7 +1115,7 @@ export default defineCommand({
     try {
       await listenPromise;
     } catch (error) {
-      console.error(`[memorix] HTTP server failed to listen on ${host}:${port}: ${error instanceof Error ? error.message : String(error)}`);
+      console.error(`[baton] HTTP server failed to listen on ${host}:${port}: ${error instanceof Error ? error.message : String(error)}`);
       controlPlaneBaseLease.release();
       await modernRuntimePool.close();
       eventLoopDelay.disable();
@@ -1125,7 +1125,7 @@ export default defineCommand({
     }
 
     // Session timeout GC — close sessions idle past the configured threshold.
-    // MEMORIX_SESSION_TIMEOUT_MS lets operators work around HTTP clients that do
+    // BATON_SESSION_TIMEOUT_MS lets operators work around HTTP clients that do
     // not transparently reinitialize after stale session IDs (notably Codex/rmcp).
     const SESSION_TIMEOUT_MS = sessionTimeoutMs;
     const gcInterval = setInterval(() => {
@@ -1139,7 +1139,7 @@ export default defineCommand({
       for (const [sid, state] of sessions) {
         const lastActive = sessionLastActivity.get(sid) ?? 0;
         if (now - lastActive > SESSION_TIMEOUT_MS) {
-          console.error(`[memorix] Session ${sid.slice(0, 8)}… timed out (idle ${Math.round((now - lastActive) / 60000)}min), closing`);
+          console.error(`[baton] Session ${sid.slice(0, 8)}… timed out (idle ${Math.round((now - lastActive) / 60000)}min), closing`);
           expiredSessions.set(sid, now + EXPIRED_SESSION_TTL_MS);
           state.transport.close().catch(() => {});
           sessions.delete(sid);
@@ -1155,23 +1155,23 @@ export default defineCommand({
       if (shutdownStarted) return;
       shutdownStarted = true;
       if (suppressedProbeCount > 0) {
-        console.error(`[memorix] ${suppressedProbeCount} probe connection(s) suppressed during this session`);
+        console.error(`[baton] ${suppressedProbeCount} probe connection(s) suppressed during this session`);
       }
-      console.error('[memorix] Shutting down HTTP server...');
+      console.error('[baton] Shutting down HTTP server...');
       controlPlaneMaintenanceWorker.stop();
       // Clean up readiness and heartbeat files
       try {
-        const memorixDir = (process.env.HOME || process.env.USERPROFILE || '').replace(/\\/g, '/') + '/.memorix';
+        const batonDir = (process.env.HOME || process.env.USERPROFILE || '').replace(/\\/g, '/') + '/.baton';
         const { unlinkSync } = await import('node:fs');
-        try { unlinkSync(memorixDir + '/background.ready'); } catch { /* ok */ }
-        try { unlinkSync(memorixDir + '/background.heartbeat'); } catch { /* ok */ }
+        try { unlinkSync(batonDir + '/background.ready'); } catch { /* ok */ }
+        try { unlinkSync(batonDir + '/background.heartbeat'); } catch { /* ok */ }
       } catch { /* best-effort */ }
       for (const [sid, state] of sessions) {
         try {
           await state.transport.close();
           sessions.delete(sid);
         } catch (err) {
-          console.error(`[memorix] Error closing session ${sid}:`, err);
+          console.error(`[baton] Error closing session ${sid}:`, err);
         }
       }
       await modernRuntimePool.close();
@@ -1198,18 +1198,18 @@ export default defineCommand({
     // Without these, any unhandled promise rejection in Node.js v20+ terminates the process
     // silently — the background control plane disappears with no log trail.
     process.on('unhandledRejection', (reason) => {
-      console.error('[memorix] Unhandled rejection in control plane:', reason);
+      console.error('[baton] Unhandled rejection in control plane:', reason);
     });
     process.on('uncaughtException', (err) => {
-      console.error('[memorix] Uncaught exception in control plane:', err);
+      console.error('[baton] Uncaught exception in control plane:', err);
       // Do NOT exit — log and continue. The process is a long-running service.
       // Only exit on truly catastrophic errors (OOM, stack overflow) which Node handles itself.
     });
 
     // Self-health watchdog: write heartbeat every 30s so stale detection works
     // even if the process is alive but the HTTP server has hung.
-    const _memorixDir = (process.env.HOME || process.env.USERPROFILE || '').replace(/\\/g, '/') + '/.memorix';
-    const heartbeatFile = _memorixDir + '/background.heartbeat';
+    const _batonDir = (process.env.HOME || process.env.USERPROFILE || '').replace(/\\/g, '/') + '/.baton';
+    const heartbeatFile = _batonDir + '/background.heartbeat';
     const heartbeatInterval = setInterval(() => {
       try {
         writeFileSync(heartbeatFile, JSON.stringify({
@@ -1223,7 +1223,7 @@ export default defineCommand({
     heartbeatInterval.unref();
     // Write initial heartbeat immediately
     try {
-      mkdirSync(_memorixDir, { recursive: true });
+      mkdirSync(_batonDir, { recursive: true });
       writeFileSync(heartbeatFile, JSON.stringify({
         pid: process.pid,
         port,

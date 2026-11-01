@@ -102,7 +102,7 @@ describe('isSignificantKnowledge', () => {
     });
 
     it('rejects tool result prefixes', () => {
-      expect(isSignificantKnowledge('memorix_search: found 5 results').isSignificant).toBe(false);
+      expect(isSignificantKnowledge('baton_search: found 5 results').isSignificant).toBe(false);
     });
   });
 
@@ -126,9 +126,9 @@ describe('isSignificantKnowledge', () => {
 });
 
 describe('isRetrievedResult', () => {
-  it('detects memorix search results', () => {
-    expect(isRetrievedResult('memorix_search: found 3 results')).toBe(true);
-    expect(isRetrievedResult('memorix_detail: observation #42')).toBe(true);
+  it('detects baton search results', () => {
+    expect(isRetrievedResult('baton_search: found 3 results')).toBe(true);
+    expect(isRetrievedResult('baton_detail: observation #42')).toBe(true);
   });
 
   it('detects observation references', () => {

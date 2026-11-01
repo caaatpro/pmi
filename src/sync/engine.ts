@@ -100,10 +100,10 @@ export async function runSync(
   };
 
   if (remote.namespace !== store.namespace()) {
-    throw new Error('[memorix] sync refused: store and remote namespaces do not match');
+    throw new Error('[baton] sync refused: store and remote namespaces do not match');
   }
   if (store.deviceId() !== opts.deviceId) {
-    throw new Error('[memorix] sync refused: requested device does not match the local replica identity');
+    throw new Error('[baton] sync refused: requested device does not match the local replica identity');
   }
   try {
     // Check the local replica before a remote init can create a branch, table,
@@ -120,7 +120,7 @@ export async function runSync(
         for (const pendingBatch of pending) {
           validateBatches([pendingBatch.batch], store.projectId(), remote.namespace, store.scope());
           if (pendingBatch.batch.deviceId !== opts.deviceId) {
-            throw new Error('[memorix] sync outbox rejected: batch belongs to another device');
+            throw new Error('[baton] sync outbox rejected: batch belongs to another device');
           }
           await remote.push(pendingBatch.batch);
           await store.saveState(pendingBatch.states);
@@ -190,14 +190,14 @@ export async function runSync(
             const local = state.get(entry.syncKey);
             const incomingHash = entry.row ? contentHash(entry.row) : '';
             if (entry.contentHash !== incomingHash) {
-              throw new Error('[memorix] sync batch rejected: content hash mismatch');
+              throw new Error('[baton] sync batch rejected: content hash mismatch');
             }
             if (
               local
               && compareVersion(entry.version, { revision: local.revision, writer: local.writer }) === 0
               && local.contentHash !== incomingHash
             ) {
-              throw new Error('[memorix] sync batch rejected: same version has different content');
+              throw new Error('[baton] sync batch rejected: same version has different content');
             }
             const { decision, action } = mergeOne({ incoming: entry, local, incomingHash });
             recordDecision(report, decision);
@@ -247,7 +247,7 @@ export async function runSync(
         pageToken = page.nextPageToken;
         if (!opts.dryRun && page.batches.length > 0) await store.saveCursor(cursor);
         if (page.batches.length === 0 && !page.nextPageToken) hasMore = false;
-        if (hasMore && !page.nextPageToken) throw new Error('[memorix] sync remote returned an unpaged continuation');
+        if (hasMore && !page.nextPageToken) throw new Error('[baton] sync remote returned an unpaged continuation');
       }
     }
     return report;
@@ -263,7 +263,7 @@ export async function runSync(
 export function validateBatches(batches: ChangeBatch[], projectId: string, namespace: string, scope: SyncScope = 'project'): void {
   for (const batch of batches) {
     if (batch.formatVersion !== 3 || batch.projectId !== projectId || batch.namespace !== namespace) {
-      throw new Error('[memorix] sync batch rejected: wrong format, project, or remote namespace');
+      throw new Error('[baton] sync batch rejected: wrong format, project, or remote namespace');
     }
     if (
       !isSafeSyncDeviceId(batch.deviceId)
@@ -272,7 +272,7 @@ export function validateBatches(batches: ChangeBatch[], projectId: string, names
       || !Array.isArray(batch.entries)
       || Buffer.byteLength(JSON.stringify(batch), 'utf8') > MAX_BATCH_BYTES
     ) {
-      throw new Error('[memorix] sync batch rejected: malformed envelope');
+      throw new Error('[baton] sync batch rejected: malformed envelope');
     }
     for (const entry of batch.entries) {
       if (
@@ -286,17 +286,17 @@ export function validateBatches(batches: ChangeBatch[], projectId: string, names
         || (entry.kind === 'tombstone' && (entry.row !== undefined || entry.contentHash !== ''))
         || (entry.kind === 'upsert' && (!/^[a-f0-9]{64}$/.test(entry.contentHash) || entry.row === undefined))
       ) {
-        throw new Error('[memorix] sync batch rejected: malformed change entry');
+        throw new Error('[baton] sync batch rejected: malformed change entry');
       }
       if (
         entry.kind === 'upsert'
         && (!Number.isSafeInteger(entry.row!.id) || entry.row!.id < 1 || !eligibleObservations([entry.row!], projectId, scope).eligible.length)
       ) {
-        throw new Error('[memorix] sync batch rejected: ineligible observation payload');
+        throw new Error('[baton] sync batch rejected: ineligible observation payload');
       }
       const incomingHash = entry.row ? contentHash(entry.row) : '';
       if (entry.contentHash !== incomingHash) {
-        throw new Error('[memorix] sync batch rejected: content hash mismatch');
+        throw new Error('[baton] sync batch rejected: content hash mismatch');
       }
     }
   }
@@ -308,7 +308,7 @@ function chunkChanges<T extends { entry: ChangeBatch['entries'][number] }>(chang
   let currentBytes = 2;
   for (const change of changes) {
     const bytes = Buffer.byteLength(JSON.stringify(change.entry), 'utf8') + 1;
-    if (bytes + 2 > MAX_BATCH_BYTES) throw new Error('[memorix] one sync event is too large for the relay');
+    if (bytes + 2 > MAX_BATCH_BYTES) throw new Error('[baton] one sync event is too large for the relay');
     if (current.length > 0 && currentBytes + bytes > MAX_BATCH_BYTES) {
       chunks.push(current);
       current = [];

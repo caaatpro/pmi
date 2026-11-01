@@ -108,12 +108,12 @@ describe('serve-shared', () => {
     // treats $HOME as a git project.
     expect(result.detectedProject).toBeNull();
     expect(result.source).toBe('unresolved');
-    expect(result.messages.join('\n')).toContain('will not create ~/memorix.db');
+    expect(result.messages.join('\n')).toContain('will not create ~/baton.db');
   });
 
   it('restores last-project-root when the launcher cwd is $HOME', () => {
-    const home = mkdtempSync(path.join(os.tmpdir(), 'memorix-serve-home-'));
-    const project = mkdtempSync(path.join(os.tmpdir(), 'memorix-serve-proj-'));
+    const home = mkdtempSync(path.join(os.tmpdir(), 'baton-serve-home-'));
+    const project = mkdtempSync(path.join(os.tmpdir(), 'baton-serve-proj-'));
     try {
       writeLastProjectRoot(project, home);
       const result = resolveServeProject(

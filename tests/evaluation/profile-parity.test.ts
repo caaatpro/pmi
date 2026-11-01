@@ -3,10 +3,10 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { buildMemorixServer, installPiPackage } from '../../src/cli/commands/setup.js';
+import { buildBatonServer, installPiPackage } from '../../src/cli/commands/setup.js';
 import { installAgentGuidance } from '../../src/hooks/installers/index.js';
 import { TOOL_PROFILES, isToolInProfile, countToolsInProfile, describeProfile } from '../../src/server/tool-profile.js';
-import { OFFICIAL_MEMORIX_SKILLS } from '../../src/hooks/official-skills.js';
+import { OFFICIAL_BATON_SKILLS } from '../../src/hooks/official-skills.js';
 
 /**
  * Profile-parity exam: the tools an agent is taught must exist in the profile
@@ -16,14 +16,14 @@ import { OFFICIAL_MEMORIX_SKILLS } from '../../src/hooks/official-skills.js';
  */
 
 const MICRO_TOOLS = [
-  'memorix_store',
-  'memorix_search',
-  'memorix_detail',
-  'memorix_project_context',
-  'memorix_context_pack',
-  'memorix_codegraph_status',
-  'memorix_resolve',
-  'memorix_session_start',
+  'baton_store',
+  'baton_search',
+  'baton_detail',
+  'baton_project_context',
+  'baton_context_pack',
+  'baton_codegraph_status',
+  'baton_resolve',
+  'baton_session_start',
 ];
 
 describe('profile parity exam', () => {
@@ -35,9 +35,9 @@ describe('profile parity exam', () => {
   });
 
   it('installed stdio server exposes lite, so taught tools are reachable', () => {
-    const stdio = buildMemorixServer('stdio');
+    const stdio = buildBatonServer('stdio');
     expect(stdio.args).toEqual(['serve', '--mode', 'lite']);
-    expect(stdio.command).toBe('memorix');
+    expect(stdio.command).toBe('baton');
   });
 
   it('micro stays the documented 8-tool default surface', () => {
@@ -57,30 +57,30 @@ describe('profile parity exam', () => {
   it('keeps packaged memory skills aware of the reachable lite surface', () => {
     for (const agent of ['claude', 'codebuddy', 'codex', 'copilot', 'cursor']) {
       const content = readFileSync(
-        path.resolve(path.dirname(fileURLToPath(import.meta.url)), `../../plugins/${agent}/memorix/skills/memorix-memory/SKILL.md`),
+        path.resolve(path.dirname(fileURLToPath(import.meta.url)), `../../plugins/${agent}/baton/skills/baton-memory/SKILL.md`),
         'utf8',
       );
-      expect(content, `${agent} memory skill`).toContain('memorix_evidence');
-      expect(content, `${agent} memory skill`).toContain('memorix_feedback');
+      expect(content, `${agent} memory skill`).toContain('baton_evidence');
+      expect(content, `${agent} memory skill`).toContain('baton_feedback');
     }
   });
 
   it('Pi installs shared memory guidance for the reachable lite surface', async () => {
-    sandbox = mkdtempSync(path.join(tmpdir(), 'memorix-profile-parity-'));
-    const { packagePath } = await installPiPackage({ packageDir: path.join(sandbox, 'memorix') });
-    const content = readFileSync(path.join(packagePath, 'skills', 'memorix-memory', 'SKILL.md'), 'utf-8');
-    expect(content).toBe(OFFICIAL_MEMORIX_SKILLS.find(skill => skill.name === 'memorix-memory')?.content);
-    for (const tool of ['memorix_evidence', 'memorix_feedback']) {
+    sandbox = mkdtempSync(path.join(tmpdir(), 'baton-profile-parity-'));
+    const { packagePath } = await installPiPackage({ packageDir: path.join(sandbox, 'baton') });
+    const content = readFileSync(path.join(packagePath, 'skills', 'baton-memory', 'SKILL.md'), 'utf-8');
+    expect(content).toBe(OFFICIAL_BATON_SKILLS.find(skill => skill.name === 'baton-memory')?.content);
+    for (const tool of ['baton_evidence', 'baton_feedback']) {
       expect(content).toContain(tool);
       expect(isToolInProfile(tool, 'lite'), `${tool} must be reachable`).toBe(true);
     }
   });
 
   it('every MCP tool taught in generated guidance is visible under lite', async () => {
-    sandbox = mkdtempSync(path.join(tmpdir(), 'memorix-profile-parity-'));
+    sandbox = mkdtempSync(path.join(tmpdir(), 'baton-profile-parity-'));
     const rulesPath = await installAgentGuidance('codex', sandbox, false);
     const content = readFileSync(rulesPath, 'utf-8');
-    const taught = [...content.matchAll(/memorix_([a-z_]+)/g)].map((match) => `memorix_${match[1]}`);
+    const taught = [...content.matchAll(/baton_([a-z_]+)/g)].map((match) => `baton_${match[1]}`);
     const toolNames = taught.filter((name) => name in TOOL_PROFILES);
     expect(toolNames.length, 'guidance should teach MCP tools').toBeGreaterThan(0);
     for (const name of toolNames) {

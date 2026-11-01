@@ -28,7 +28,7 @@ const PROJECT_ID = 'test/session-layered';
 let testDir: string;
 
 beforeEach(async () => {
-  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-session-layered-'));
+  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-session-layered-'));
   resetObservationStore();
   resetSessionStore();
   await resetDb();
@@ -129,7 +129,7 @@ describe('Hook observations → L1 section', () => {
     const ctx = await getSessionContext(testDir, PROJECT_ID);
 
     expect(ctx).toContain('## L1 Routing');
-    expect(ctx).toContain('memorix_timeline');
+    expect(ctx).toContain('baton_timeline');
   });
 
   it('hook observations do NOT appear in Key Project Memories (L2 excluded)', async () => {
@@ -188,7 +188,7 @@ describe('Git-ingest observations → L3 Evidence hints', () => {
     const ctx = await getSessionContext(testDir, PROJECT_ID);
 
     expect(ctx).toContain('## L3 Evidence');
-    expect(ctx).toContain('memorix_search');
+    expect(ctx).toContain('baton_search');
   });
 
   it('git-ingest content does NOT appear in Key Project Memories body', async () => {

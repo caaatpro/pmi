@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import type { MaintenanceJob, MaintenanceJobKind, MaintenanceJobRunResult } from './maintenance-jobs.js';
 import { sanitizeCredentials } from '../memory/secret-filter.js';
 
-export const MAINTENANCE_RESULT_PREFIX = '__MEMORIX_MAINTENANCE_RESULT__';
+export const MAINTENANCE_RESULT_PREFIX = '__BATON_MAINTENANCE_RESULT__';
 
 export const ISOLATED_MAINTENANCE_JOB_KINDS: readonly MaintenanceJobKind[] = [
   'retention-archive',
@@ -144,7 +144,7 @@ export async function runMaintenanceInChildProcess(
   validateRequest(request);
   const runnerPath = options.runnerPath ?? resolveMaintenanceRunnerPath();
   if (!existsSync(runnerPath)) {
-    throw new Error(`Maintenance runner is unavailable at ${runnerPath}. Reinstall or rebuild Memorix.`);
+    throw new Error(`Maintenance runner is unavailable at ${runnerPath}. Reinstall or rebuild Baton.`);
   }
 
   const timeoutMs = Number.isFinite(options.timeoutMs)

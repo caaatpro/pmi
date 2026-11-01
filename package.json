@@ -1,14 +1,13 @@
 {
-  "name": "memorix",
+  "name": "baton",
   "private": true,
   "version": "1.10.2",
-  "description": "Local-first shared memory layer for AI coding agents across MCP clients, Git history, reasoning context, and project sessions.",
+  "description": "Baton Hub: shared project memory and session continuity for AI coding agents.",
   "type": "module",
   "sideEffects": false,
   "bin": {
-    "pmi": "dist/cli/index.js",
-    "memorix": "dist/cli/index.js",
-    "pmi-server": "dist/server/central/main.js"
+    "baton": "dist/cli/index.js",
+    "baton-server": "dist/server/central/main.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -55,7 +54,7 @@
     "test:mcp-modern-smoke": "node scripts/mcp-modern-smoke.mjs",
     "test:background-start-smoke": "node scripts/background-start-smoke.mjs",
     "test:watch": "vitest",
-    "test:llm-live": "MEMORIX_RUN_LIVE_LLM_TESTS=1 vitest run tests/integration/formation-llm-quality.test.ts",
+    "test:llm-live": "BATON_RUN_LIVE_LLM_TESTS=1 vitest run tests/integration/formation-llm-quality.test.ts",
     "test:e2e": "vitest run tests/e2e/",
     "benchmark:codegraph": "node scripts/benchmark-codegraph-provider.cjs",
     "benchmark:codegraph:scale": "node scripts/benchmark-codegraph-scale.mjs",
@@ -94,19 +93,11 @@
     "rules-sync",
     "project-skills"
   ],
-  "author": "AVIDS2",
+  "author": "Baton Hub team",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/AVIDS2/memorix.git"
-  },
-  "homepage": "https://mem.rglens.com",
-  "bugs": {
-    "url": "https://github.com/AVIDS2/memorix/issues"
-  },
-  "funding": {
-    "type": "github",
-    "url": "https://github.com/sponsors/AVIDS2"
+    "url": "git+https://github.com/caaatpro/pmi.git"
   },
   "engines": {
     "node": ">=22.18.0"

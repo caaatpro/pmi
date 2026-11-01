@@ -46,13 +46,13 @@ function formatCheckpoint(checkpoint: CompactionCheckpoint): string {
 }
 
 function usage(): void {
-  console.log('Memorix Compact Checkpoints');
+  console.log('Baton Compact Checkpoints');
   console.log('');
   console.log('Usage:');
-  console.log('  memorix checkpoint list [--session <id>] [--agent <name>] [--all]');
-  console.log('  memorix checkpoint show --id <checkpoint-id>');
-  console.log('  memorix checkpoint context [--id <checkpoint-id>] [--task "..."] [--budget 420]');
-  console.log('  memorix checkpoint archive --id <checkpoint-id>');
+  console.log('  baton checkpoint list [--session <id>] [--agent <name>] [--all]');
+  console.log('  baton checkpoint show --id <checkpoint-id>');
+  console.log('  baton checkpoint context [--id <checkpoint-id>] [--task "..."] [--budget 420]');
+  console.log('  baton checkpoint archive --id <checkpoint-id>');
 }
 
 export default defineCommand({
@@ -99,7 +99,7 @@ export default defineCommand({
         }
 
         case 'show': {
-          if (!id) throw new Error('id is required for "memorix checkpoint show".');
+          if (!id) throw new Error('id is required for "baton checkpoint show".');
           const checkpoint = assertProjectCheckpoint(store.get(id), project.id, id);
           emitResult({ project, checkpoint }, formatCheckpoint(checkpoint), asJson);
           return;
@@ -126,7 +126,7 @@ export default defineCommand({
         }
 
         case 'archive': {
-          if (!id) throw new Error('id is required for "memorix checkpoint archive".');
+          if (!id) throw new Error('id is required for "baton checkpoint archive".');
           assertProjectCheckpoint(store.get(id), project.id, id);
           const checkpoint = store.archive(id);
           if (!checkpoint) throw new Error(`Compact checkpoint "${id}" is already archived.`);

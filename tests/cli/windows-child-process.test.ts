@@ -30,15 +30,15 @@ describe('Windows CLI child process behavior', () => {
   });
 
   it('hides the slow-path Git probes used by normal CLI commands', () => {
-    const workspace = mkdtempSync(join(tmpdir(), 'memorix-window-hide-'));
+    const workspace = mkdtempSync(join(tmpdir(), 'baton-window-hide-'));
     try {
       childProcess.execSync
         .mockReturnValueOnce(workspace)
-        .mockReturnValueOnce('https://github.com/AVIDS2/memorix.git');
+        .mockReturnValueOnce('https://github.com/AVIDS2/baton.git');
 
       const result = detectProjectWithDiagnostics(workspace);
 
-      expect(result.project?.id).toBe('AVIDS2/memorix');
+      expect(result.project?.id).toBe('AVIDS2/baton');
       expect(childProcess.execSync).toHaveBeenCalledTimes(2);
       const [rootCommand, rootOptions] = childProcess.execSync.mock.calls[0]!;
       const [remoteCommand, remoteOptions] = childProcess.execSync.mock.calls[1]!;

@@ -23,7 +23,7 @@ let testDir: string;
 const PROJECT_ID = 'test/auto-enrichment';
 
 beforeEach(async () => {
-  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-enrich-'));
+  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-enrich-'));
   await resetDb();
   await initObservations(testDir);
 });

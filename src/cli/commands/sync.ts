@@ -1,5 +1,5 @@
 /**
- * memorix sync — interactive sync wizard plus explicit rules/workspace surfaces
+ * baton sync — interactive sync wizard plus explicit rules/workspace surfaces
  */
 
 import { defineCommand } from 'citty';
@@ -86,8 +86,8 @@ export default defineCommand({
       return;
     }
 
-    // PMI shorthand: `pmi sync push|pull|status`, and bare `pmi sync` in a
-    // linked working copy, replicate memory with the PMI server.
+    // Baton shorthand: `baton sync push|pull|status`, and bare `baton sync` in a
+    // linked working copy, replicate memory with the Baton server.
     if (section === 'push' || section === 'pull' || section === 'status' || (section === '' && await isLinkedWorkingCopy())) {
       const storeCmd = (await import('./sync-store.js')).default;
       const action = section === 'status' || section === 'pull' ? section : 'push';
@@ -131,7 +131,7 @@ export default defineCommand({
           if (action === 'generate') {
             const rawTarget = args.target as string | undefined;
             if (!rawTarget) {
-              emitError('target is required for "memorix sync rules --action generate"', asJson);
+              emitError('target is required for "baton sync rules --action generate"', asJson);
               return;
             }
             const rules = await syncer.scanRules();
@@ -145,7 +145,7 @@ export default defineCommand({
             return;
           }
 
-          emitError('action must be status or generate for "memorix sync rules"', asJson);
+          emitError('action must be status or generate for "baton sync rules"', asJson);
           return;
         }
 
@@ -174,7 +174,7 @@ export default defineCommand({
 
         const target = args.target as AgentTarget | undefined;
         if (!target) {
-          emitError('target is required for "memorix sync workspace" migrate/apply actions', asJson);
+          emitError('target is required for "baton sync workspace" migrate/apply actions', asJson);
           return;
         }
 
@@ -190,7 +190,7 @@ export default defineCommand({
           return;
         }
 
-        emitError('action must be scan, migrate, or apply for "memorix sync workspace"', asJson);
+        emitError('action must be scan, migrate, or apply for "baton sync workspace"', asJson);
         return;
       } catch (error) {
         emitError(error instanceof Error ? error.message : String(error), asJson);
@@ -203,11 +203,11 @@ export default defineCommand({
     const { promises: fs } = await import('node:fs');
     const path = await import('node:path');
 
-    p.intro('memorix sync');
+    p.intro('baton sync');
 
     const project = detectProject();
     if (!project) {
-      p.log.error('Memorix requires a git repo to establish project identity. Run `git init` in this workspace first.');
+      p.log.error('Baton requires a git repo to establish project identity. Run `git init` in this workspace first.');
       return;
     }
     p.log.info(`Project: ${project.name} (${project.id})`);

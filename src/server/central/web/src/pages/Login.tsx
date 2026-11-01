@@ -34,11 +34,11 @@ export function Login({ onSignedIn }: { onSignedIn: (me: Me) => void }) {
       <Paper withBorder shadow="sm" radius="md" p="xl" w="100%" maw={440}>
         <form onSubmit={submit}>
           <Stack>
-            <Title order={2}>PMI</Title>
+            <Title order={2}>Baton Hub</Title>
             <Text size="sm" c="dimmed">{t('loginHelp')}</Text>
             <PasswordInput
               label={t('token')}
-              placeholder="pmi_pat_…"
+              placeholder="baton_pat_…"
               value={token}
               onChange={(event) => setToken(event.currentTarget.value)}
               autoComplete="off"

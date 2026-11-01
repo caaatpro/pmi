@@ -141,10 +141,10 @@ describe('session summary redaction (P8 coverage)', () => {
   });
 });
 
-describe('PMI personal access tokens', () => {
-  it('redacts pmi_pat_ tokens wherever they appear', () => {
-    const token = 'pmi_pat_' + 'Ab3_dE-9'.repeat(5);
-    expect(containsCredential(`export PMI_TOKEN=${token}`)).toBe(true);
+describe('Baton personal access tokens', () => {
+  it('redacts baton_pat_ tokens wherever they appear', () => {
+    const token = 'baton_pat_' + 'Ab3_dE-9'.repeat(5);
+    expect(containsCredential(`export BATON_TOKEN=${token}`)).toBe(true);
     expect(sanitizeCredentials(`token ${token} leaked`)).toBe('token [REDACTED] leaked');
   });
 });

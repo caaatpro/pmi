@@ -1,20 +1,20 @@
 /**
- * CLI Command: memorix uninstall
+ * CLI Command: baton uninstall
  *
  * Safe, user-friendly uninstall flow.
  *
  * Usage:
- *   memorix uninstall                 — Safe default (interactive)
- *   memorix uninstall --dry-run       — Preview what would happen
- *   memorix uninstall --yes           — Skip prompts
- *   memorix uninstall --hooks         — Remove agent hooks
- *   memorix uninstall --background    — Stop background control plane
- *   memorix uninstall --purge-data    — Delete ~/.memorix data directory
+ *   baton uninstall                 — Safe default (interactive)
+ *   baton uninstall --dry-run       — Preview what would happen
+ *   baton uninstall --yes           — Skip prompts
+ *   baton uninstall --hooks         — Remove agent hooks
+ *   baton uninstall --background    — Stop background control plane
+ *   baton uninstall --purge-data    — Delete ~/.baton data directory
  *
  * Non-goals:
  *   - Does NOT run npm uninstall — user must do that manually
  *   - Does NOT silently mutate MCP config files
- *   - Does NOT delete ~/.memorix unless --purge-data is passed
+ *   - Does NOT delete ~/.baton unless --purge-data is passed
  */
 
 import { defineCommand } from 'citty';
@@ -44,7 +44,7 @@ function checkJSON(p: string): boolean {
     const content = fs.readFileSync(p, 'utf-8');
     const cfg = JSON.parse(content);
     const servers = cfg.mcpServers ?? cfg.mcp_servers ?? cfg.servers ?? {};
-    return Object.keys(servers).some((k) => k.toLowerCase().includes('memorix'));
+    return Object.keys(servers).some((k) => k.toLowerCase().includes('baton'));
   } catch { return false; }
 }
 
@@ -52,7 +52,7 @@ function checkTOML(p: string): boolean {
   if (!exists(p)) return false;
   try {
     const content = fs.readFileSync(p, 'utf-8');
-    return /\[mcp_servers\.(?:memorix|Memorix)\]/.test(content);
+    return /\[mcp_servers\.(?:baton|Baton)\]/.test(content);
   } catch { return false; }
 }
 
@@ -60,12 +60,12 @@ function checkDshPatch(p: string): boolean {
   if (!exists(p)) return false;
   try {
     const content = fs.readFileSync(p, 'utf-8');
-    if (!content.includes('memory-memorix')) return false;
-    return /serverName:\s*['"]?memorix['"]?/.test(content);
+    if (!content.includes('memory-baton')) return false;
+    return /serverName:\s*['"]?baton['"]?/.test(content);
   } catch { return false; }
 }
 
-/** Detects memorix MCP config entries in both global and project-level paths. */
+/** Detects baton MCP config entries in both global and project-level paths. */
 export function getMCPConfigEntries(home: string, cwd: string): MCPConfigEntry[] {
   const entries: MCPConfigEntry[] = [];
 
@@ -77,7 +77,7 @@ export function getMCPConfigEntries(home: string, cwd: string): MCPConfigEntry[]
     kind: 'global',
     format: 'json',
     detected: checkJSON(path.join(home, '.claude.json')),
-    note: 'Remove the "memorix" key from mcpServers in this file.',
+    note: 'Remove the "baton" key from mcpServers in this file.',
   });
 
   // Claude Code — project level (.mcp.json; .claude/settings.json from older setups)
@@ -88,7 +88,7 @@ export function getMCPConfigEntries(home: string, cwd: string): MCPConfigEntry[]
       kind: 'project',
       format: 'json',
       detected: checkJSON(file),
-      note: 'Remove the "memorix" key from mcpServers in this file.',
+      note: 'Remove the "baton" key from mcpServers in this file.',
     });
   }
 
@@ -99,7 +99,7 @@ export function getMCPConfigEntries(home: string, cwd: string): MCPConfigEntry[]
     kind: 'global',
     format: 'json',
     detected: checkJSON(path.join(home, '.cursor', 'mcp.json')),
-    note: 'Remove the "memorix" key from mcpServers in this file.',
+    note: 'Remove the "baton" key from mcpServers in this file.',
   });
 
   // Cursor — project level
@@ -109,7 +109,7 @@ export function getMCPConfigEntries(home: string, cwd: string): MCPConfigEntry[]
     kind: 'project',
     format: 'json',
     detected: checkJSON(path.join(cwd, '.cursor', 'mcp.json')),
-    note: 'Remove the "memorix" key from mcpServers in this file.',
+    note: 'Remove the "baton" key from mcpServers in this file.',
   });
 
   // Pi — native MCP is separate from the extension/skills package.
@@ -123,7 +123,7 @@ export function getMCPConfigEntries(home: string, cwd: string): MCPConfigEntry[]
       kind,
       format: 'json',
       detected: checkJSON(configPath),
-      note: 'Remove the "memorix" key from mcpServers in this file.',
+      note: 'Remove the "baton" key from mcpServers in this file.',
     });
   }
 
@@ -134,7 +134,7 @@ export function getMCPConfigEntries(home: string, cwd: string): MCPConfigEntry[]
     kind: 'global',
     format: 'json',
     detected: checkJSON(path.join(home, '.codeium', 'windsurf', 'mcp_config.json')),
-    note: 'Remove the "memorix" key from mcpServers in this file.',
+    note: 'Remove the "baton" key from mcpServers in this file.',
   });
 
   // Codex
@@ -144,7 +144,7 @@ export function getMCPConfigEntries(home: string, cwd: string): MCPConfigEntry[]
     kind: 'global',
     format: 'toml',
     detected: checkTOML(path.join(home, '.codex', 'config.toml')),
-    note: 'Remove the [mcp_servers.memorix] section from this file.',
+    note: 'Remove the [mcp_servers.baton] section from this file.',
   });
 
   // VS Code / Copilot — global (user settings)
@@ -154,7 +154,7 @@ export function getMCPConfigEntries(home: string, cwd: string): MCPConfigEntry[]
     kind: 'global',
     format: 'json',
     detected: checkJSON(path.join(home, '.vscode', 'mcp.json')),
-    note: 'Remove the "memorix" key from servers in this file.',
+    note: 'Remove the "baton" key from servers in this file.',
   });
 
   // VS Code / Copilot — project level (.vscode/mcp.json)
@@ -164,7 +164,7 @@ export function getMCPConfigEntries(home: string, cwd: string): MCPConfigEntry[]
     kind: 'project',
     format: 'json',
     detected: checkJSON(path.join(cwd, '.vscode', 'mcp.json')),
-    note: 'Remove the "memorix" key from servers in this file.',
+    note: 'Remove the "baton" key from servers in this file.',
   });
 
   // Kiro — global
@@ -174,7 +174,7 @@ export function getMCPConfigEntries(home: string, cwd: string): MCPConfigEntry[]
     kind: 'global',
     format: 'json',
     detected: checkJSON(path.join(home, '.kiro', 'settings', 'mcp.json')),
-    note: 'Remove the "memorix" key from mcpServers in this file.',
+    note: 'Remove the "baton" key from mcpServers in this file.',
   });
 
   // Kiro — project level
@@ -184,7 +184,7 @@ export function getMCPConfigEntries(home: string, cwd: string): MCPConfigEntry[]
     kind: 'project',
     format: 'json',
     detected: checkJSON(path.join(cwd, '.kiro', 'settings', 'mcp.json')),
-    note: 'Remove the "memorix" key from mcpServers in this file.',
+    note: 'Remove the "baton" key from mcpServers in this file.',
   });
 
   // Gemini CLI
@@ -194,7 +194,7 @@ export function getMCPConfigEntries(home: string, cwd: string): MCPConfigEntry[]
     kind: 'global',
     format: 'json',
     detected: checkJSON(path.join(home, '.gemini', 'settings.json')),
-    note: 'Remove the "memorix" key from mcpServers in this file.',
+    note: 'Remove the "baton" key from mcpServers in this file.',
   });
 
   // Antigravity
@@ -204,7 +204,7 @@ export function getMCPConfigEntries(home: string, cwd: string): MCPConfigEntry[]
     kind: 'global',
     format: 'json',
     detected: checkJSON(path.join(home, '.gemini', 'config', 'mcp_config.json')),
-    note: 'Remove the "memorix" key from mcpServers in this file.',
+    note: 'Remove the "baton" key from mcpServers in this file.',
   });
   entries.push({
     agent: 'Antigravity',
@@ -212,15 +212,15 @@ export function getMCPConfigEntries(home: string, cwd: string): MCPConfigEntry[]
     kind: 'global',
     format: 'json',
     detected: exists(path.join(home, '.gemini', 'config', 'hooks.json')),
-    note: 'Remove the "memorix" hook group from this file.',
+    note: 'Remove the "baton" hook group from this file.',
   });
   entries.push({
     agent: 'Antigravity',
-    path: path.join(home, '.gemini', 'config', 'plugins', 'memorix', 'plugin.json'),
+    path: path.join(home, '.gemini', 'config', 'plugins', 'baton', 'plugin.json'),
     kind: 'global',
     format: 'json',
-    detected: exists(path.join(home, '.gemini', 'config', 'plugins', 'memorix', 'plugin.json')),
-    note: 'Delete the containing ~/.gemini/config/plugins/memorix plugin directory if you want to remove the Antigravity plugin package.',
+    detected: exists(path.join(home, '.gemini', 'config', 'plugins', 'baton', 'plugin.json')),
+    note: 'Delete the containing ~/.gemini/config/plugins/baton plugin directory if you want to remove the Antigravity plugin package.',
   });
 
   // Trae
@@ -239,7 +239,7 @@ export function getMCPConfigEntries(home: string, cwd: string): MCPConfigEntry[]
     kind: 'global',
     format: 'json',
     detected: checkJSON(traeCfg),
-    note: 'Remove the "memorix" key from mcpServers in this file.',
+    note: 'Remove the "baton" key from mcpServers in this file.',
   });
 
   // DeepSeek Harness
@@ -250,7 +250,7 @@ export function getMCPConfigEntries(home: string, cwd: string): MCPConfigEntry[]
     kind: 'global',
     format: 'json',
     detected: checkDshPatch(dshPatchPath),
-    note: 'Remove the memory-memorix insert row from this patch file.',
+    note: 'Remove the memory-baton insert row from this patch file.',
   });
 
   // WorkBuddy — global
@@ -261,7 +261,7 @@ export function getMCPConfigEntries(home: string, cwd: string): MCPConfigEntry[]
     kind: 'global',
     format: 'json',
     detected: checkJSON(workbuddyCfg),
-    note: 'Remove the "memorix" key from mcpServers in this file.',
+    note: 'Remove the "baton" key from mcpServers in this file.',
   });
 
   // WorkBuddy — project level (project-only installs must be discoverable too)
@@ -272,7 +272,7 @@ export function getMCPConfigEntries(home: string, cwd: string): MCPConfigEntry[]
     kind: 'project',
     format: 'json',
     detected: checkJSON(workbuddyProjectCfg),
-    note: 'Remove the "memorix" key from mcpServers in this file.',
+    note: 'Remove the "baton" key from mcpServers in this file.',
   });
 
   return entries;
@@ -287,7 +287,7 @@ interface BackgroundStatus {
 }
 
 function checkBackground(home: string): BackgroundStatus {
-  const statePath = path.join(home, '.memorix', 'background.json');
+  const statePath = path.join(home, '.baton', 'background.json');
   try {
     const data = fs.readFileSync(statePath, 'utf-8');
     const state = JSON.parse(data);
@@ -344,10 +344,10 @@ async function printDryRun(opts: {
   mcpEntries: MCPConfigEntry[];
   bgStatus: BackgroundStatus;
   hookResults: Array<{ agent: string; configPath: string; global: boolean; exists: boolean }>;
-  memorixDir: string;
+  batonDir: string;
 }) {
   console.log('');
-  console.log('═══ Dry Run: what memorix uninstall would do ═══');
+  console.log('═══ Dry Run: what baton uninstall would do ═══');
   console.log('');
 
   // 1. Background
@@ -384,26 +384,26 @@ async function printDryRun(opts: {
       console.log(`     → ${e.note}`);
     }
   } else {
-    console.log('   [OK] No memorix MCP entries detected');
+    console.log('   [OK] No baton MCP entries detected');
   }
 
   // 4. Data directory
   console.log('');
   console.log('4. Data Directory');
-  const memorixExists = exists(opts.memorixDir);
+  const batonExists = exists(opts.batonDir);
   if (opts.purgeData) {
-    if (memorixExists) {
-      console.log(`   [DELETE] ${opts.memorixDir}`);
+    if (batonExists) {
+      console.log(`   [DELETE] ${opts.batonDir}`);
     } else {
       console.log('   [SKIP] Data directory does not exist');
     }
   } else {
-    console.log(`   [PRESERVE] ${opts.memorixDir} (use --purge-data to delete)`);
+    console.log(`   [PRESERVE] ${opts.batonDir} (use --purge-data to delete)`);
   }
 
   console.log('');
   console.log('5. Package Uninstall (manual step)');
-  console.log('   Run: npm uninstall -g memorix');
+  console.log('   Run: npm uninstall -g baton');
   console.log('');
 }
 
@@ -455,13 +455,13 @@ export default defineCommand({
     },
     'purge-data': {
       type: 'boolean',
-      description: 'Delete ~/.memorix data directory (memories, sessions, logs, local config)',
+      description: 'Delete ~/.baton data directory (memories, sessions, logs, local config)',
       default: false,
     },
   },
   async run({ args }) {
     const home = os.homedir();
-    const memorixDir = path.join(home, '.memorix');
+    const batonDir = path.join(home, '.baton');
     const dryRun = args['dry-run'] as boolean;
     const yes = args.yes as boolean;
     const doHooks = args.hooks as boolean;
@@ -482,9 +482,9 @@ export default defineCommand({
     // ── Default (no flags): interactive safe flow ──
     if (noFlags) {
       console.log('');
-      console.log('═══ Memorix Uninstall ═══');
+      console.log('═══ Baton Uninstall ═══');
       console.log('');
-      console.log('This command helps you safely remove Memorix integration from your system.');
+      console.log('This command helps you safely remove Baton integration from your system.');
       console.log('It does NOT run npm uninstall — that must be done separately.');
       console.log('');
       console.log('What would you like to do?');
@@ -506,23 +506,23 @@ export default defineCommand({
 
       const detectedMcp = mcpEntries.filter((e) => e.detected);
       if (detectedMcp.length > 0) {
-        console.log(`  MCP config:  ${detectedMcp.length} file(s) with memorix entries`);
+        console.log(`  MCP config:  ${detectedMcp.length} file(s) with baton entries`);
       } else {
-        console.log('  MCP config:  no memorix entries detected');
+        console.log('  MCP config:  no baton entries detected');
       }
 
-      console.log(`  Data dir:    ${memorixDir}`);
+      console.log(`  Data dir:    ${batonDir}`);
       console.log('');
 
       // Suggest flags
       console.log('Suggested flags for guided uninstall:');
       console.log('');
-      console.log('  memorix uninstall --dry-run            Preview everything');
-      console.log('  memorix uninstall --background --hooks  Stop service + remove hooks');
-      console.log('  memorix uninstall --purge-data          Also delete ~/.memorix');
-      console.log('  memorix uninstall --yes --background --hooks --purge-data   Full cleanup');
+      console.log('  baton uninstall --dry-run            Preview everything');
+      console.log('  baton uninstall --background --hooks  Stop service + remove hooks');
+      console.log('  baton uninstall --purge-data          Also delete ~/.baton');
+      console.log('  baton uninstall --yes --background --hooks --purge-data   Full cleanup');
       console.log('');
-      console.log('After integration cleanup, run: npm uninstall -g memorix');
+      console.log('After integration cleanup, run: npm uninstall -g baton');
       console.log('');
       return;
     }
@@ -536,7 +536,7 @@ export default defineCommand({
         mcpEntries,
         bgStatus,
         hookResults,
-        memorixDir,
+        batonDir,
       });
 
       // Show MCP config instructions regardless
@@ -544,8 +544,8 @@ export default defineCommand({
       if (detected.length > 0) {
         console.log('═══ MCP Config Cleanup Guide ═══');
         console.log('');
-        console.log('Memorix does NOT modify your MCP config files.');
-        console.log('To fully disconnect Memorix, manually edit these files:');
+        console.log('Baton does NOT modify your MCP config files.');
+        console.log('To fully disconnect Baton, manually edit these files:');
         console.log('');
         for (const e of detected) {
           console.log(`  ${e.agent} (${e.kind}): ${e.path}`);
@@ -562,7 +562,7 @@ export default defineCommand({
       const actions: string[] = [];
       if (doBackground && bgStatus.running) actions.push('stop background service');
       if (doHooks) actions.push('remove agent hooks');
-      if (doPurge) actions.push(`delete ${memorixDir}`);
+      if (doPurge) actions.push(`delete ${batonDir}`);
 
       if (actions.length > 0) {
         const ok = await confirm(actions.join(', '));
@@ -615,10 +615,10 @@ export default defineCommand({
 
     // ── 3. Purge data ──
     if (doPurge) {
-      if (exists(memorixDir)) {
-        console.log(`[DELETE] Removing ${memorixDir}...`);
+      if (exists(batonDir)) {
+        console.log(`[DELETE] Removing ${batonDir}...`);
         try {
-          fs.rmSync(memorixDir, { recursive: true, force: true });
+          fs.rmSync(batonDir, { recursive: true, force: true });
           console.log('[OK] Data directory deleted.');
           changes++;
         } catch (err) {
@@ -635,7 +635,7 @@ export default defineCommand({
     if (detected.length > 0) {
       console.log('═══ MCP Config — Manual Cleanup Required ═══');
       console.log('');
-      console.log('Memorix does NOT modify MCP config files.');
+      console.log('Baton does NOT modify MCP config files.');
       console.log('To fully disconnect, manually edit these files:');
       console.log('');
       for (const e of detected) {
@@ -654,7 +654,7 @@ export default defineCommand({
       console.log('[DONE] Nothing changed.');
     }
     console.log('');
-    console.log('To complete uninstall, run: npm uninstall -g memorix');
+    console.log('To complete uninstall, run: npm uninstall -g baton');
     console.log('');
   },
 });

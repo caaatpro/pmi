@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "baton": {
+      "type": "stdio",
+      "command": "baton",
+      "args": ["serve", "--mode", "lite"]
+    }
+  }
+}

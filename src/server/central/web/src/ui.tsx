@@ -1,4 +1,4 @@
-// Shared building blocks of the PMI UI on top of Mantine.
+// Shared building blocks of the Baton UI on top of Mantine.
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Alert, Anchor, Badge, Center, Group, Loader, Paper, Progress, Stack, Table, Text, Title, Tooltip } from '@mantine/core';
 import { IconAlertTriangle } from '@tabler/icons-react';

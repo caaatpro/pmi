@@ -22,7 +22,7 @@ let a = '';
 let b = '';
 
 beforeEach(() => {
-  root = fs.mkdtempSync(path.join(tmpdir(), 'pmi-snapshot-'));
+  root = fs.mkdtempSync(path.join(tmpdir(), 'baton-snapshot-'));
   ({ origin, a, b } = createWorkspaceFixture(root));
 });
 
@@ -59,7 +59,7 @@ describe('TEST 3: workspace snapshot round trip', () => {
       getBlob: (sha) => bobBlobs.get(sha),
     });
 
-    expect(report).toMatchObject({ verified: true, conflicts: [], mismatches: [], importedCommits: 1, branch: 'pmi/ses_1' });
+    expect(report).toMatchObject({ verified: true, conflicts: [], mismatches: [], importedCommits: 1, branch: 'baton/ses_1' });
     // Bob already has a local main, so the restore gets its own branch instead of moving his.
     const target = report.target;
     const expected = workingCopy(a);
@@ -146,7 +146,7 @@ describe('restore protections', () => {
     tampered.files.find((f) => f.path === 'a.txt')!.baseBlob = 'f'.repeat(40);
 
     const report = restoreSnapshot(tampered, { repoRoot: b, mode: 'in-place', getBlob: (sha) => snaps.blobs.get(sha) });
-    const suffix = `.pmi-${snapshot.manifest.id.slice(-8)}`;
+    const suffix = `.baton-${snapshot.manifest.id.slice(-8)}`;
     expect(report.conflicts.map((c) => [c.path, c.savedAs])).toEqual([
       ['a.txt', `a.txt${suffix}`],
       ['notes/untracked.md', `notes/untracked.md${suffix}`],

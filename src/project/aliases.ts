@@ -4,7 +4,7 @@
  * Solves the "project identity split" problem: the same project gets different
  * projectIds depending on which IDE detects it (git remote vs local path vs placeholder).
  *
- * Maintains a registry file (~/.memorix/data/.project-aliases.json) that groups
+ * Maintains a registry file (~/.baton/data/.project-aliases.json) that groups
  * all known IDs for the same physical project under one canonical ID.
  *
  * Canonical ID priority: git remote > local > placeholder
@@ -19,7 +19,7 @@ import path from 'node:path';
 import os from 'node:os';
 import type { ProjectInfo } from '../types.js';
 
-const DEFAULT_DATA_DIR = process.env.MEMORIX_DATA_DIR || path.join(os.homedir(), '.memorix', 'data');
+const DEFAULT_DATA_DIR = process.env.BATON_DATA_DIR || path.join(os.homedir(), '.baton', 'data');
 const ALIAS_FILE = '.project-aliases.json';
 
 /** A group of project IDs that all refer to the same physical project */

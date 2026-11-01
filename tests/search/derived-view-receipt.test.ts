@@ -34,7 +34,7 @@ describe('derived-view receipt helpers', () => {
 
   it('redacts credentials and local filesystem paths from failure reasons', () => {
     const reason = sanitizeDerivedViewFailureReason(
-      'failed reading C:\\Users\\Ada\\memorix\\index.db; api_key=sk-secretvalue123456',
+      'failed reading C:\\Users\\Ada\\baton\\index.db; api_key=sk-secretvalue123456',
     );
 
     expect(reason).not.toContain('C:\\Users\\Ada');

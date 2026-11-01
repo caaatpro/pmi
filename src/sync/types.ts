@@ -54,7 +54,7 @@ export interface ChangeBatch {
   formatVersion: 3;
   /** Hash-like remote namespace for one canonical Git project. */
   namespace: string;
-  /** Canonical Memorix project ID. */
+  /** Canonical Baton project ID. */
   projectId: string;
   /** Device that produced the batch. */
   deviceId: string;

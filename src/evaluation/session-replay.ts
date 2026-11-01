@@ -1,7 +1,7 @@
 /**
  * Session-replay evaluation — deterministic scoring for the retrieval path.
  *
- * Purpose: before changing how Memorix retrieves memory, measure the current
+ * Purpose: before changing how Baton retrieves memory, measure the current
  * behavior with a fixed exam so every later change can be judged by the same
  * three scores:
  *

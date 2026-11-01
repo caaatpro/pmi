@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { getEmbeddingProvider, resetProvider } from '../../src/embedding/provider.js';
 
-const runLive = process.env.MEMORIX_RUN_LIVE_EMBEDDING_TESTS === '1';
+const runLive = process.env.BATON_RUN_LIVE_EMBEDDING_TESTS === '1';
 
 describe.skipIf(!runLive)('live embedding provider', () => {
   afterEach(() => {
@@ -13,8 +13,8 @@ describe.skipIf(!runLive)('live embedding provider', () => {
     expect(provider).not.toBeNull();
 
     const vectors = await provider!.embedBatch([
-      'memorix live batch smoke alpha',
-      'memorix live batch smoke beta',
+      'baton live batch smoke alpha',
+      'baton live batch smoke beta',
     ]);
 
     expect(vectors).toHaveLength(2);

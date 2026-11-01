@@ -46,7 +46,7 @@ describe('task lens routing', () => {
   });
 
   it('still detects an everyday continuation verb carrying a real task', () => {
-    // Documented usage: `memorix resume "继续处理发布阻塞问题"`.
+    // Documented usage: `baton resume "继续处理发布阻塞问题"`.
     for (const withTask of [
       '继续修复',
       '继续优化',

@@ -15,7 +15,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { classifyCommit, findStaleKnowledge, parseDependencyDiff } from '../../src/git/classify.js';
 import { analyzeLocal, readLocalCursor, reconcileLocal } from '../../src/git/local-sink.js';
 import { defaultGitRunner, type GitRunner } from '../../src/git/pipeline.js';
-import { createMemorixServer } from '../../src/server.js';
+import { createBatonServer } from '../../src/server.js';
 import { resetResolvedConfigCache } from '../../src/config/resolved-config.js';
 import { resetTomlConfigCache } from '../../src/config/toml-loader.js';
 import { getAllObservations, storeObservation } from '../../src/memory/observations.js';
@@ -24,7 +24,7 @@ import { resetObservationStore } from '../../src/store/obs-store.js';
 import { resetSessionStore } from '../../src/store/session-store.js';
 import { closeAllDatabases } from '../../src/store/sqlite-db.js';
 
-const originalDataDir = process.env.MEMORIX_DATA_DIR;
+const originalDataDir = process.env.BATON_DATA_DIR;
 let dataDir = '';
 let repo = '';
 const FUTURE = new Date(Date.now() + 3 * 86_400_000).toISOString();
@@ -53,8 +53,8 @@ function recordingGit(calls: string[][]): GitRunner {
 }
 
 beforeEach(async () => {
-  dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'pmi-git-data-'));
-  repo = await fs.mkdtemp(path.join(os.tmpdir(), 'pmi-git-repo-'));
+  dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-git-data-'));
+  repo = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-git-repo-'));
   git(['init', '-q', '-b', 'main']);
   git(['config', 'user.email', 'dev@test.dev']);
   git(['config', 'user.name', 'Dev']);
@@ -65,7 +65,7 @@ beforeEach(async () => {
   await write('src/cart.ts', 'export const cart = [];\n');
   git(['add', '-A']);
   git(['commit', '-q', '-m', 'initial']);
-  process.env.MEMORIX_DATA_DIR = dataDir;
+  process.env.BATON_DATA_DIR = dataDir;
   resetObservationStore();
   resetSessionStore();
   resetTomlConfigCache();
@@ -80,15 +80,15 @@ afterEach(async () => {
   resetTomlConfigCache();
   resetResolvedConfigCache();
   await resetDb();
-  if (originalDataDir === undefined) delete process.env.MEMORIX_DATA_DIR;
-  else process.env.MEMORIX_DATA_DIR = originalDataDir;
+  if (originalDataDir === undefined) delete process.env.BATON_DATA_DIR;
+  else process.env.BATON_DATA_DIR = originalDataDir;
   await fs.rm(dataDir, { recursive: true, force: true });
   await fs.rm(repo, { recursive: true, force: true });
 });
 
 describe('TEST 5: incremental git analysis (Local mode)', () => {
   it('analyzes exactly the new commits, classifies them, marks outdated knowledge, and is idempotent', async () => {
-    const { projectId } = await createMemorixServer(repo, undefined, undefined, { toolProfile: 'lite' } as any);
+    const { projectId } = await createBatonServer(repo, undefined, undefined, { toolProfile: 'lite' } as any);
     const first = await analyzeLocal({ dataDir, projectId, root: repo });
     expect(first).toMatchObject({ commitsAnalyzed: 1, initial: true });
     const base = git(['rev-parse', 'HEAD']);
@@ -155,7 +155,7 @@ describe('TEST 5: incremental git analysis (Local mode)', () => {
   }, 60_000);
 
   it('handles a rewritten history from the merge base, and a full reconcile finds deleted files', async () => {
-    const { projectId } = await createMemorixServer(repo, undefined, undefined, { toolProfile: 'lite' } as any);
+    const { projectId } = await createBatonServer(repo, undefined, undefined, { toolProfile: 'lite' } as any);
     await write('src/a.ts', 'a\n');
     commit('feat: a');
     await analyzeLocal({ dataDir, projectId, root: repo });

@@ -9,16 +9,16 @@ describe('SCIP CodeGraph boundary', () => {
           relativePath: 'src/auth.ts',
           language: 'TypeScript',
           symbols: [{
-            symbol: 'scip-typescript npm memorix auth/AuthService.',
+            symbol: 'scip-typescript npm baton auth/AuthService.',
             displayName: 'AuthService',
             kind: 'class',
             relationships: [{
-              symbol: 'scip-typescript npm memorix auth/BaseService.',
+              symbol: 'scip-typescript npm baton auth/BaseService.',
               isImplementation: true,
             }],
           }],
           occurrences: [{
-            symbol: 'scip-typescript npm memorix auth/AuthService.',
+            symbol: 'scip-typescript npm baton auth/AuthService.',
             isDefinition: true,
             range: [4, 0, 4, 10],
           }],
@@ -27,7 +27,7 @@ describe('SCIP CodeGraph boundary', () => {
           relativePath: 'src/base.ts',
           language: 'TypeScript',
           symbols: [{
-            symbol: 'scip-typescript npm memorix auth/BaseService.',
+            symbol: 'scip-typescript npm baton auth/BaseService.',
             displayName: 'BaseService',
             kind: 'class',
           }],
@@ -37,7 +37,7 @@ describe('SCIP CodeGraph boundary', () => {
           symbols: [{ symbol: 'outside', displayName: 'outside', kind: 'function' }],
         },
       ],
-    }, { projectRoot: 'E:/fixture/memorix' });
+    }, { projectRoot: 'E:/fixture/baton' });
 
     expect(outline).toBeDefined();
     expect(outline?.provider).toBe('external');
@@ -50,8 +50,8 @@ describe('SCIP CodeGraph boundary', () => {
   });
 
   it('returns no outline for an unrelated payload', () => {
-    expect(normalizeScipOutline({ documents: [] }, { projectRoot: 'E:/fixture/memorix' })).toBeUndefined();
-    expect(normalizeScipOutline({ result: {} }, { projectRoot: 'E:/fixture/memorix' })).toBeUndefined();
+    expect(normalizeScipOutline({ documents: [] }, { projectRoot: 'E:/fixture/baton' })).toBeUndefined();
+    expect(normalizeScipOutline({ result: {} }, { projectRoot: 'E:/fixture/baton' })).toBeUndefined();
   });
 
   it('accepts protobuf-style snake_case SCIP fields', () => {
@@ -62,7 +62,7 @@ describe('SCIP CodeGraph boundary', () => {
         symbols: [{ symbol: 'scip main.', display_name: 'main', kind: 'function' }],
         occurrences: [{ symbol: 'scip main.', symbol_roles: 1, range: [0, 0, 0, 4] }],
       }],
-    }, { projectRoot: 'E:/fixture/memorix' });
+    }, { projectRoot: 'E:/fixture/baton' });
     expect(outline?.entryPoints[0]).toMatchObject({ name: 'main', path: 'src/main.ts', startLine: 1 });
   });
 });

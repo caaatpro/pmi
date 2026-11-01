@@ -49,7 +49,7 @@ describe('cleanup analysis', () => {
       observation(1, '1.0.7 canonical storage rule set'),
       observation(2, 'Phase tasks issued as colleague handoffs'),
       observation(3, 'Read-only sandbox blocks local writes'),
-      observation(4, 'Memorix API compatibility contract'),
+      observation(4, 'Baton API compatibility contract'),
       observation(5, 'test(stress): deterministic stress exams for the stability gate'),
     ];
 

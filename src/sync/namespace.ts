@@ -18,12 +18,12 @@ export function syncNamespace(projectId: string): string {
  * exchange otherwise project-visible memories.
  */
 export function userSyncNamespace(env: NodeJS.ProcessEnv = process.env): string {
-  const override = env.MEMORIX_SYNC_USER_NAMESPACE?.trim();
+  const override = env.BATON_SYNC_USER_NAMESPACE?.trim();
   if (!override) {
-    throw new Error('[memorix] MEMORIX_SYNC_USER_NAMESPACE is required for --scope user; use one stable per-user namespace across devices');
+    throw new Error('[baton] BATON_SYNC_USER_NAMESPACE is required for --scope user; use one stable per-user namespace across devices');
   }
   if (!isSafeSyncDeviceId(override)) {
-    throw new Error('[memorix] MEMORIX_SYNC_USER_NAMESPACE must match [A-Za-z0-9][A-Za-z0-9._-]{0,127}');
+    throw new Error('[baton] BATON_SYNC_USER_NAMESPACE must match [A-Za-z0-9][A-Za-z0-9._-]{0,127}');
   }
   return `${USER_SYNC_NAMESPACE}${override}`;
 }

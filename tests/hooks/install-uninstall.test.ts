@@ -3,8 +3,8 @@
  *
  * Verifies:
  * - installAgentRules records audit for new shared context files (AGENTS.md)
- * - uninstallHooks removes Memorix block from shared files (not the whole file)
- * - uninstallHooks deletes pure-Memorix shared files entirely
+ * - uninstallHooks removes Baton block from shared files (not the whole file)
+ * - uninstallHooks deletes pure-Baton shared files entirely
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -16,7 +16,7 @@ import path from 'node:path';
 import os from 'node:os';
 
 function makeTmpDir(): string {
-  return fsSync.mkdtempSync(path.join(os.tmpdir(), 'memorix-hooks-test-'));
+  return fsSync.mkdtempSync(path.join(os.tmpdir(), 'baton-hooks-test-'));
 }
 
 async function cleanup(dir: string): Promise<void> {
@@ -29,12 +29,12 @@ describe('Hooks install/uninstall lifecycle', () => {
 
   beforeEach(() => {
     tmpDir = makeTmpDir();
-    auditFile = path.join(tmpDir, '.memorix', 'audit.json');
-    process.env.MEMORIX_AUDIT_FILE = auditFile;
+    auditFile = path.join(tmpDir, '.baton', 'audit.json');
+    process.env.BATON_AUDIT_FILE = auditFile;
   });
 
   afterEach(async () => {
-    delete process.env.MEMORIX_AUDIT_FILE;
+    delete process.env.BATON_AUDIT_FILE;
     await cleanup(tmpDir);
   });
 
@@ -46,7 +46,7 @@ describe('Hooks install/uninstall lifecycle', () => {
 
     // File should exist
     const content = await fs.readFile(agentsMd, 'utf-8');
-    expect(content).toContain('# Memorix');
+    expect(content).toContain('# Baton');
 
     // Audit should have an entry for this file
     const files = await getProjectFiles(tmpDir);
@@ -63,19 +63,19 @@ describe('Hooks install/uninstall lifecycle', () => {
 
     const content = await fs.readFile(agentsMd, 'utf-8');
     expect(content).toContain('When to search memory');
-    expect(content).toContain('memorix_project_context');
+    expect(content).toContain('baton_project_context');
     expect(content).toContain('task-lensed brief');
-    expect(content).toContain('memorix context "<task>" --fallback --brief-json');
-    expect(content).toContain('memorix resume "<task>" --fallback --brief-json');
+    expect(content).toContain('baton context "<task>" --fallback --brief-json');
+    expect(content).toContain('baton resume "<task>" --fallback --brief-json');
     expect(content).toContain('Continuation fallback is mandatory');
-    expect(content).toContain('Do not call more Memorix retrieval tools');
-    expect(content).toContain('The absence of `.memorix` or visible memory files never proves project memory is empty.');
-    expect(content).toContain('memorix_search');
+    expect(content).toContain('Do not call more Baton retrieval tools');
+    expect(content).toContain('The absence of `.baton` or visible memory files never proves project memory is empty.');
+    expect(content).toContain('baton_search');
     expect(content).toContain('When to store memory');
     expect(content).toContain('longTerm');
     expect(content).toContain('candidate only');
-    expect(content).toContain('memorix_evidence');
-    expect(content).toContain('memorix_feedback');
+    expect(content).toContain('baton_evidence');
+    expect(content).toContain('baton_feedback');
   });
 
   it('should record audit entry when creating new GEMINI.md (gemini-cli)', async () => {
@@ -84,7 +84,7 @@ describe('Hooks install/uninstall lifecycle', () => {
     await installHooks('gemini-cli', tmpDir);
 
     const content = await fs.readFile(geminiMd, 'utf-8');
-    expect(content).toContain('# Memorix');
+    expect(content).toContain('# Baton');
 
     const files = await getProjectFiles(tmpDir);
     const entry = files.find(e => e.path === geminiMd);
@@ -98,47 +98,47 @@ describe('Hooks install/uninstall lifecycle', () => {
     const config = JSON.parse(await fs.readFile(hooksPath, 'utf-8'));
 
     expect(result.configPath).toBe(hooksPath);
-    expect(config.memorix.PreInvocation[0].command).toContain('--event PreInvocation');
-    expect(config.memorix.PreToolUse[0].hooks[0].command).toContain('--event PreToolUse');
-    expect(config.memorix.PostToolUse[0].hooks[0].command).toContain('--event PostToolUse');
+    expect(config.baton.PreInvocation[0].command).toContain('--event PreInvocation');
+    expect(config.baton.PreToolUse[0].hooks[0].command).toContain('--event PreToolUse');
+    expect(config.baton.PostToolUse[0].hooks[0].command).toContain('--event PostToolUse');
   });
 
-  it('should remove only Memorix block from shared file on uninstall', async () => {
+  it('should remove only Baton block from shared file on uninstall', async () => {
     const agentsMd = path.join(tmpDir, 'AGENTS.md');
 
     // Pre-create AGENTS.md with user content
     await fs.writeFile(agentsMd, '# My Project\n\nSome user instructions here.\n\n', 'utf-8');
 
-    // Install codex hooks (appends Memorix block)
+    // Install codex hooks (appends Baton block)
     await installHooks('codex', tmpDir);
 
     const afterInstall = await fs.readFile(agentsMd, 'utf-8');
     expect(afterInstall).toContain('# My Project');
-    expect(afterInstall).toContain('# Memorix');
+    expect(afterInstall).toContain('# Baton');
 
     // Uninstall
     await uninstallHooks('codex', tmpDir);
 
-    // User content should remain, Memorix block should be gone
+    // User content should remain, Baton block should be gone
     const afterUninstall = await fs.readFile(agentsMd, 'utf-8');
     expect(afterUninstall).toContain('# My Project');
     expect(afterUninstall).toContain('Some user instructions here');
-    expect(afterUninstall).not.toContain('# Memorix');
+    expect(afterUninstall).not.toContain('# Baton');
   });
 
-  it('should delete pure-Memorix shared file on uninstall', async () => {
+  it('should delete pure-Baton shared file on uninstall', async () => {
     const agentsMd = path.join(tmpDir, 'AGENTS.md');
 
-    // Install codex hooks (creates AGENTS.md with only Memorix content)
+    // Install codex hooks (creates AGENTS.md with only Baton content)
     await installHooks('codex', tmpDir);
 
     const afterInstall = await fs.readFile(agentsMd, 'utf-8');
-    expect(afterInstall).toContain('# Memorix');
+    expect(afterInstall).toContain('# Baton');
 
     // Uninstall
     await uninstallHooks('codex', tmpDir);
 
-    // File should be deleted (only had Memorix content)
+    // File should be deleted (only had Baton content)
     await expect(fs.access(agentsMd)).rejects.toThrow();
   });
 
@@ -148,7 +148,7 @@ describe('Hooks install/uninstall lifecycle', () => {
     // First install
     await installHooks('codex', tmpDir);
     let content = await fs.readFile(agentsMd, 'utf-8');
-    expect(content).toContain('# Memorix');
+    expect(content).toContain('# Baton');
 
     // Uninstall
     await uninstallHooks('codex', tmpDir);
@@ -157,7 +157,7 @@ describe('Hooks install/uninstall lifecycle', () => {
     // Re-install (should create fresh file with audit entry)
     await installHooks('codex', tmpDir);
     content = await fs.readFile(agentsMd, 'utf-8');
-    expect(content).toContain('# Memorix');
+    expect(content).toContain('# Baton');
 
     // Audit should track the new file
     const files = await getProjectFiles(tmpDir);
@@ -165,46 +165,46 @@ describe('Hooks install/uninstall lifecycle', () => {
     expect(entry).toBeDefined();
   });
 
-  it('should refresh existing Memorix block while preserving user content when audit is empty', async () => {
+  it('should refresh existing Baton block while preserving user content when audit is empty', async () => {
     const agentsMd = path.join(tmpDir, 'AGENTS.md');
 
-    // Pre-create AGENTS.md with older Memorix content (simulating a previous install)
-    const memorixContent = [
+    // Pre-create AGENTS.md with older Baton content (simulating a previous install)
+    const batonContent = [
       '# My Project',
       '',
       'Keep these user instructions.',
       '',
-      '# Memorix — Automatic Memory Rules',
+      '# Baton — Automatic Memory Rules',
       '',
       'Some old rules here.',
       '',
-      '# After Memorix',
+      '# After Baton',
       '',
       'Keep this section too.',
       '',
     ].join('\n');
-    await fs.writeFile(agentsMd, memorixContent, 'utf-8');
+    await fs.writeFile(agentsMd, batonContent, 'utf-8');
 
     // Verify audit is empty (no entries for this file)
     const beforeInstall = await getProjectFiles(tmpDir);
     expect(beforeInstall.find(e => e.path === agentsMd)).toBeUndefined();
 
-    // Install codex hooks — should refresh the Memorix block and record audit
+    // Install codex hooks — should refresh the Baton block and record audit
     await installHooks('codex', tmpDir);
 
-    // User content should remain, stale Memorix content should be replaced
+    // User content should remain, stale Baton content should be replaced
     const afterInstall = await fs.readFile(agentsMd, 'utf-8');
     expect(afterInstall).toContain('# My Project');
     expect(afterInstall).toContain('Keep these user instructions.');
-    expect(afterInstall).toContain('# After Memorix');
+    expect(afterInstall).toContain('# After Baton');
     expect(afterInstall).toContain('Keep this section too.');
-    expect(afterInstall).toContain('memorix_project_context');
+    expect(afterInstall).toContain('baton_project_context');
     expect(afterInstall).toContain('task-lensed brief');
-    expect(afterInstall).toContain('memorix context "<task>" --fallback --brief-json');
-    expect(afterInstall).toContain('memorix resume "<task>" --fallback --brief-json');
+    expect(afterInstall).toContain('baton context "<task>" --fallback --brief-json');
+    expect(afterInstall).toContain('baton resume "<task>" --fallback --brief-json');
     expect(afterInstall).toContain('Continuation fallback is mandatory');
-    expect(afterInstall).toContain('Do not call more Memorix retrieval tools');
-    expect(afterInstall).toContain('The absence of `.memorix` or visible memory files never proves project memory is empty.');
+    expect(afterInstall).toContain('Do not call more Baton retrieval tools');
+    expect(afterInstall).toContain('The absence of `.baton` or visible memory files never proves project memory is empty.');
     expect(afterInstall).not.toContain('Some old rules here.');
 
     // Audit should now have an entry
@@ -238,7 +238,7 @@ describe('Hooks install/uninstall lifecycle', () => {
     expect(result.events).toEqual([]);
     expect(String((result.generated as Record<string, unknown>).note)).toContain('setup --agent openclaw');
     expect(String((result.generated as Record<string, unknown>).note)).toContain('OpenClaw-compatible bundle');
-    await expect(fs.access(path.join(tmpDir, '.memorix', 'hooks.json'))).rejects.toThrow();
+    await expect(fs.access(path.join(tmpDir, '.baton', 'hooks.json'))).rejects.toThrow();
   });
 
   it('should recover audit entry when ledger is lost and re-install is called (codex)', async () => {
@@ -247,7 +247,7 @@ describe('Hooks install/uninstall lifecycle', () => {
     // Install codex hooks (creates AGENTS.md + audit entry)
     await installHooks('codex', tmpDir);
     let content = await fs.readFile(agentsMd, 'utf-8');
-    expect(content).toContain('# Memorix');
+    expect(content).toContain('# Baton');
 
     // Verify audit has entry
     let files = await getProjectFiles(tmpDir);
@@ -259,9 +259,9 @@ describe('Hooks install/uninstall lifecycle', () => {
     // Re-install should recover the audit entry
     await installHooks('codex', tmpDir);
 
-    // File should still have Memorix content
+    // File should still have Baton content
     content = await fs.readFile(agentsMd, 'utf-8');
-    expect(content).toContain('# Memorix');
+    expect(content).toContain('# Baton');
 
     // Audit should be recovered
     files = await getProjectFiles(tmpDir);

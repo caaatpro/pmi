@@ -37,15 +37,15 @@ async function runCommand(command: any, args: Record<string, unknown>) {
 
 describe('purge command exam', () => {
   const originalCwd = process.cwd();
-  const originalDataDir = process.env.MEMORIX_DATA_DIR;
-  const originalEmbedding = process.env.MEMORIX_EMBEDDING;
+  const originalDataDir = process.env.BATON_DATA_DIR;
+  const originalEmbedding = process.env.BATON_EMBEDDING;
   let root = '';
   let projectA = '';
   let projectB = '';
   let dataDir = '';
 
   beforeEach(() => {
-    root = mkdtempSync(path.join(tmpdir(), 'memorix-purge-'));
+    root = mkdtempSync(path.join(tmpdir(), 'baton-purge-'));
     projectA = path.join(root, 'project-a');
     projectB = path.join(root, 'project-b');
     dataDir = path.join(root, 'data');
@@ -54,19 +54,19 @@ describe('purge command exam', () => {
       writeFileSync(path.join(project, 'README.md'), '# test\n', 'utf8');
       execSync('git init', { cwd: project, stdio: 'ignore' });
       execSync('git config user.email test@example.com', { cwd: project, stdio: 'ignore' });
-      execSync('git config user.name "Memorix Test"', { cwd: project, stdio: 'ignore' });
+      execSync('git config user.name "Baton Test"', { cwd: project, stdio: 'ignore' });
     }
     process.chdir(projectA);
-    process.env.MEMORIX_DATA_DIR = dataDir;
-    process.env.MEMORIX_EMBEDDING = 'off';
+    process.env.BATON_DATA_DIR = dataDir;
+    process.env.BATON_EMBEDDING = 'off';
   });
 
   afterEach(async () => {
     process.chdir(originalCwd);
-    if (originalDataDir === undefined) delete process.env.MEMORIX_DATA_DIR;
-    else process.env.MEMORIX_DATA_DIR = originalDataDir;
-    if (originalEmbedding === undefined) delete process.env.MEMORIX_EMBEDDING;
-    else process.env.MEMORIX_EMBEDDING = originalEmbedding;
+    if (originalDataDir === undefined) delete process.env.BATON_DATA_DIR;
+    else process.env.BATON_DATA_DIR = originalDataDir;
+    if (originalEmbedding === undefined) delete process.env.BATON_EMBEDDING;
+    else process.env.BATON_EMBEDDING = originalEmbedding;
     resetObservationStore();
     resetSessionStore();
     resetTeamStore();

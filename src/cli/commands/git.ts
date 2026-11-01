@@ -1,5 +1,5 @@
 /**
- * `pmi git analyze [--full] [--auto]` — incremental git intelligence
+ * `baton git analyze [--full] [--auto]` — incremental git intelligence
  * (src/git/analyze.ts). Only commits after the last analyzed one are read;
  * `--full` also checks that related files of active knowledge still exist.
  */

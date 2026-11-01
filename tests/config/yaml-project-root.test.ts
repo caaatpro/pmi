@@ -1,5 +1,5 @@
 /**
- * Verify FIX-1: Project-level memorix.yml reaches runtime config getters.
+ * Verify FIX-1: Project-level baton.yml reaches runtime config getters.
  *
  * Before fix: loadYamlConfig() without args ignored project-level config.
  * After fix: initProjectRoot() sets a global default, so all getters work.
@@ -11,9 +11,9 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { loadYamlConfig, initProjectRoot, clearProjectRoot, resetYamlConfigCache } from '../../src/config/yaml-loader.js';
 
-describe('Project-level memorix.yml resolution', () => {
-  const testDir = join(tmpdir(), 'memorix-test-yml-' + Date.now());
-  const ymlPath = join(testDir, 'memorix.yml');
+describe('Project-level baton.yml resolution', () => {
+  const testDir = join(tmpdir(), 'baton-test-yml-' + Date.now());
+  const ymlPath = join(testDir, 'baton.yml');
 
   beforeEach(() => {
     mkdirSync(testDir, { recursive: true });
@@ -47,9 +47,9 @@ describe('Project-level memorix.yml resolution', () => {
     initProjectRoot(testDir);
 
     // Create a different dir with different config
-    const otherDir = join(tmpdir(), 'memorix-test-yml-other-' + Date.now());
+    const otherDir = join(tmpdir(), 'baton-test-yml-other-' + Date.now());
     mkdirSync(otherDir, { recursive: true });
-    const otherYml = join(otherDir, 'memorix.yml');
+    const otherYml = join(otherDir, 'baton.yml');
     writeFileSync(otherYml, 'llm:\n  provider: from-explicit\n', 'utf-8');
 
     // Explicit arg should win

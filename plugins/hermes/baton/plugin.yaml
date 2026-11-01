@@ -1,0 +1,21 @@
+name: baton
+version: "1.10.2"
+description: Shared workspace memory bridge for Hermes Agent.
+author: Baton Hub team
+license: Apache-2.0
+provides_hooks:
+  - pre_llm_call
+  - post_tool_call
+  - post_llm_call
+  - on_session_start
+  - on_session_end
+provides_commands:
+  - baton
+provides_cli_commands:
+  - baton
+provides_skills:
+  - baton-memory
+  - baton-reasoning
+  - baton-sessions
+  - baton-git-memory
+  - baton-troubleshooting

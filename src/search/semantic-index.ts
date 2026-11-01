@@ -102,9 +102,9 @@ async function loadLanceDb(): Promise<any | null> {
     return module;
   } catch (error) {
     availability = false;
-    if (process.env.MEMORIX_SEMANTIC_INDEX === 'lancedb') {
+    if (process.env.BATON_SEMANTIC_INDEX === 'lancedb') {
       console.warn(
-        `[memorix] LanceDB semantic index unavailable; falling back to Orama: ${error instanceof Error ? error.message : String(error)}`,
+        `[baton] LanceDB semantic index unavailable; falling back to Orama: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
     return null;
@@ -116,7 +116,7 @@ export async function isSemanticIndexAvailable(): Promise<boolean> {
 }
 
 function semanticIndexEnabled(): boolean {
-  return process.env.MEMORIX_SEMANTIC_INDEX !== 'off' && process.env.MEMORIX_SEMANTIC_INDEX !== 'orama';
+  return process.env.BATON_SEMANTIC_INDEX !== 'off' && process.env.BATON_SEMANTIC_INDEX !== 'orama';
 }
 
 async function openState(dataDir: string, profile: SemanticIndexProfile): Promise<SemanticIndexState | null> {
@@ -196,19 +196,19 @@ function positiveEnvInt(name: string, fallback: number): number {
 }
 
 function semanticWriteBatchSize(): number {
-  return positiveEnvInt('MEMORIX_SEMANTIC_WRITE_BATCH_SIZE', DEFAULT_WRITE_BATCH_SIZE);
+  return positiveEnvInt('BATON_SEMANTIC_WRITE_BATCH_SIZE', DEFAULT_WRITE_BATCH_SIZE);
 }
 
 function semanticWriteFlushMs(): number {
-  return positiveEnvInt('MEMORIX_SEMANTIC_WRITE_FLUSH_MS', DEFAULT_WRITE_FLUSH_MS);
+  return positiveEnvInt('BATON_SEMANTIC_WRITE_FLUSH_MS', DEFAULT_WRITE_FLUSH_MS);
 }
 
 function semanticOptimizeEvery(): number {
-  return positiveEnvInt('MEMORIX_SEMANTIC_OPTIMIZE_EVERY', DEFAULT_OPTIMIZE_EVERY);
+  return positiveEnvInt('BATON_SEMANTIC_OPTIMIZE_EVERY', DEFAULT_OPTIMIZE_EVERY);
 }
 
 function semanticVersionRetentionMs(): number {
-  return positiveEnvInt('MEMORIX_SEMANTIC_VERSION_RETENTION_MS', DEFAULT_VERSION_RETENTION_MS);
+  return positiveEnvInt('BATON_SEMANTIC_VERSION_RETENTION_MS', DEFAULT_VERSION_RETENTION_MS);
 }
 
 async function optimizeState(state: SemanticIndexState): Promise<void> {
@@ -358,7 +358,7 @@ export function deleteSemanticVector(
 }
 
 function resolveIndexThreshold(): number {
-  const raw = Number.parseInt(process.env.MEMORIX_SEMANTIC_INDEX_THRESHOLD ?? '', 10);
+  const raw = Number.parseInt(process.env.BATON_SEMANTIC_INDEX_THRESHOLD ?? '', 10);
   return Number.isSafeInteger(raw) && raw > 0 ? raw : DEFAULT_INDEX_THRESHOLD;
 }
 
@@ -458,7 +458,7 @@ export async function closeSemanticIndexes(): Promise<void> {
   mutationCounts.clear();
 }
 
-/** Close only the semantic tables rooted in one Memorix data directory. */
+/** Close only the semantic tables rooted in one Baton data directory. */
 export async function closeSemanticIndex(dataDir: string): Promise<void> {
   const prefix = `${path.resolve(dataDir)}::`;
   await Promise.all([...pendingVectorBatches.keys()].filter((key) => key.startsWith(prefix)).map(flushPendingVectorBatch));

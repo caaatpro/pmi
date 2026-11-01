@@ -9,7 +9,7 @@ import { buildTaskWorkset } from '../../src/knowledge/workset.js';
 const roots: string[] = [];
 
 function tempDir(): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'memorix-continuity-'));
+  const root = mkdtempSync(path.join(tmpdir(), 'baton-continuity-'));
   roots.push(root);
   return root;
 }

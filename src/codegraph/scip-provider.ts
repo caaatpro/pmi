@@ -79,7 +79,7 @@ interface ScipNodeInfo {
   relationships: Array<{ target: string; kind: string }>;
 }
 
-/** Normalize a bounded `scip print --json` payload into Memorix's outline. */
+/** Normalize a bounded `scip print --json` payload into Baton's outline. */
 export function normalizeScipOutline(value: unknown, options: ScipOutlineOptions): CodeGraphOutline | undefined {
   if (!isRecord(value) || !Array.isArray(value.documents)) return undefined;
   const maxNodes = Math.max(2, Math.min(64, Math.floor(options.maxNodes ?? DEFAULT_MAX_NODES)));

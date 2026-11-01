@@ -67,15 +67,15 @@ function formatStatus(status: ReturnType<CodeGraphStore['status']>, quality?: Co
 function formatUsageHint(): string {
   return [
     'Usage:',
-    '  memorix codegraph refresh',
-    '  memorix codegraph init       # explicit local CodeGraph initialization',
-    '  memorix codegraph sync       # explicit local CodeGraph synchronization',
-    '  memorix codegraph status --json',
-    '  memorix codegraph diff [--from <snapshot>] [--to <snapshot>]',
-    '  memorix codegraph impact --path <relative-source-path>',
-    '  memorix codegraph context-pack --task "continue auth bug"',
+    '  baton codegraph refresh',
+    '  baton codegraph init       # explicit local CodeGraph initialization',
+    '  baton codegraph sync       # explicit local CodeGraph synchronization',
+    '  baton codegraph status --json',
+    '  baton codegraph diff [--from <snapshot>] [--to <snapshot>]',
+    '  baton codegraph impact --path <relative-source-path>',
+    '  baton codegraph context-pack --task "continue auth bug"',
     '',
-    'Tip: use `memorix context "..."` for new work or `memorix resume "..."` for prior work.',
+    'Tip: use `baton context "..."` for new work or `baton resume "..."` for prior work.',
   ].join('\n');
 }
 
@@ -260,7 +260,7 @@ export default defineCommand({
           const fromSnapshotId = (args.from as string | undefined)?.trim() || snapshots[1]?.id;
           const toSnapshotId = (args.to as string | undefined)?.trim() || snapshots[0]?.id;
           if (!fromSnapshotId || !toSnapshotId) {
-            emitError('two completed CodeGraph snapshots are required; run "memorix codegraph refresh" again after a code change.', asJson);
+            emitError('two completed CodeGraph snapshots are required; run "baton codegraph refresh" again after a code change.', asJson);
             return;
           }
           const diff = store.diffSnapshots(project.id, fromSnapshotId, toSnapshotId);
@@ -276,11 +276,11 @@ export default defineCommand({
         case 'impact': {
           const sourcePath = (args.path as string | undefined)?.trim() || positional.slice(1).join(' ').trim();
           if (!sourcePath) {
-            emitError('path is required for "memorix codegraph impact"', asJson);
+            emitError('path is required for "baton codegraph impact"', asJson);
             return;
           }
           if (!store.getFile(project.id, sourcePath)) {
-            emitError(`path is not in the current CodeGraph index: ${sourcePath}. Run "memorix codegraph refresh" and retry.`, asJson);
+            emitError(`path is not in the current CodeGraph index: ${sourcePath}. Run "baton codegraph refresh" and retry.`, asJson);
             return;
           }
           const impact = store.impactSlice(
@@ -295,7 +295,7 @@ export default defineCommand({
         case 'context-pack': {
           const task = (args.task as string | undefined)?.trim() || positional.slice(1).join(' ').trim();
           if (!task) {
-            emitError('task is required for "memorix codegraph context-pack"', asJson);
+            emitError('task is required for "baton codegraph context-pack"', asJson);
             return;
           }
           const limit = parsePositiveInt(args.limit as string | undefined, 20);

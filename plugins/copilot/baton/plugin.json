@@ -1,0 +1,22 @@
+{
+  "name": "baton",
+  "version": "1.10.2",
+  "description": "Shared local workspace memory for GitHub Copilot CLI and other AI coding agents.",
+  "author": {
+    "name": "Baton Hub team",
+    "url": "https://github.com/caaatpro/pmi"
+  },
+  "homepage": "https://mem.rglens.com",
+  "repository": "https://github.com/caaatpro/pmi",
+  "license": "Apache-2.0",
+  "keywords": [
+    "memory",
+    "mcp",
+    "copilot-cli",
+    "coding-agents"
+  ],
+  "category": "Developer Tools",
+  "skills": "skills/",
+  "hooks": "hooks/hooks.json",
+  "mcpServers": ".mcp.json"
+}

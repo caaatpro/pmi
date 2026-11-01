@@ -13,10 +13,10 @@ describe('OpenClawMCPAdapter', () => {
     const servers = adapter.parse(JSON.stringify({
       mcp: {
         servers: {
-          memorix: {
-            command: 'memorix',
+          baton: {
+            command: 'baton',
             args: ['serve'],
-            env: { MEMORIX_MODE: 'full' },
+            env: { BATON_MODE: 'full' },
           },
           remote: {
             url: 'https://example.test/mcp',
@@ -29,10 +29,10 @@ describe('OpenClawMCPAdapter', () => {
 
     expect(servers).toHaveLength(2);
     expect(servers[0]).toMatchObject({
-      name: 'memorix',
-      command: 'memorix',
+      name: 'baton',
+      command: 'baton',
       args: ['serve'],
-      env: { MEMORIX_MODE: 'full' },
+      env: { BATON_MODE: 'full' },
     });
     expect(servers[1]).toMatchObject({
       name: 'remote',
@@ -43,7 +43,7 @@ describe('OpenClawMCPAdapter', () => {
 
   it('generates OpenClaw stdio and streamable HTTP entries', () => {
     const servers: MCPServerEntry[] = [
-      { name: 'memorix', command: 'memorix', args: ['serve'] },
+      { name: 'baton', command: 'baton', args: ['serve'] },
       {
         name: 'remote',
         command: '',
@@ -54,8 +54,8 @@ describe('OpenClawMCPAdapter', () => {
     ];
 
     const parsed = JSON.parse(adapter.generate(servers));
-    expect(parsed.mcp.servers.memorix).toMatchObject({
-      command: 'memorix',
+    expect(parsed.mcp.servers.baton).toMatchObject({
+      command: 'baton',
       args: ['serve'],
     });
     expect(parsed.mcp.servers.remote).toMatchObject({

@@ -1,10 +1,10 @@
 /**
- * .env Loader for Memorix
+ * .env Loader for Baton
  *
  * Loads compatibility environment overrides from project/user .env files.
  * The primary product configuration is TOML:
- *   - ~/.memorix/config.toml
- *   - <git-root>/memorix.toml
+ *   - ~/.baton/config.toml
+ *   - <git-root>/baton.toml
  *
  * Design principle:
  *   TOML = normal user setup and structured behavior
@@ -13,7 +13,7 @@
  * Priority (highest wins):
  *   1. System environment variables (from MCP host `env` field or shell)
  *   2. Project .env file (./  .env in project root)
- *   3. User .env file (~/.memorix/.env) — advanced, not promoted
+ *   3. User .env file (~/.baton/.env) — advanced, not promoted
  *
  * Do not promote .env as the default product surface. Keep it as an override
  * layer for users who need launcher-specific behavior.
@@ -86,7 +86,7 @@ export function loadDotenv(projectRoot?: string, options: DotenvLoadOptions = {}
     loadEnvFile(getProjectDotenvPath(projectRoot));
   }
 
-  // 2. User-level .env (~/.memorix/.env) — lowest .env priority, load second
+  // 2. User-level .env (~/.baton/.env) — lowest .env priority, load second
   //    (override: false means it only fills in keys not already set)
   loadEnvFile(getGlobalDotenvPath(userHomeDir));
 
@@ -128,18 +128,18 @@ export function getLoadedEnvValue(key: string): string | undefined {
 }
 
 // ─── Supported .env variables ───
-// These are the ONLY variables Memorix reads from .env.
+// These are the ONLY variables Baton reads from .env.
 // All are secrets or endpoint URLs — no behavior config.
 //
-// MEMORIX_LLM_API_KEY       — Background memory LLM API key
-// MEMORIX_LLM_BASE_URL      — Background memory LLM endpoint
-// MEMORIX_AGENT_API_KEY     — TUI/chat coding agent API key
-// MEMORIX_AGENT_BASE_URL    — TUI/chat coding agent endpoint
-// MEMORIX_AGENT_LLM_API_KEY — Legacy alias for MEMORIX_AGENT_API_KEY
-// MEMORIX_AGENT_LLM_BASE_URL — Legacy alias for MEMORIX_AGENT_BASE_URL
-// MEMORIX_EMBEDDING_API_KEY — Embedding/vector API key
-// MEMORIX_EMBEDDING_BASE_URL — Custom embedding endpoint
-// MEMORIX_API_KEY           — Memory LLM simple key (not used for embedding or agent)
+// BATON_LLM_API_KEY       — Background memory LLM API key
+// BATON_LLM_BASE_URL      — Background memory LLM endpoint
+// BATON_AGENT_API_KEY     — TUI/chat coding agent API key
+// BATON_AGENT_BASE_URL    — TUI/chat coding agent endpoint
+// BATON_AGENT_LLM_API_KEY — Legacy alias for BATON_AGENT_API_KEY
+// BATON_AGENT_LLM_BASE_URL — Legacy alias for BATON_AGENT_BASE_URL
+// BATON_EMBEDDING_API_KEY — Embedding/vector API key
+// BATON_EMBEDDING_BASE_URL — Custom embedding endpoint
+// BATON_API_KEY           — Memory LLM simple key (not used for embedding or agent)
 // OPENAI_API_KEY            — OpenAI compatibility fallback
 // ANTHROPIC_API_KEY         — Anthropic compatibility fallback
 // OPENROUTER_API_KEY        — OpenRouter compatibility fallback
@@ -153,4 +153,4 @@ export function getLoadedEnvValue(key: string): string | undefined {
 // MINIMAX_IMAGE_BASE_URL    — MiniMax image endpoint override
 // MINIMAX_VIDEO_BASE_URL    — MiniMax video endpoint override
 // MINIMAX_VIDEO_MODEL       — MiniMax video model override
-// MEMORIX_MCP_MEDIA_GENERATION — Set to 1 only to allow billed MiniMax generation through MCP
+// BATON_MCP_MEDIA_GENERATION — Set to 1 only to allow billed MiniMax generation through MCP

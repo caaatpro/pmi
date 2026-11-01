@@ -4,7 +4,7 @@
  * Replaces withFreshObservations() as the public API for all retrieval
  * surfaces: checks the observation generation counter so the Orama index is
  * up-to-date before any read. (Mini-skills, once a second indexed source, are
- * ordinary coding_convention observations since PMI migration pmi-5.)
+ * ordinary coding_convention observations since Baton migration baton-5.)
  *
  * withFreshObservations() remains in observations.ts as @internal —
  * only called by this module and legacy test code.

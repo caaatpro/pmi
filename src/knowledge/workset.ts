@@ -530,7 +530,7 @@ export function renderTaskWorksetPrompt(input: Omit<TaskWorkset, 'prompt' | 'bud
   const maxTokens = input.budget?.maxTokens ?? 180;
   const omitted: string[] = [];
   const selected: ContextReceiptSelection[] = [];
-  const lines: string[] = ['Memorix Autopilot Brief'];
+  const lines: string[] = ['Baton Autopilot Brief'];
   const task = short(input.task || 'Continue the current task.', 34);
   appendLine(lines, 'Task: ' + task, maxTokens, omitted, 'task-detail', selected, {
     kind: 'task',

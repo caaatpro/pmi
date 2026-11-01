@@ -14,7 +14,7 @@ afterEach(() => {
 
 describe('CodeGraph semantic baseline', () => {
   it('records a deterministic ground-truth relation set without an LLM', async () => {
-    root = join(tmpdir(), `memorix-codegraph-baseline-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    root = join(tmpdir(), `baton-codegraph-baseline-${Date.now()}-${Math.random().toString(16).slice(2)}`);
     mkdirSync(join(root, 'src'), { recursive: true });
     mkdirSync(join(root, 'tests'), { recursive: true });
     writeFileSync(join(root, 'src', 'token.ts'), 'export function readToken() { return "ok"; }\n');

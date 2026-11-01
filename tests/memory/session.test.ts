@@ -34,7 +34,7 @@ let testDir: string;
 const PROJECT_ID = 'test/session-lifecycle';
 
 beforeEach(async () => {
-  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-session-'));
+  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-session-'));
   resetObservationStore();
   resetSessionStore();
   await resetDb();
@@ -111,7 +111,7 @@ describe('Session Lifecycle', () => {
       const resumed = await startSession(testDir, PROJECT_ID, { sessionId: 'resumed-session' });
       const expanded = await getSessionContext(testDir, PROJECT_ID);
 
-      expect(resumed.previousContext).toContain('## Memorix Resume');
+      expect(resumed.previousContext).toContain('## Baton Resume');
       expect(resumed.previousContext).toContain('Keep the release verification gate');
       expect(resumed.previousContext).not.toContain('MEMORY_BODY_SHOULD_NOT_AUTO_INJECT');
       expect(resumed.previousContext).not.toContain('SESSION_TAIL_SHOULD_NOT_AUTO_INJECT');
@@ -316,9 +316,9 @@ describe('Session Lifecycle', () => {
       });
 
       await storeObservation({
-        entityName: 'memorix-demo',
+        entityName: 'baton-demo',
         type: 'discovery',
-        title: 'Memorix 全能力展示 - Antigravity IDE',
+        title: 'Baton 全能力展示 - Antigravity IDE',
         narrative: '这是一个演示记录，不应该默认注入到新会话',
         facts: ['demo-only'],
         projectId: PROJECT_ID,
@@ -328,7 +328,7 @@ describe('Session Lifecycle', () => {
       const context = await getSessionContext(testDir, PROJECT_ID);
 
       expect(context).toContain('Use blue-green deploys for my_status');
-      expect(context).not.toContain('Memorix 全能力展示 - Antigravity IDE');
+      expect(context).not.toContain('Baton 全能力展示 - Antigravity IDE');
     });
 
     it('should ignore resolved observations during context injection', async () => {
@@ -590,13 +590,13 @@ describe('Session Lifecycle', () => {
 
       // Store a demo pollution observation
       await storeObservation({
-        entityName: 'memorix-demo',
+        entityName: 'baton-demo',
         type: 'discovery',
-        title: 'Memorix 全能力展示 - Antigravity IDE',
+        title: 'Baton 全能力展示 - Antigravity IDE',
         narrative: 'Complete demo of all 22 tools',
         facts: ['Tested all tools'],
         filesModified: [],
-        concepts: ['memorix', 'demo'],
+        concepts: ['baton', 'demo'],
         projectId: PROJECT_ID,
       });
 
@@ -604,7 +604,7 @@ describe('Session Lifecycle', () => {
       await storeObservation({
         entityName: 'for_memmcp_test',
         type: 'gotcha',
-        title: '[测试] Memorix 兼容性检测',
+        title: '[测试] Baton 兼容性检测',
         narrative: 'Testing compat with memmcp',
         facts: ['compat verified'],
         filesModified: [],
@@ -619,11 +619,11 @@ describe('Session Lifecycle', () => {
       // Demo/test observations should NOT appear
       expect(context).not.toContain('全能力展示');
       expect(context).not.toContain('兼容性检测');
-      expect(context).not.toContain('memorix-demo');
+      expect(context).not.toContain('baton-demo');
       expect(context).not.toContain('for_memmcp_test');
     });
 
-    it('should exclude system-self observations about Memorix runtime/injection', async () => {
+    it('should exclude system-self observations about Baton runtime/injection', async () => {
       await storeObservation({
         entityName: 'my-status-feature',
         type: 'decision',
@@ -636,20 +636,20 @@ describe('Session Lifecycle', () => {
       });
 
       await storeObservation({
-        entityName: 'memorix-runtime',
+        entityName: 'baton-runtime',
         type: 'discovery',
-        title: 'Different users need different Memorix runtime modes',
+        title: 'Different users need different Baton runtime modes',
         narrative: 'Session injection now filters noisy context for control-plane',
         facts: ['Runtime mode affects injection'],
         filesModified: [],
-        concepts: ['memorix', 'runtime'],
+        concepts: ['baton', 'runtime'],
         projectId: PROJECT_ID,
       });
 
       const context = await getSessionContext(testDir, PROJECT_ID);
 
       expect(context).toContain('React Query');
-      expect(context).not.toContain('Memorix runtime modes');
+      expect(context).not.toContain('Baton runtime modes');
       expect(context).not.toContain('Session injection');
     });
   });

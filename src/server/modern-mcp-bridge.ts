@@ -1,7 +1,7 @@
 /**
  * Modern MCP protocol bridge.
  *
- * Memorix's product handlers still use the mature v1 SDK internally. The
+ * Baton's product handlers still use the mature v1 SDK internally. The
  * public modern transport is served by the official v2 SDK; this bridge keeps
  * one source of truth for the tool implementation by forwarding v2 tool calls
  * through an in-process v1 client/server pair.
@@ -14,16 +14,16 @@ import {
 import { Client as LegacyClient } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport as LegacyInMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { getMcpServerInfo } from './mcp-discovery.js';
-import type { CreateMemorixServerOptions } from '../server.js';
+import type { CreateBatonServerOptions } from '../server.js';
 import type { ProjectBindingSource } from './request-context.js';
 
-export interface ModernMcpBridgeOptions extends CreateMemorixServerOptions {
+export interface ModernMcpBridgeOptions extends CreateBatonServerOptions {
   projectRoot: string;
 }
 
 /**
  * Lifecycle hooks kept beside the v2 facade so transport adapters do not lose
- * Memorix-specific project binding and deferred maintenance behavior.
+ * Baton-specific project binding and deferred maintenance behavior.
  */
 export interface ModernMcpBridgeLifecycle {
   projectId: string;
@@ -36,7 +36,7 @@ export interface ModernMcpBridgeLifecycle {
 }
 
 export type ModernMcpBridge = ModernMcpServer & {
-  memorix: ModernMcpBridgeLifecycle;
+  baton: ModernMcpBridgeLifecycle;
 };
 
 let businessRuntimeQueue: Promise<unknown> = Promise.resolve();
@@ -142,15 +142,15 @@ export class ModernMcpRuntimePool {
 }
 
 /**
- * Build an official v2 server whose tools delegate to the existing Memorix
+ * Build an official v2 server whose tools delegate to the existing Baton
  * implementation. The v1 side is process-local and never becomes a second
  * network endpoint, so project isolation and business behavior stay shared.
  */
 export async function createModernMcpRuntime(
   options: ModernMcpBridgeOptions,
 ): Promise<ModernMcpRuntime> {
-  const { createMemorixServer } = await import('../server.js');
-  const legacy = await createMemorixServer(
+  const { createBatonServer } = await import('../server.js');
+  const legacy = await createBatonServer(
     options.projectRoot,
     undefined,
     undefined,
@@ -164,7 +164,7 @@ export async function createModernMcpRuntime(
 
   const [clientTransport, serverTransport] = LegacyInMemoryTransport.createLinkedPair();
   const legacyClient = new LegacyClient({
-    name: 'memorix-modern-bridge',
+    name: 'baton-modern-bridge',
     version: getMcpServerInfo().version,
   });
   await legacy.server.connect(serverTransport);
@@ -204,7 +204,7 @@ export async function createModernMcpRuntime(
           async (args) => await callTool(tool.name, args as Record<string, unknown>) as never,
         );
       }
-      requestServer.memorix = lifecycle;
+      requestServer.baton = lifecycle;
       return requestServer;
     },
     close: async () => {

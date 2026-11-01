@@ -4,7 +4,7 @@
  * Abstraction layer for LLM-enhanced memory management.
  * Supports OpenAI-compatible APIs (OpenAI, Anthropic via proxy, local models).
  *
- * This is the optional "premium" path — Memorix works without it,
+ * This is the optional "premium" path — Baton works without it,
  * but with an LLM configured, memory quality approaches Mem0/Cipher level.
  */
 
@@ -62,7 +62,7 @@ export function normalizeOpenAICompatibleBaseUrl(baseUrl: string): string {
 }
 
 /**
- * Parse and validate MEMORIX_LLM_TIMEOUT_MS environment variable.
+ * Parse and validate BATON_LLM_TIMEOUT_MS environment variable.
  * - Must be a valid integer in the range 1000–300000ms.
  * - Non-integer or out-of-range values log a warning and fall back to the default.
  * Default: 30000ms (30s) — allows for proxy routing and cold starts.
@@ -72,7 +72,7 @@ export function parseLLMTimeoutMs(raw: string | undefined): number {
   const parsed = Number(raw);
   if (!Number.isInteger(parsed) || Number.isNaN(parsed)) {
     console.warn(
-      `[memorix] MEMORIX_LLM_TIMEOUT_MS="${raw}" is invalid (must be a positive integer between ${LLM_TIMEOUT_MIN_MS}–${LLM_TIMEOUT_MAX_MS}ms). Using default ${LLM_TIMEOUT_DEFAULT_MS}ms.`,
+      `[baton] BATON_LLM_TIMEOUT_MS="${raw}" is invalid (must be a positive integer between ${LLM_TIMEOUT_MIN_MS}–${LLM_TIMEOUT_MAX_MS}ms). Using default ${LLM_TIMEOUT_DEFAULT_MS}ms.`,
     );
     return LLM_TIMEOUT_DEFAULT_MS;
   }
@@ -81,7 +81,7 @@ export function parseLLMTimeoutMs(raw: string | undefined): number {
   return parsed;
 }
 
-const LLM_CALL_TIMEOUT_MS = parseLLMTimeoutMs(process.env.MEMORIX_LLM_TIMEOUT_MS);
+const LLM_CALL_TIMEOUT_MS = parseLLMTimeoutMs(process.env.BATON_LLM_TIMEOUT_MS);
 
 export interface LLMResponse {
   content: string;
@@ -169,7 +169,7 @@ export async function* callLLMWithToolsStream(
   tools: ToolDefinition[],
 ): AsyncGenerator<LLMStreamEvent, void, undefined> {
   if (!currentConfig) {
-    throw new Error('LLM not configured. Set MEMORIX_LLM_API_KEY or OPENAI_API_KEY.');
+    throw new Error('LLM not configured. Set BATON_LLM_API_KEY or OPENAI_API_KEY.');
   }
 
   if (currentConfig.provider === 'anthropic') {
@@ -222,7 +222,7 @@ export interface InitLLMOptions {
 
 /**
  * Initialize the LLM provider from environment variables.
- * Returns null if no API key is configured — Memorix gracefully degrades.
+ * Returns null if no API key is configured — Baton gracefully degrades.
  */
 export function initLLM(options: InitLLMOptions = {}): LLMConfig | null {
   const scope = options.scope ?? 'memory';
@@ -287,7 +287,7 @@ export async function callLLM(
   signal?: AbortSignal,
 ): Promise<LLMResponse> {
   if (!currentConfig) {
-    throw new Error('LLM not configured. Set MEMORIX_LLM_API_KEY or OPENAI_API_KEY.');
+    throw new Error('LLM not configured. Set BATON_LLM_API_KEY or OPENAI_API_KEY.');
   }
 
   if (currentConfig.provider === 'anthropic') {
@@ -413,7 +413,7 @@ export async function callLLMWithTools(
   signal?: AbortSignal,
 ): Promise<LLMToolResponse> {
   if (!currentConfig) {
-    throw new Error('LLM not configured. Set MEMORIX_LLM_API_KEY or OPENAI_API_KEY.');
+    throw new Error('LLM not configured. Set BATON_LLM_API_KEY or OPENAI_API_KEY.');
   }
 
   if (currentConfig.provider === 'anthropic') {

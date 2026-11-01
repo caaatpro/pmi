@@ -16,7 +16,7 @@ import type { Observation } from '../../src/types.js';
 let tmpDir: string;
 
 beforeEach(async () => {
-  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-atomicity-'));
+  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-atomicity-'));
   resetSessionStore();
 });
 

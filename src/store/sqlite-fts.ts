@@ -100,7 +100,7 @@ export function initializeObservationLexicalIndex(db: any): boolean {
 
   ftsAvailability.set(db, false);
   console.warn(
-    `[memorix] SQLite FTS5 unavailable; using the existing search fallback: ${lastError instanceof Error ? lastError.message : String(lastError)}`,
+    `[baton] SQLite FTS5 unavailable; using the existing search fallback: ${lastError instanceof Error ? lastError.message : String(lastError)}`,
   );
   return false;
 }

@@ -26,10 +26,10 @@ import type { ObservationType } from '../../src/types.js';
 
 let testDir: string;
 let graphManager: KnowledgeGraphManager;
-const PROJECT_ID = 'test/memorix-integration';
+const PROJECT_ID = 'test/baton-integration';
 
 beforeEach(async () => {
-  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-e2e-'));
+  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-e2e-'));
   await resetDb();
   graphManager = new KnowledgeGraphManager(testDir);
   await graphManager.init();
@@ -174,8 +174,8 @@ describe('End-to-End: Store → Search → Detail', () => {
     expect(result.formatted).toContain('| Ref |');
     expect(result.formatted).toContain('| Time |');
     // Should contain Progressive Disclosure hint
-    expect(result.formatted).toContain('memorix_detail');
-    expect(result.formatted).toContain('memorix_timeline');
+    expect(result.formatted).toContain('baton_detail');
+    expect(result.formatted).toContain('baton_timeline');
   });
 
   it('should track access count when observations are searched', async () => {

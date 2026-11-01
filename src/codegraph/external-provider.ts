@@ -110,7 +110,7 @@ export interface ExternalCodeGraphQueryDiagnostics {
   explore: ExternalCodeGraphQueryDiagnostic;
 }
 
-/** Explicit lifecycle operations. Memorix never calls CodeGraph's `install`. */
+/** Explicit lifecycle operations. Baton never calls CodeGraph's `install`. */
 export type ExternalCodeGraphLifecycleAction = 'init' | 'sync';
 
 export interface ExternalCodeGraphLifecycleInput extends InspectExternalCodeGraphInput {
@@ -543,7 +543,7 @@ export async function runExternalCodeGraphLifecycle(
     return {
       action: input.action,
       performed: false,
-      message: 'Initialize CodeGraph first with "memorix codegraph init".',
+      message: 'Initialize CodeGraph first with "baton codegraph init".',
       health,
       quality: providerQuality({ mode, health }),
     };
@@ -587,7 +587,7 @@ export async function runExternalCodeGraphLifecycle(
     action: input.action,
     performed: true,
     message: input.action === 'init'
-      ? 'Local CodeGraph initialization completed. Run "memorix codegraph sync" when source changes.'
+      ? 'Local CodeGraph initialization completed. Run "baton codegraph sync" when source changes.'
       : remainsStale
         ? 'Local CodeGraph synchronization completed, but the graph remains stale against the current worktree; this task will use Lite evidence.'
         : 'Local CodeGraph synchronization completed and is ready for task-scoped semantic context.',

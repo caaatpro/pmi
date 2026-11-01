@@ -76,7 +76,7 @@ export default defineCommand({
         case 'show': {
           const name = (args.name as string | undefined)?.trim();
           if (!name) {
-            emitError('name is required for "memorix skills show"', asJson);
+            emitError('name is required for "baton skills show"', asJson);
             return;
           }
           const direct = engine.injectSkill(name);
@@ -113,12 +113,12 @@ export default defineCommand({
         }
 
         default:
-          console.log('Memorix Skills Commands');
+          console.log('Baton Skills Commands');
           console.log('');
           console.log('Usage:');
-          console.log('  memorix skills list');
-          console.log('  memorix skills generate [--write --target codex]');
-          console.log('  memorix skills show --name <skill>');
+          console.log('  baton skills list');
+          console.log('  baton skills generate [--write --target codex]');
+          console.log('  baton skills show --name <skill>');
       }
     } catch (error) {
       emitError(error instanceof Error ? error.message : String(error), asJson);

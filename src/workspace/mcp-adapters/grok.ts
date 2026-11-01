@@ -8,8 +8,8 @@ import { CodexMCPAdapter } from './codex.js';
  * Format: TOML at $GROK_HOME/config.toml (default ~/.grok/config.toml) or
  * .grok/config.toml (project-level). Same `[mcp_servers.<name>]` shape as Codex.
  *
- * Default setup leaves this file host-owned. Explicit `memorix setup --mcp http`
- * writes a URL-only Memorix block.
+ * Default setup leaves this file host-owned. Explicit `baton setup --mcp http`
+ * writes a URL-only Baton block.
  */
 export class GrokMCPAdapter implements MCPConfigAdapter {
   readonly source = 'grok' as const;

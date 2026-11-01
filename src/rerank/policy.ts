@@ -12,7 +12,7 @@ export const RERANK_TIMEOUT_MAX_MS = 300_000;
 export const MIN_RERANK_CANDIDATES = 3;
 
 /**
- * Parse and validate MEMORIX_RERANK_TIMEOUT_MS.
+ * Parse and validate BATON_RERANK_TIMEOUT_MS.
  *
  * @param raw - Environment value, or undefined when unset
  * @returns Timeout in milliseconds (default 30000)
@@ -24,7 +24,7 @@ export function parseRerankTimeoutMs(raw: string | undefined): number {
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || Number.isNaN(parsed)) {
     console.warn(
-      `[memorix] MEMORIX_RERANK_TIMEOUT_MS="${raw}" is invalid (must be a positive integer between ${RERANK_TIMEOUT_MIN_MS}-${RERANK_TIMEOUT_MAX_MS}ms). Using default ${DEFAULT_RERANK_TIMEOUT_MS}ms.`,
+      `[baton] BATON_RERANK_TIMEOUT_MS="${raw}" is invalid (must be a positive integer between ${RERANK_TIMEOUT_MIN_MS}-${RERANK_TIMEOUT_MAX_MS}ms). Using default ${DEFAULT_RERANK_TIMEOUT_MS}ms.`,
     );
     return DEFAULT_RERANK_TIMEOUT_MS;
   }
@@ -44,7 +44,7 @@ export function resolveRerankTimeoutMs(explicitTimeoutMs?: number): number {
   if (typeof explicitTimeoutMs === 'number' && Number.isFinite(explicitTimeoutMs) && explicitTimeoutMs > 0) {
     return explicitTimeoutMs;
   }
-  return parseRerankTimeoutMs(process.env.MEMORIX_RERANK_TIMEOUT_MS);
+  return parseRerankTimeoutMs(process.env.BATON_RERANK_TIMEOUT_MS);
 }
 
 /**

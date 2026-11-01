@@ -13,7 +13,7 @@ import { closeAllDatabases } from '../../src/store/sqlite-db.js';
 let dataDir = '';
 
 beforeEach(async () => {
-  dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-lifecycle-trigger-'));
+  dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-lifecycle-trigger-'));
 });
 
 afterEach(async () => {

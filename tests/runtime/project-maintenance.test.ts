@@ -104,7 +104,7 @@ describe('createProjectMaintenanceHandler', () => {
       .mockReturnValueOnce({ missing: 1 });
     backfillVectorEmbeddings.mockResolvedValue({ attempted: 2, succeeded: 2, failed: 0 });
 
-    const result = await createProjectMaintenanceHandler('project-a', 'C:/memorix-data')(makeJob());
+    const result = await createProjectMaintenanceHandler('project-a', 'C:/baton-data')(makeJob());
 
     expect(backfillVectorEmbeddings).toHaveBeenCalledWith({ projectId: 'project-a', limit: 2 });
     expect(result).toEqual({ action: 'reschedule', delayMs: 0, resetAttempts: true });
@@ -121,7 +121,7 @@ describe('createProjectMaintenanceHandler', () => {
       lastError: 'Embedding API timed out; using BM25 until embedding recovers',
     });
 
-    const result = await createProjectMaintenanceHandler('project-a', 'C:/memorix-data')(makeJob());
+    const result = await createProjectMaintenanceHandler('project-a', 'C:/baton-data')(makeJob());
 
     expect(result).toEqual({
       action: 'reschedule',
@@ -136,7 +136,7 @@ describe('createProjectMaintenanceHandler', () => {
   it('completes vector work immediately when embeddings are explicitly disabled', async () => {
     isEmbeddingExplicitlyDisabled.mockReturnValue(true);
 
-    const result = await createProjectMaintenanceHandler('project-a', 'C:/memorix-data')(makeJob());
+    const result = await createProjectMaintenanceHandler('project-a', 'C:/baton-data')(makeJob());
 
     expect(result).toEqual({ action: 'complete' });
     expect(backfillVectorEmbeddings).not.toHaveBeenCalled();
@@ -145,14 +145,14 @@ describe('createProjectMaintenanceHandler', () => {
   it('continues retention through a durable cursor instead of scanning from the beginning', async () => {
     archiveExpiredBatch.mockResolvedValue({ archived: 1, scanned: 25, nextCursor: 50 });
 
-    const result = await createProjectMaintenanceHandler('project-a', 'C:/memorix-data')(
+    const result = await createProjectMaintenanceHandler('project-a', 'C:/baton-data')(
       makeJob({
         kind: 'retention-archive',
         payload: { cursor: 25, limit: 25 },
       }),
     );
 
-    expect(archiveExpiredBatch).toHaveBeenCalledWith('C:/memorix-data', {
+    expect(archiveExpiredBatch).toHaveBeenCalledWith('C:/baton-data', {
       projectId: 'project-a',
       afterId: 25,
       limit: 25,
@@ -177,12 +177,12 @@ describe('createProjectMaintenanceHandler', () => {
 
     const result = await createProjectMaintenanceHandler(
       'project-a',
-      'C:/memorix-data',
+      'C:/baton-data',
       'C:/workspace/project-a',
       { maintenanceQueue: { enqueue: queueEnqueue } },
     )(makeJob({ kind: 'codegraph-refresh', payload: { maxFiles: 250 } }));
 
-    expect(codeStoreInit).toHaveBeenCalledWith('C:/memorix-data');
+    expect(codeStoreInit).toHaveBeenCalledWith('C:/baton-data');
     expect(refreshProjectLite).toHaveBeenCalledWith(expect.anything(), {
       projectId: 'project-a',
       projectRoot: 'C:/workspace/project-a',
@@ -222,7 +222,7 @@ describe('createProjectMaintenanceHandler', () => {
 
     const result = await createProjectMaintenanceHandler(
       'project-a',
-      'C:/memorix-data',
+      'C:/baton-data',
       'C:/workspace/project-a',
       { maintenanceQueue: { enqueue: queueEnqueue } },
     )(makeJob({
@@ -230,7 +230,7 @@ describe('createProjectMaintenanceHandler', () => {
       payload: { observationId: 42 },
     }));
 
-    expect(claimStoreInit).toHaveBeenCalledWith('C:/memorix-data');
+    expect(claimStoreInit).toHaveBeenCalledWith('C:/baton-data');
     expect(bindObservationToCode).toHaveBeenCalledWith(expect.anything(), observation);
     expect(deriveLowRiskClaimsFromObservation).toHaveBeenCalledWith(
       expect.anything(),
@@ -266,7 +266,7 @@ describe('createProjectMaintenanceHandler', () => {
       admissionReason: 'automatic record qualified against 1 current Code Memory reference(s)',
     });
 
-    const result = await createProjectMaintenanceHandler('project-a', 'C:/memorix-data')(
+    const result = await createProjectMaintenanceHandler('project-a', 'C:/baton-data')(
       makeJob({ kind: 'observation-qualify' as any, payload: { limit: 10 } }),
     );
 
@@ -288,7 +288,7 @@ describe('createProjectMaintenanceHandler', () => {
     runMaintenanceInChildProcess.mockResolvedValue({ action: 'complete' });
     const dispatcher = createProjectMaintenanceDispatcher(
       'project-a',
-      'C:/memorix-data',
+      'C:/baton-data',
       'C:/workspace/project-a',
     );
 
@@ -298,7 +298,7 @@ describe('createProjectMaintenanceHandler', () => {
     expect(runMaintenanceInChildProcess).toHaveBeenCalledWith({
       job: makeJob({ kind: 'codegraph-refresh' }),
       projectRoot: 'C:/workspace/project-a',
-      dataDir: 'C:/memorix-data',
+      dataDir: 'C:/baton-data',
     });
     expect(refreshProjectLite).not.toHaveBeenCalled();
   });
@@ -307,7 +307,7 @@ describe('createProjectMaintenanceHandler', () => {
     runMaintenanceInChildProcess.mockResolvedValue({ action: 'complete' });
     const dispatcher = createProjectMaintenanceDispatcher(
       'project-a',
-      'C:/memorix-data',
+      'C:/baton-data',
       'C:/workspace/project-a',
     );
     const claimJob = makeJob({ kind: 'claim-derive' as any, payload: { observationId: 42 } });
@@ -316,7 +316,7 @@ describe('createProjectMaintenanceHandler', () => {
     expect(runMaintenanceInChildProcess).toHaveBeenCalledWith({
       job: claimJob,
       projectRoot: 'C:/workspace/project-a',
-      dataDir: 'C:/memorix-data',
+      dataDir: 'C:/baton-data',
     });
   });
 });

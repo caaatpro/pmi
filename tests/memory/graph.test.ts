@@ -17,7 +17,7 @@ let testDir: string;
 let manager: KnowledgeGraphManager;
 
 beforeEach(async () => {
-  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-test-'));
+  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-test-'));
   manager = new KnowledgeGraphManager(testDir);
 });
 

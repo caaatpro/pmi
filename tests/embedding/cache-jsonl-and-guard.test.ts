@@ -19,16 +19,16 @@ describe('embedding cache jsonl + shrink guard', () => {
   let previousDataDir: string | undefined;
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'memorix-embed-cache-'));
-    previousDataDir = process.env.MEMORIX_DATA_DIR;
-    process.env.MEMORIX_DATA_DIR = dir;
+    dir = await mkdtemp(join(tmpdir(), 'baton-embed-cache-'));
+    previousDataDir = process.env.BATON_DATA_DIR;
+    process.env.BATON_DATA_DIR = dir;
     resetApiEmbeddingCacheForTests();
   });
 
   afterEach(async () => {
     resetApiEmbeddingCacheForTests();
-    if (previousDataDir === undefined) delete process.env.MEMORIX_DATA_DIR;
-    else process.env.MEMORIX_DATA_DIR = previousDataDir;
+    if (previousDataDir === undefined) delete process.env.BATON_DATA_DIR;
+    else process.env.BATON_DATA_DIR = previousDataDir;
     await rm(dir, { recursive: true, force: true });
   });
 
@@ -131,8 +131,8 @@ describe('embedding cache jsonl + shrink guard', () => {
   });
 
   it('caps retained vectors by payload bytes, not a 200k entry ceiling', async () => {
-    const previousBudget = process.env.MEMORIX_EMBEDDING_CACHE_MAX_BYTES;
-    process.env.MEMORIX_EMBEDDING_CACHE_MAX_BYTES = String(3 * 4096 * 8);
+    const previousBudget = process.env.BATON_EMBEDDING_CACHE_MAX_BYTES;
+    process.env.BATON_EMBEDDING_CACHE_MAX_BYTES = String(3 * 4096 * 8);
     try {
       expect(getApiEmbeddingMaxEntriesForDimensionsForTests(4096)).toBe(3);
 
@@ -149,8 +149,8 @@ describe('embedding cache jsonl + shrink guard', () => {
       expect(loaded).toBeLessThanOrEqual(3);
       expect(getApiEmbeddingCachePayloadBytesForTests()).toBeLessThanOrEqual(3 * 4096 * 8);
     } finally {
-      if (previousBudget === undefined) delete process.env.MEMORIX_EMBEDDING_CACHE_MAX_BYTES;
-      else process.env.MEMORIX_EMBEDDING_CACHE_MAX_BYTES = previousBudget;
+      if (previousBudget === undefined) delete process.env.BATON_EMBEDDING_CACHE_MAX_BYTES;
+      else process.env.BATON_EMBEDDING_CACHE_MAX_BYTES = previousBudget;
     }
   });
 });

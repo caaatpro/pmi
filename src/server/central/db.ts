@@ -11,7 +11,7 @@ export interface Queryable {
 export interface Database extends Queryable {
   transaction<T>(fn: (tx: Queryable) => Promise<T>): Promise<T>;
   /**
-   * Run `fn` in a transaction as the restricted role `pmi_app` with
+   * Run `fn` in a transaction as the restricted role `baton_app` with
    * `app.user_id` set, so row-level security filters every project-data
    * query to what this user may see (migration 0002). Use it for all
    * project data; identity and admin queries stay on the owner connection.
@@ -36,11 +36,11 @@ export async function openDatabase(connectionString: string, options: { max?: nu
   const packageName = 'pg';
   const pg = await import(packageName) as { Pool?: new (config: Record<string, unknown>) => PgPool; default?: { Pool?: new (config: Record<string, unknown>) => PgPool } };
   const Pool = pg.Pool ?? pg.default?.Pool;
-  if (!Pool) throw new Error('[pmi-server] the installed "pg" package does not export Pool');
+  if (!Pool) throw new Error('[baton-server] the installed "pg" package does not export Pool');
   const pool = new Pool({ connectionString, max: options.max ?? 10 });
   // An idle client losing its connection must not crash the process; the next
   // query reconnects and /ready reports the outage.
-  pool.on('error', (error) => console.error(`[pmi-server] idle Postgres client error: ${error.message}`));
+  pool.on('error', (error) => console.error(`[baton-server] idle Postgres client error: ${error.message}`));
 
   const database: Database = {
     async query<T>(sql: string, params: unknown[] = []): Promise<T[]> {
@@ -48,7 +48,7 @@ export async function openDatabase(connectionString: string, options: { max?: nu
     },
     async asUser<T>(userId: string, fn: (tx: Queryable) => Promise<T>): Promise<T> {
       return database.transaction(async (tx) => {
-        await tx.query('SET LOCAL ROLE pmi_app');
+        await tx.query('SET LOCAL ROLE baton_app');
         await tx.query("SELECT set_config('app.user_id', $1, true)", [userId]);
         return fn(tx);
       });

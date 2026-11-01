@@ -155,7 +155,7 @@ export function detectBestPattern(
 }
 
 /**
- * Map pattern type → Memorix observation type.
+ * Map pattern type → Baton observation type.
  */
 export function patternToObservationType(
   pattern: PatternType,

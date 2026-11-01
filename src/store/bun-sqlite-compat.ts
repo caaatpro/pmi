@@ -2,7 +2,7 @@
  * Bun SQLite Compatibility Layer
  *
  * Provides a small better-sqlite3 compatibility layer for the available local
- * SQLite implementation. Node 22 ships node:sqlite, which keeps Memorix
+ * SQLite implementation. Node 22 ships node:sqlite, which keeps Baton
  * usable when an optional better-sqlite3 native binary is unavailable.
  */
 
@@ -24,10 +24,10 @@ function isNativeBindingFailure(error: unknown): boolean {
 
 function addCompatibility(db: any): any {
   // Node's StatementSync is stricter than better-sqlite3: it rejects a
-  // parameter object with harmless extra keys. Memorix stores commonly pass a
+  // parameter object with harmless extra keys. Baton stores commonly pass a
   // complete row object to statements that only use part of that row, so keep
   // the established better-sqlite3 behavior on the fallback driver.
-  if (!db.__memorixPreparedStatementCompatibility) {
+  if (!db.__batonPreparedStatementCompatibility) {
     const prepare = db.prepare.bind(db);
     db.prepare = function (...args: any[]) {
       const statement = prepare(...args);
@@ -35,7 +35,7 @@ function addCompatibility(db: any): any {
       statement.setAllowUnknownNamedParameters?.(true);
       return statement;
     };
-    Object.defineProperty(db, '__memorixPreparedStatementCompatibility', {
+    Object.defineProperty(db, '__batonPreparedStatementCompatibility', {
       value: true,
       configurable: false,
       enumerable: false,
@@ -65,7 +65,7 @@ function addCompatibility(db: any): any {
     db.transaction = function <T>(fn: (...args: any[]) => T) {
       const run = (mode: 'DEFERRED' | 'IMMEDIATE' | 'EXCLUSIVE', args: any[]): T => {
         const outermost = depth === 0;
-        const savepoint = `memorix_tx_${++sequence}`;
+        const savepoint = `baton_tx_${++sequence}`;
         if (outermost) {
           db.exec(`BEGIN ${mode}`);
         } else {
@@ -75,7 +75,7 @@ function addCompatibility(db: any): any {
         try {
           const result = fn(...args);
           if (result && typeof (result as any).then === 'function') {
-            throw new Error('[memorix] SQLite transactions must be synchronous');
+            throw new Error('[baton] SQLite transactions must be synchronous');
           }
           depth -= 1;
           if (outermost) {
@@ -126,7 +126,7 @@ export function loadSqlite(): any {
   // Kept as an operational escape hatch and a regression-test seam. Node 22
   // is the supported minimum runtime, so this does not expand the platform
   // contract beyond package.json's existing engine requirement.
-  if (process.env.MEMORIX_SQLITE_DRIVER === 'node') {
+  if (process.env.BATON_SQLITE_DRIVER === 'node') {
     Database = loadNodeSqlite();
     driver = 'node:sqlite';
     return Database;
@@ -157,7 +157,7 @@ export function loadSqlite(): any {
     driver = 'bun:sqlite';
     return Database;
   } catch {
-    throw new Error('[memorix] SQLite is unavailable (better-sqlite3, node:sqlite, and bun:sqlite failed)');
+    throw new Error('[baton] SQLite is unavailable (better-sqlite3, node:sqlite, and bun:sqlite failed)');
   }
 }
 

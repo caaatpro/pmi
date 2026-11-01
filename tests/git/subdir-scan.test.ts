@@ -7,14 +7,14 @@ import { findGitInSubdirs, detectProject } from '../../src/project/detector.js';
 
 describe('findGitInSubdirs', () => {
   function makeWorkspace(): { workspaceDir: string; repoDir: string } {
-    const workspaceDir = mkdtempSync(join(tmpdir(), 'memorix-subdir-scan-'));
-    const repoDir = join(workspaceDir, 'memorix');
-    execSync('git init memorix', { cwd: workspaceDir, stdio: 'ignore' });
-    execSync('git remote add origin https://github.com/AVIDS2/memorix.git', { cwd: repoDir, stdio: 'ignore' });
+    const workspaceDir = mkdtempSync(join(tmpdir(), 'baton-subdir-scan-'));
+    const repoDir = join(workspaceDir, 'baton');
+    execSync('git init baton', { cwd: workspaceDir, stdio: 'ignore' });
+    execSync('git remote add origin https://github.com/AVIDS2/baton.git', { cwd: repoDir, stdio: 'ignore' });
     return { workspaceDir, repoDir };
   }
 
-  it('should find memorix/.git from parent workspace dir', async () => {
+  it('should find baton/.git from parent workspace dir', async () => {
     const { workspaceDir, repoDir } = makeWorkspace();
     try {
       const result = findGitInSubdirs(workspaceDir);
@@ -31,14 +31,14 @@ describe('findGitInSubdirs', () => {
       expect(subdir).not.toBeNull();
       const project = detectProject(subdir!);
       expect(project).not.toBeNull();
-      expect(project!.id).toBe('AVIDS2/memorix');
+      expect(project!.id).toBe('AVIDS2/baton');
     } finally {
       rmSync(workspaceDir, { recursive: true, force: true });
     }
   });
 
   it('should return null for dirs with no git subdirs', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'memorix-no-subdirs-'));
+    const dir = mkdtempSync(join(tmpdir(), 'baton-no-subdirs-'));
     try {
       expect(findGitInSubdirs(dir)).toBeNull();
     } finally {

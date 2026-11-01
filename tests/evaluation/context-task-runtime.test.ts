@@ -25,10 +25,10 @@ import {
   type ContextEvaluationProbeResult,
 } from '../../src/evaluation/context-task-runner.js';
 
-const shouldRun = process.env.MEMORIX_CONTEXT_EVAL_RUNTIME === '1';
+const shouldRun = process.env.BATON_CONTEXT_EVAL_RUNTIME === '1';
 const projectA = 'evaluation/context-a';
 const projectB = 'evaluation/context-b';
-const originalEmbedding = process.env.MEMORIX_EMBEDDING;
+const originalEmbedding = process.env.BATON_EMBEDDING;
 let sandbox = '';
 let repoDir = '';
 let dataDir = '';
@@ -80,14 +80,14 @@ function ref(overrides: Partial<ObservationCodeRef> = {}): ObservationCodeRef {
 }
 
 async function seed() {
-  sandbox = mkdtempSync(path.join(tmpdir(), 'memorix-context-evaluation-'));
+  sandbox = mkdtempSync(path.join(tmpdir(), 'baton-context-evaluation-'));
   repoDir = path.join(sandbox, 'repo');
   dataDir = path.join(sandbox, 'data');
   cpSync(path.resolve('tests/fixtures/workset-evaluation/typescript-auth'), repoDir, { recursive: true });
   writeFileSync(path.join(repoDir, 'package.json'), '{"name":"context-evaluation-fixture","version":"1.0.0"}\n');
   execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
 
-  process.env.MEMORIX_EMBEDDING = 'off';
+  process.env.BATON_EMBEDDING = 'off';
   await resetDb();
   resetObservationStore();
   closeAllDatabases();
@@ -352,7 +352,7 @@ async function runProbe(task: ContextEvaluationTask): Promise<ContextEvaluationP
       }, result.totalTokens, ['tests/compact/engine.test.ts', 'src/project/aliases.ts']);
     }
     case 'large-store-retrieval': {
-      const raw = process.env.MEMORIX_LARGE_STORE_EVIDENCE;
+      const raw = process.env.BATON_LARGE_STORE_EVIDENCE;
       const evidence = raw ? JSON.parse(raw) as {
         ok: boolean;
         records: number;
@@ -379,7 +379,7 @@ async function runProbe(task: ContextEvaluationTask): Promise<ContextEvaluationP
       }, 0, ['scripts/large-store-gate.mjs', 'docs/1.2.0-EVALUATION-HARNESS.md']);
     }
     case 'embedding-unavailable': {
-      process.env.MEMORIX_EMBEDDING = 'off';
+      process.env.BATON_EMBEDDING = 'off';
       const result = await compactSearch({ query: 'auth boundary', projectId: projectA, quality: 'fast' });
       return assertionResults([
         [result.entries.some(entry => entry.id === authObservationId), 'lexical evidence remains available with embeddings disabled'],
@@ -623,8 +623,8 @@ describe.skipIf(!shouldRun)('1.10 context evaluation against runtime paths', () 
   });
 
   afterAll(async () => {
-    if (originalEmbedding === undefined) delete process.env.MEMORIX_EMBEDDING;
-    else process.env.MEMORIX_EMBEDDING = originalEmbedding;
+    if (originalEmbedding === undefined) delete process.env.BATON_EMBEDDING;
+    else process.env.BATON_EMBEDDING = originalEmbedding;
     resetObservationStore();
     await resetDb();
     closeAllDatabases();

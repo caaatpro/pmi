@@ -5,7 +5,7 @@ import { getResolvedConfigForCwd } from '../../config/resolved-config.js';
 export default defineCommand({
   meta: {
     name: 'get',
-    description: 'Read a resolved Memorix config value',
+    description: 'Read a resolved Baton config value',
   },
   args: {
     key: {

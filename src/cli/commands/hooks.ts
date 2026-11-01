@@ -1,13 +1,13 @@
 /**
- * CLI Command: memorix hooks
+ * CLI Command: baton hooks
  *
  * Manage hook installations across agents.
  *
  * Usage:
- *   memorix hooks install [--agent <name>] [--global]
- *   memorix hooks preview [--agent <name>] [--global]
- *   memorix hooks uninstall [--agent <name>] [--global]
- *   memorix hooks status
+ *   baton hooks install [--agent <name>] [--global]
+ *   baton hooks preview [--agent <name>] [--global]
+ *   baton hooks uninstall [--agent <name>] [--global]
+ *   baton hooks status
  */
 
 import { defineCommand } from 'citty';

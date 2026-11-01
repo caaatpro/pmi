@@ -153,7 +153,7 @@ export function auditMemoryQuality(
 
   const recommendations: string[] = [];
   if (duplicateClusters.length > 0) {
-    recommendations.push(`Review ${duplicateClusters.length} duplicate cluster(s) with \`memorix memory consolidate --action preview\`.`);
+    recommendations.push(`Review ${duplicateClusters.length} duplicate cluster(s) with \`baton memory consolidate --action preview\`.`);
   }
   if (hookNoise.length > 0) {
     recommendations.push('Consider filtering or down-ranking hook-generated memories before they reach long-term search.');
@@ -162,7 +162,7 @@ export function auditMemoryQuality(
     recommendations.push('Promote or attach isolated memories only if they have clear evidence value.');
   }
   if (retentionCandidates.length > 0) {
-    recommendations.push('Run \`memorix retention stale\` or \`memorix retention archive\` to inspect aged memories.');
+    recommendations.push('Run \`baton retention stale\` or \`baton retention archive\` to inspect aged memories.');
   }
   if (recommendations.length === 0) {
     recommendations.push('Memory quality looks healthy for this project slice.');

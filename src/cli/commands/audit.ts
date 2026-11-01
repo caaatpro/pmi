@@ -9,7 +9,7 @@ import { emitError, emitResult, getCliProjectContext } from './operator-shared.j
 export default defineCommand({
   meta: {
     name: 'audit',
-    description: 'Inspect Memorix audit trail and project attribution health',
+    description: 'Inspect Baton audit trail and project attribution health',
   },
   args: {
     project: { type: 'string', description: 'Project root used to filter audit entries' },
@@ -89,12 +89,12 @@ export default defineCommand({
         }
 
         default:
-          console.log('Memorix Audit Commands');
+          console.log('Baton Audit Commands');
           console.log('');
           console.log('Usage:');
-          console.log('  memorix audit memory');
-          console.log('  memorix audit list [--project /abs/path]');
-          console.log('  memorix audit project [--threshold 2]');
+          console.log('  baton audit memory');
+          console.log('  baton audit list [--project /abs/path]');
+          console.log('  baton audit project [--threshold 2]');
       }
     } catch (error) {
       emitError(error instanceof Error ? error.message : String(error), asJson);

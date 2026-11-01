@@ -57,18 +57,18 @@ describe('orama-store semantic hybrid search', () => {
     const old = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString();
 
     await insertObservation({
-      id: makeOramaObservationId('AVIDS2/memorix', 1),
+      id: makeOramaObservationId('AVIDS2/baton', 1),
       observationId: 1,
       entityName: 'search-quality',
       type: 'discovery',
       title: 'Search quality regression after vector gate',
-      narrative: 'Memorix search felt weaker after the semantic score gate became too strict.',
+      narrative: 'Baton search felt weaker after the semantic score gate became too strict.',
       facts: 'DashScope embeddings were present but the right memory stayed hidden.',
       filesModified: 'src/store/orama-store.ts',
-      concepts: 'semantic-search\nthreshold\nmemorix',
+      concepts: 'semantic-search\nthreshold\nbaton',
       tokens: 48,
       createdAt: recent,
-      projectId: 'AVIDS2/memorix',
+      projectId: 'AVIDS2/baton',
       accessCount: 0,
       lastAccessedAt: recent,
       status: 'active',
@@ -77,18 +77,18 @@ describe('orama-store semantic hybrid search', () => {
     });
 
     await insertObservation({
-      id: makeOramaObservationId('AVIDS2/memorix', 2),
+      id: makeOramaObservationId('AVIDS2/baton', 2),
       observationId: 2,
       entityName: 'jwt-auth',
       type: 'problem-solution',
       title: 'Why did semantic retrieval get weaker in JWT auth',
-      narrative: 'Memorix JWT auth debugging notes with many exact query words but unrelated semantics.',
+      narrative: 'Baton JWT auth debugging notes with many exact query words but unrelated semantics.',
       facts: 'This should not outrank the true semantic match.',
       filesModified: 'src/auth/jwt.ts',
-      concepts: 'jwt\nauth\nmemorix',
+      concepts: 'jwt\nauth\nbaton',
       tokens: 51,
       createdAt: old,
-      projectId: 'AVIDS2/memorix',
+      projectId: 'AVIDS2/baton',
       accessCount: 0,
       lastAccessedAt: old,
       status: 'active',
@@ -98,7 +98,7 @@ describe('orama-store semantic hybrid search', () => {
 
     const entries = await searchObservations({
       query: 'why did semantic retrieval get weaker',
-      projectId: 'AVIDS2/memorix',
+      projectId: 'AVIDS2/baton',
       limit: 5,
     });
 
@@ -116,7 +116,7 @@ describe('orama-store semantic hybrid search', () => {
 
     const now = new Date().toISOString();
     await insertObservation({
-      id: makeOramaObservationId('AVIDS2/memorix', 3),
+      id: makeOramaObservationId('AVIDS2/baton', 3),
       observationId: 3,
       entityName: 'search-stability',
       type: 'problem-solution',
@@ -127,7 +127,7 @@ describe('orama-store semantic hybrid search', () => {
       concepts: 'search-stability',
       tokens: 20,
       createdAt: now,
-      projectId: 'AVIDS2/memorix',
+      projectId: 'AVIDS2/baton',
       accessCount: 0,
       lastAccessedAt: now,
       status: 'active',
@@ -137,12 +137,12 @@ describe('orama-store semantic hybrid search', () => {
 
     const options = {
       query: 'survivor',
-      projectId: 'AVIDS2/memorix',
+      projectId: 'AVIDS2/baton',
       limit: 5,
     };
     const first = await searchObservations(options);
     const second = await searchObservations(options);
-    const detail = await getObservationsByIds([3], 'AVIDS2/memorix');
+    const detail = await getObservationsByIds([3], 'AVIDS2/baton');
 
     expect(first.map((entry) => entry.id)).toContain(3);
     expect(second.map((entry) => entry.id)).toContain(3);
@@ -159,18 +159,18 @@ describe('orama-store semantic hybrid search', () => {
     const now = new Date().toISOString();
 
     await insertObservation({
-      id: makeOramaObservationId('AVIDS2/memorix', 10),
+      id: makeOramaObservationId('AVIDS2/baton', 10),
       observationId: 10,
       entityName: 'semantic-quality',
       type: 'discovery',
       title: 'DashScope config restored but semantic retrieval weak',
-      narrative: 'Memorix semantic retrieval weakened after the vector gate became too strict.',
+      narrative: 'Baton semantic retrieval weakened after the vector gate became too strict.',
       facts: 'This is the current project result we want to keep.',
       filesModified: 'src/store/orama-store.ts',
-      concepts: 'semantic-search\nmemorix',
+      concepts: 'semantic-search\nbaton',
       tokens: 40,
       createdAt: now,
-      projectId: 'AVIDS2/memorix',
+      projectId: 'AVIDS2/baton',
       accessCount: 0,
       lastAccessedAt: now,
       status: 'active',
@@ -179,7 +179,7 @@ describe('orama-store semantic hybrid search', () => {
     });
 
     await insertObservation({
-      id: makeOramaObservationId('AVIDS2/test-memorix-demo', 11),
+      id: makeOramaObservationId('AVIDS2/test-baton-demo', 11),
       observationId: 11,
       entityName: 'semantic-quality',
       type: 'discovery',
@@ -190,7 +190,7 @@ describe('orama-store semantic hybrid search', () => {
       concepts: 'semantic-search\ndemo',
       tokens: 40,
       createdAt: now,
-      projectId: 'AVIDS2/test-memorix-demo',
+      projectId: 'AVIDS2/test-baton-demo',
       accessCount: 0,
       lastAccessedAt: now,
       status: 'active',
@@ -200,12 +200,12 @@ describe('orama-store semantic hybrid search', () => {
 
     const entries = await searchObservations({
       query: '语义检索为什么变弱',
-      projectId: 'AVIDS2/memorix',
+      projectId: 'AVIDS2/baton',
       limit: 5,
     });
 
     expect(entries.length).toBeGreaterThan(0);
-    expect(entries.every((entry) => entry.projectId === 'AVIDS2/memorix')).toBe(true);
+    expect(entries.every((entry) => entry.projectId === 'AVIDS2/baton')).toBe(true);
     expect(entries[0]?.id).toBe(10);
   });
 
@@ -219,18 +219,18 @@ describe('orama-store semantic hybrid search', () => {
     const now = new Date().toISOString();
 
     await insertObservation({
-      id: makeOramaObservationId('AVIDS2/memorix', 20),
+      id: makeOramaObservationId('AVIDS2/baton', 20),
       observationId: 20,
       entityName: 'semantic-quality',
       type: 'discovery',
       title: 'DashScope config restored but semantic retrieval weak',
-      narrative: 'Memorix semantic retrieval quality dropped after the vector gate got too strict.',
+      narrative: 'Baton semantic retrieval quality dropped after the vector gate got too strict.',
       facts: 'This is the meaningful natural-language memory.',
       filesModified: 'src/store/orama-store.ts',
-      concepts: 'semantic-search\nmemorix',
+      concepts: 'semantic-search\nbaton',
       tokens: 40,
       createdAt: now,
-      projectId: 'AVIDS2/memorix',
+      projectId: 'AVIDS2/baton',
       accessCount: 0,
       lastAccessedAt: now,
       status: 'active',
@@ -239,7 +239,7 @@ describe('orama-store semantic hybrid search', () => {
     });
 
     await insertObservation({
-      id: makeOramaObservationId('AVIDS2/memorix', 21),
+      id: makeOramaObservationId('AVIDS2/baton', 21),
       observationId: 21,
       entityName: 'command-log',
       type: 'what-changed',
@@ -250,7 +250,7 @@ describe('orama-store semantic hybrid search', () => {
       concepts: 'semantic-search\ngit',
       tokens: 40,
       createdAt: now,
-      projectId: 'AVIDS2/memorix',
+      projectId: 'AVIDS2/baton',
       accessCount: 0,
       lastAccessedAt: now,
       status: 'active',
@@ -260,7 +260,7 @@ describe('orama-store semantic hybrid search', () => {
 
     const entries = await searchObservations({
       query: '语义检索为什么变弱',
-      projectId: 'AVIDS2/memorix',
+      projectId: 'AVIDS2/baton',
       limit: 5,
     });
 
@@ -273,7 +273,7 @@ describe('orama-store semantic hybrid search', () => {
 
     await searchObservations({
       query: '语义检索为什么变弱',
-      projectId: 'AVIDS2/memorix',
+      projectId: 'AVIDS2/baton',
       limit: 5,
       quality: 'balanced',
     });
@@ -286,14 +286,14 @@ describe('orama-store semantic hybrid search', () => {
 
     await searchObservations({
       query: '语义检索为什么变弱',
-      projectId: 'AVIDS2/memorix',
+      projectId: 'AVIDS2/baton',
       limit: 5,
       quality: 'fast',
     });
 
     expect(mockInitLLM).not.toHaveBeenCalled();
     expect(mockCallLLM).not.toHaveBeenCalled();
-    expect(getLastSearchMode('AVIDS2/memorix')).toBe('fulltext (fast profile)');
+    expect(getLastSearchMode('AVIDS2/baton')).toBe('fulltext (fast profile)');
   });
 
   it('expands CJK natural-language queries in thorough mode to recover cross-lingual memories', async () => {
@@ -306,18 +306,18 @@ describe('orama-store semantic hybrid search', () => {
     const now = new Date().toISOString();
 
     await insertObservation({
-      id: makeOramaObservationId('AVIDS2/memorix', 30),
+      id: makeOramaObservationId('AVIDS2/baton', 30),
       observationId: 30,
       entityName: 'semantic-quality',
       type: 'discovery',
       title: 'DashScope config restored but semantic retrieval weak',
-      narrative: 'Memorix semantic retrieval quality dropped after the vector gate got too strict.',
+      narrative: 'Baton semantic retrieval quality dropped after the vector gate got too strict.',
       facts: 'This is the English memory we want a Chinese query to recover.',
       filesModified: 'src/store/orama-store.ts',
-      concepts: 'semantic-search\nmemorix',
+      concepts: 'semantic-search\nbaton',
       tokens: 40,
       createdAt: now,
-      projectId: 'AVIDS2/memorix',
+      projectId: 'AVIDS2/baton',
       accessCount: 0,
       lastAccessedAt: now,
       status: 'active',
@@ -326,7 +326,7 @@ describe('orama-store semantic hybrid search', () => {
     });
 
     await insertObservation({
-      id: makeOramaObservationId('AVIDS2/memorix', 31),
+      id: makeOramaObservationId('AVIDS2/baton', 31),
       observationId: 31,
       entityName: 'command-log',
       type: 'what-changed',
@@ -337,7 +337,7 @@ describe('orama-store semantic hybrid search', () => {
       concepts: 'semantic-search\ngit',
       tokens: 40,
       createdAt: now,
-      projectId: 'AVIDS2/memorix',
+      projectId: 'AVIDS2/baton',
       accessCount: 0,
       lastAccessedAt: now,
       status: 'active',
@@ -347,7 +347,7 @@ describe('orama-store semantic hybrid search', () => {
 
     const entries = await searchObservations({
       query: '语义检索为什么变弱',
-      projectId: 'AVIDS2/memorix',
+      projectId: 'AVIDS2/baton',
       limit: 5,
       quality: 'thorough',
     });
@@ -368,7 +368,7 @@ describe('orama-store semantic hybrid search', () => {
     const now = new Date().toISOString();
 
     await insertObservation({
-      id: makeOramaObservationId('AVIDS2/memorix', 40),
+      id: makeOramaObservationId('AVIDS2/baton', 40),
       observationId: 40,
       entityName: 'dimension-mismatch',
       type: 'gotcha',
@@ -376,10 +376,10 @@ describe('orama-store semantic hybrid search', () => {
       narrative: 'Lexical search should still work when vector dimensions stop matching.',
       facts: 'The index was created with API vectors but the active fallback provider uses another size.',
       filesModified: 'src/store/orama-store.ts',
-      concepts: 'semantic-search\nfallback\nmemorix',
+      concepts: 'semantic-search\nfallback\nbaton',
       tokens: 32,
       createdAt: now,
-      projectId: 'AVIDS2/memorix',
+      projectId: 'AVIDS2/baton',
       accessCount: 0,
       lastAccessedAt: now,
       status: 'active',
@@ -393,12 +393,12 @@ describe('orama-store semantic hybrid search', () => {
 
     const entries = await searchObservations({
       query: 'dimension mismatch fulltext fallback',
-      projectId: 'AVIDS2/memorix',
+      projectId: 'AVIDS2/baton',
       limit: 5,
     });
 
     expect(entries.length).toBeGreaterThan(0);
     expect(entries[0]?.id).toBe(40);
-    expect(getLastSearchMode('AVIDS2/memorix')).toContain('dimension mismatch');
+    expect(getLastSearchMode('AVIDS2/baton')).toContain('dimension mismatch');
   });
 });

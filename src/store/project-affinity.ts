@@ -11,14 +11,14 @@
  *
  * This runs AFTER projectId filtering, as a second layer of defense
  * against memories that were stored under the correct projectId but
- * contain content about a different project (e.g., discussing Memorix
+ * contain content about a different project (e.g., discussing Baton
  * development while in a test project workspace).
  */
 
 export interface AffinityContext {
-  /** Current project name (e.g., "for_memmcp_test", "memorix") */
+  /** Current project name (e.g., "for_memmcp_test", "baton") */
   projectName: string;
-  /** Current project ID (e.g., "local/for_memmcp_test", "AVIDS2/memorix") */
+  /** Current project ID (e.g., "local/for_memmcp_test", "AVIDS2/baton") */
   projectId: string;
   /** Optional: keywords that indicate project relevance */
   projectKeywords?: string[];
@@ -56,7 +56,7 @@ export function calculateProjectAffinity(
   const projectName = context.projectName.toLowerCase();
   const projectId = context.projectId.toLowerCase();
   
-  // Extract base name from projectId (e.g., "memorix" from "AVIDS2/memorix")
+  // Extract base name from projectId (e.g., "baton" from "AVIDS2/baton")
   const projectBaseName = projectId.split('/').pop() ?? projectName;
   
   // Build searchable content string

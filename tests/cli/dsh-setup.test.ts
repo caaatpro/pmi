@@ -7,14 +7,14 @@ import { buildSetupPlan, installMcpConfig } from '../../src/cli/commands/setup.j
 import { inspectAgentIntegrations } from '../../src/cli/commands/agent-integrations.js';
 import { getAgentRulesPath } from '../../src/hooks/installers/index.js';
 
-const MEMORIX_ROW_ID = 'memory-memorix';
+const BATON_ROW_ID = 'memory-baton';
 
 describe('DeepSeek Harness (DSH) integration', () => {
   const originalDshHome = process.env.DSH_HOME;
   let tempHome = '';
 
   beforeEach(() => {
-    tempHome = mkdtempSync(path.join(tmpdir(), 'memorix-dsh-'));
+    tempHome = mkdtempSync(path.join(tmpdir(), 'baton-dsh-'));
     process.env.DSH_HOME = tempHome;
   });
 
@@ -30,27 +30,27 @@ describe('DeepSeek Harness (DSH) integration', () => {
       expect(adapter.getConfigPath('/any/project')).toBe(path.join(tempHome, 'cordis.patch.yml'));
     });
 
-    it('round-trips a stdio Memorix row through generate/parse', () => {
+    it('round-trips a stdio Baton row through generate/parse', () => {
       const adapter = new DshMCPAdapter();
       const generated = adapter.generate([{
-        name: 'memorix',
-        command: 'memorix',
+        name: 'baton',
+        command: 'baton',
         args: ['serve'],
       }]);
 
       expect(generated).toContain('name: "@deepseek-ai/dsh-mcp-client"');
-      expect(generated).toContain('serverName: memorix');
+      expect(generated).toContain('serverName: baton');
       expect(generated).toContain('transport: stdio');
 
       const entries = adapter.parse(generated);
       expect(entries).toHaveLength(1);
-      expect(entries[0]).toMatchObject({ name: 'memorix', command: 'memorix', args: ['serve'] });
+      expect(entries[0]).toMatchObject({ name: 'baton', command: 'baton', args: ['serve'] });
     });
 
     it('round-trips a streamable-http row', () => {
       const adapter = new DshMCPAdapter();
       const generated = adapter.generate([{
-        name: 'memorix',
+        name: 'baton',
         command: '',
         args: [],
         url: 'http://localhost:3211/mcp',
@@ -58,7 +58,7 @@ describe('DeepSeek Harness (DSH) integration', () => {
 
       const entries = adapter.parse(generated);
       expect(entries).toHaveLength(1);
-      expect(entries[0]).toMatchObject({ name: 'memorix', url: 'http://localhost:3211/mcp' });
+      expect(entries[0]).toMatchObject({ name: 'baton', url: 'http://localhost:3211/mcp' });
       expect(generated).toContain('transport: streamable-http');
     });
 
@@ -73,18 +73,18 @@ describe('DeepSeek Harness (DSH) integration', () => {
         '        transport: stdio',
         '        command: other-tool',
         '- insert:',
-        `    - id: ${MEMORIX_ROW_ID}`,
+        `    - id: ${BATON_ROW_ID}`,
         "      name: '@deepseek-ai/dsh-mcp-client'",
         '      config:',
-        '        serverName: memorix',
+        '        serverName: baton',
         '        transport: stdio',
-        '        command: memorix',
+        '        command: baton',
         '        args: [serve]',
       ].join('\n');
 
       const entries = adapter.parse(content);
       expect(entries).toHaveLength(1);
-      expect(entries[0].name).toBe('memorix');
+      expect(entries[0].name).toBe('baton');
     });
   });
 
@@ -100,17 +100,17 @@ describe('DeepSeek Harness (DSH) integration', () => {
       '        command: other-tool',
     ].join('\n');
 
-    it('merges the Memorix row into an existing user patch without clobbering', async () => {
+    it('merges the Baton row into an existing user patch without clobbering', async () => {
       writeFileSync(path.join(tempHome, 'cordis.patch.yml'), userPatch, 'utf-8');
       await installMcpConfig({ agent: 'dsh', mcp: 'stdio' });
 
       const content = readFileSync(path.join(tempHome, 'cordis.patch.yml'), 'utf-8');
       expect(content).toContain('mcp-user');
-      expect(content).toContain(MEMORIX_ROW_ID);
-      expect(content).toContain('serverName: memorix');
+      expect(content).toContain(BATON_ROW_ID);
+      expect(content).toContain('serverName: baton');
 
       const entries = new DshMCPAdapter().parse(content);
-      expect(entries.map((entry) => entry.name)).toEqual(['memorix']);
+      expect(entries.map((entry) => entry.name)).toEqual(['baton']);
     });
 
     it('is idempotent across repeated installs', async () => {
@@ -118,7 +118,7 @@ describe('DeepSeek Harness (DSH) integration', () => {
       await installMcpConfig({ agent: 'dsh', mcp: 'stdio' });
 
       const content = readFileSync(path.join(tempHome, 'cordis.patch.yml'), 'utf-8');
-      const occurrences = content.split(MEMORIX_ROW_ID).length - 1;
+      const occurrences = content.split(BATON_ROW_ID).length - 1;
       expect(occurrences).toBe(1);
     });
 
@@ -128,7 +128,7 @@ describe('DeepSeek Harness (DSH) integration', () => {
 
       const content = readFileSync(path.join(tempHome, 'cordis.patch.yml'), 'utf-8');
       expect(content).toContain('user content');
-      expect(content).toContain(MEMORIX_ROW_ID);
+      expect(content).toContain(BATON_ROW_ID);
     });
   });
 

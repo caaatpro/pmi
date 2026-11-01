@@ -15,13 +15,13 @@ describe('PiMCPAdapter', () => {
 
   it('round-trips stdio, HTTP headers, env, and Pi enabled state', () => {
     const servers: MCPServerEntry[] = [
-      { name: 'memorix', command: 'memorix', args: ['serve', '--mode', 'lite'], env: { MEMORIX_MODE: 'lite' } },
+      { name: 'baton', command: 'baton', args: ['serve', '--mode', 'lite'], env: { BATON_MODE: 'lite' } },
       { name: 'remote', command: '', args: [], url: 'https://example.test/mcp', headers: { Authorization: 'Bearer ${TOKEN}' }, disabled: true },
     ];
     const generated = adapter.generate(servers);
     const config = JSON.parse(generated);
-    expect(config.mcpServers.memorix).toEqual({
-      command: 'memorix', args: ['serve', '--mode', 'lite'], env: { MEMORIX_MODE: 'lite' },
+    expect(config.mcpServers.baton).toEqual({
+      command: 'baton', args: ['serve', '--mode', 'lite'], env: { BATON_MODE: 'lite' },
     });
     expect(config.mcpServers.remote).toEqual({
       url: 'https://example.test/mcp', headers: { Authorization: 'Bearer ${TOKEN}' }, enabled: false,
@@ -41,7 +41,7 @@ describe('PiMCPAdapter', () => {
   it('ignores malformed rows without dropping valid servers', () => {
     expect(adapter.parse(JSON.stringify({ mcpServers: {
       invalid: null,
-      memorix: { command: 'memorix', args: ['serve'], enabled: false },
-    } }))).toEqual([{ name: 'memorix', command: 'memorix', args: ['serve'], disabled: true }]);
+      baton: { command: 'baton', args: ['serve'], enabled: false },
+    } }))).toEqual([{ name: 'baton', command: 'baton', args: ['serve'], disabled: true }]);
   });
 });

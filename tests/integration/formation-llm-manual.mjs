@@ -46,7 +46,7 @@ async function main() {
     body: JSON.stringify({
       jsonrpc: '2.0', id: 2, method: 'tools/call',
       params: {
-        name: 'memorix_store',
+        name: 'baton_store',
         arguments: {
           entityName: 'database-migration',
           type: 'decision',

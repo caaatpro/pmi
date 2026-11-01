@@ -55,9 +55,9 @@ describe('calculateProjectAffinity', () => {
 
   it('returns low affinity when no project reference', () => {
     const memory: MemoryContent = {
-      title: 'Memorix development session',
-      narrative: 'Implemented Compact on Write engine for Memorix',
-      concepts: ['memorix', 'compact-on-write', 'mcp'],
+      title: 'Baton development session',
+      narrative: 'Implemented Compact on Write engine for Baton',
+      concepts: ['baton', 'compact-on-write', 'mcp'],
     };
     const result = calculateProjectAffinity(memory, context);
     expect(result.level).toBe('low');
@@ -95,8 +95,8 @@ describe('calculateProjectAffinity', () => {
 
 describe('extractProjectKeywords', () => {
   it('extracts base name from projectId', () => {
-    const keywords = extractProjectKeywords('memorix', 'AVIDS2/memorix');
-    expect(keywords).toContain('memorix');
+    const keywords = extractProjectKeywords('baton', 'AVIDS2/baton');
+    expect(keywords).toContain('baton');
   });
 
   it('generates variations with different separators', () => {
@@ -113,25 +113,25 @@ describe('extractProjectKeywords', () => {
   });
 
   it('handles simple project names', () => {
-    const keywords = extractProjectKeywords('memorix', 'local/memorix');
-    expect(keywords).toContain('memorix');
+    const keywords = extractProjectKeywords('baton', 'local/baton');
+    expect(keywords).toContain('baton');
     expect(keywords.length).toBeGreaterThanOrEqual(1);
   });
 });
 
 describe('cross-project pollution prevention', () => {
-  it('penalizes Memorix memories in for_memmcp_test project', () => {
+  it('penalizes Baton memories in for_memmcp_test project', () => {
     const context: AffinityContext = {
       projectName: 'for_memmcp_test',
       projectId: 'local/for_memmcp_test',
       projectKeywords: ['for_memmcp_test', 'for-memmcp-test', 'formemmcptest'],
     };
 
-    // Memory about Memorix development (should be penalized)
-    const memorixMemory: MemoryContent = {
+    // Memory about Baton development (should be penalized)
+    const batonMemory: MemoryContent = {
       title: 'Compact on Write engine: Mem0 + Cipher dual-mode',
       narrative: 'Rewrote memory-manager.ts with Compact on Write architecture',
-      concepts: ['compact-on-write', 'mem0', 'cipher', 'memorix'],
+      concepts: ['compact-on-write', 'mem0', 'cipher', 'baton'],
       filesModified: ['src/llm/memory-manager.ts', 'src/server.ts'],
     };
 
@@ -142,18 +142,18 @@ describe('cross-project pollution prevention', () => {
       concepts: ['express', 'rest-api', 'for_memmcp_test'],
     };
 
-    const memorixResult = calculateProjectAffinity(memorixMemory, context);
+    const batonResult = calculateProjectAffinity(batonMemory, context);
     const projectResult = calculateProjectAffinity(projectMemory, context);
 
-    // Memorix memory should have low affinity
-    expect(memorixResult.level).toBe('low');
-    expect(memorixResult.score).toBeLessThan(projectResult.score);
+    // Baton memory should have low affinity
+    expect(batonResult.level).toBe('low');
+    expect(batonResult.score).toBeLessThan(projectResult.score);
 
     // Project memory should have high affinity
     expect(projectResult.level).toBe('high');
     expect(projectResult.score).toBeGreaterThanOrEqual(0.8);
 
     // Project memory should rank higher
-    expect(projectResult.score).toBeGreaterThan(memorixResult.score);
+    expect(projectResult.score).toBeGreaterThan(batonResult.score);
   });
 });

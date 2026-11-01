@@ -163,7 +163,7 @@ export class GraphSqliteStore implements GraphStore {
       const data = await loadGraphJsonl(this.dataDir);
       if (data.entities.length === 0 && data.relations.length === 0) return;
 
-      console.error(`[memorix] Migrating graph from JSONL to SQLite (${data.entities.length} entities, ${data.relations.length} relations)...`);
+      console.error(`[baton] Migrating graph from JSONL to SQLite (${data.entities.length} entities, ${data.relations.length} relations)...`);
 
       const observations = this.db.prepare('SELECT id, projectId FROM observations').all() as Array<{ id: number; projectId: string }>;
       const projectByObservationId = new Map(observations.map((row) => [row.id, row.projectId]));
@@ -228,9 +228,9 @@ export class GraphSqliteStore implements GraphStore {
       });
       insertAll();
 
-      console.error(`[memorix] Graph migration complete.`);
+      console.error(`[baton] Graph migration complete.`);
     } catch (err) {
-      console.error(`[memorix] Graph JSONL->SQLite migration failed (non-fatal): ${err}`);
+      console.error(`[baton] Graph JSONL->SQLite migration failed (non-fatal): ${err}`);
     }
   }
 
@@ -368,7 +368,7 @@ export async function initGraphStore(dataDir: string, projectId = DEFAULT_GRAPH_
 export function getGraphStore(dataDir?: string, projectId?: string): GraphSqliteStore {
   const key = dataDir && projectId ? graphStoreKey(dataDir, projectId) : _activeGraphKey;
   const store = key ? _graphStores.get(key) : undefined;
-  if (!store) throw new Error('[memorix] GraphStore not initialized — call initGraphStore() first');
+  if (!store) throw new Error('[baton] GraphStore not initialized — call initGraphStore() first');
   return store;
 }
 

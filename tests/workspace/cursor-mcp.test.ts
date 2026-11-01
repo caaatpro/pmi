@@ -11,12 +11,12 @@ describe('CursorMCPAdapter', () => {
         it('should parse stdio servers', () => {
             const config = JSON.stringify({
                 mcpServers: {
-                    memorix: { command: 'npx', args: ['-y', 'memorix', 'serve'] },
+                    baton: { command: 'npx', args: ['-y', 'baton', 'serve'] },
                 },
             });
             const servers = adapter.parse(config);
             expect(servers).toHaveLength(1);
-            expect(servers[0].name).toBe('memorix');
+            expect(servers[0].name).toBe('baton');
             expect(servers[0].command).toBe('npx');
         });
 

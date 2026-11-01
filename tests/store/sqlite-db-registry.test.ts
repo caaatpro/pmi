@@ -19,9 +19,9 @@ afterEach(async () => {
 
 describe('SQLite database registry', () => {
   it('keeps leased handles alive while evicting idle handles', async () => {
-    const first = await mkdtemp(path.join(os.tmpdir(), 'memorix-db-registry-'));
-    const second = await mkdtemp(path.join(os.tmpdir(), 'memorix-db-registry-'));
-    const third = await mkdtemp(path.join(os.tmpdir(), 'memorix-db-registry-'));
+    const first = await mkdtemp(path.join(os.tmpdir(), 'baton-db-registry-'));
+    const second = await mkdtemp(path.join(os.tmpdir(), 'baton-db-registry-'));
+    const third = await mkdtemp(path.join(os.tmpdir(), 'baton-db-registry-'));
     roots.push(first, second, third);
 
     const lease = acquireDatabase(first);
@@ -38,7 +38,7 @@ describe('SQLite database registry', () => {
   });
 
   it('supports idempotent lease release', async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), 'memorix-db-registry-'));
+    const root = await mkdtemp(path.join(os.tmpdir(), 'baton-db-registry-'));
     roots.push(root);
 
     const lease = acquireDatabase(root);

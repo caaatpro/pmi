@@ -19,7 +19,7 @@ import { closeAllDatabases, getDatabase } from '../../src/store/sqlite-db.js';
 let root: string | undefined;
 
 function dataDir(): string {
-  root = mkdtempSync(path.join(tmpdir(), 'memorix-long-term-'));
+  root = mkdtempSync(path.join(tmpdir(), 'baton-long-term-'));
   return path.join(root, 'data');
 }
 

@@ -1,7 +1,7 @@
 /**
- * Memory retrieval tools inherited from Memorix (progressive disclosure): memorix_search,
- * memorix_search_reasoning, memorix_timeline, memorix_detail, memorix_graph_context,
- * memorix_evidence, memorix_feedback.
+ * Memory retrieval tools inherited from Baton (progressive disclosure): baton_search,
+ * baton_search_reasoning, baton_timeline, baton_detail, baton_graph_context,
+ * baton_evidence, baton_feedback.
  *
  * Split out of src/server.ts without behaviour changes; connection state comes
  * from `ServerToolContext`.
@@ -24,20 +24,20 @@ import { OBSERVATION_TYPES, coerceNumber, coerceNumberArray, coerceObservationRe
 
 export function registerRetrievalTools(server: McpServer, ctx: ServerToolContext): void {
   /**
-   * memorix_search — Layer 1: Compact index search
+   * baton_search — Layer 1: Compact index search
    *
    * Returns a lightweight table of matching observations.
    * ~50-100 tokens per result. Agent scans this to decide what to fetch.
    */
   server.registerTool(
-    'memorix_search',
+    'baton_search',
     {
       title: 'Search Memory',
       description:
         'Search project memory. Returns a compact index (~50-100 tokens/result). ' +
-        'Do not use as a follow-up to a complete memorix_project_context brief unless a specific fact is still missing or the user asks for deeper history; provide purpose when intentionally expanding. ' +
-        'Use memorix_detail to fetch full content for specific IDs. ' +
-        'Use memorix_timeline to see chronological context. ' +
+        'Do not use as a follow-up to a complete baton_project_context brief unless a specific fact is still missing or the user asks for deeper history; provide purpose when intentionally expanding. ' +
+        'Use baton_detail to fetch full content for specific IDs. ' +
+        'Use baton_timeline to see chronological context. ' +
         'Searches across all observations stored from any IDE session — enabling cross-session and cross-agent context retrieval.',
       inputSchema: {
         query: z.string().describe('Search query (natural language or keywords)'),
@@ -72,7 +72,7 @@ export function registerRetrievalTools(server: McpServer, ctx: ServerToolContext
         if (unresolved) return unresolved;
       }
       if (scope !== 'global') {
-        const boundary = ctx.requireExplicitAutopilotExpansion('memorix_search', purpose);
+        const boundary = ctx.requireExplicitAutopilotExpansion('baton_search', purpose);
         if (boundary) return boundary;
       }
 
@@ -140,7 +140,7 @@ export function registerRetrievalTools(server: McpServer, ctx: ServerToolContext
         && result.entries.length > 0
         && result.entries.every(entry => activeBoundary.coveredObservationIds.has(entry.id))
       ) {
-        const duplicate = ctx.blockCoveredAutopilotEvidence('memorix_search', result.entries.map(entry => entry.id), force);
+        const duplicate = ctx.blockCoveredAutopilotEvidence('baton_search', result.entries.map(entry => entry.id), force);
         if (duplicate) return duplicate;
       }
 
@@ -173,14 +173,14 @@ export function registerRetrievalTools(server: McpServer, ctx: ServerToolContext
   );
 
   /**
-   * memorix_search_reasoning — Search reasoning patterns
+   * baton_search_reasoning — Search reasoning patterns
    *
    * Find past reasoning traces to understand WHY decisions were made.
    * Useful when revisiting code and needing to understand the thought
    * process behind the current implementation.
    */
   server.registerTool(
-    'memorix_search_reasoning',
+    'baton_search_reasoning',
     {
       title: 'Search Reasoning Patterns',
       description:
@@ -211,7 +211,7 @@ export function registerRetrievalTools(server: McpServer, ctx: ServerToolContext
 
       if (result.entries.length === 0) {
         return {
-          content: [{ type: 'text' as const, text: 'No reasoning traces found. Use memorix_store_reasoning to record decision rationale.' }],
+          content: [{ type: 'text' as const, text: 'No reasoning traces found. Use baton_store_reasoning to record decision rationale.' }],
         };
       }
 
@@ -222,14 +222,14 @@ export function registerRetrievalTools(server: McpServer, ctx: ServerToolContext
   );
 
   /**
-   * memorix_timeline — Deep retrieval: provenance-aware chronological expansion
+   * baton_timeline — Deep retrieval: provenance-aware chronological expansion
    *
    * Natural follow-up after session L1 routing hints (hook traces) or L3
    * evidence pointers (git memory). Distinguishes explicit memory evolution,
    * hook activity traces, and git-backed facts via Src column when available.
    */
   server.registerTool(
-    'memorix_timeline',
+    'baton_timeline',
     {
       title: 'Memory Timeline',
       description:
@@ -266,25 +266,25 @@ export function registerRetrievalTools(server: McpServer, ctx: ServerToolContext
   );
 
   /**
-   * memorix_detail — Layer 3: Provenance-aware full observation details
+   * baton_detail — Layer 3: Provenance-aware full observation details
    *
    * Opens explicit memories, hook traces, or git evidence depending on source.
    * Output includes a provenance header identifying the evidence kind, value
    * category (core / ephemeral), and cross-references to related items.
    */
   server.registerTool(
-    'memorix_detail',
+    'baton_detail',
     {
       title: 'Memory Details',
       description:
         'Fetch full observation, mini-skill, or curated durable-memory details — includes source kind (explicit memory / hook trace / git evidence), ' +
         'value category, and cross-references (~500-1000 tokens each). ' +
-        'Do not re-fetch content already covered by a complete memorix_project_context brief unless a specific fact is still missing or the user asks for deeper history; provide purpose when intentionally expanding. ' +
-        'Always use memorix_search first to find relevant IDs, then fetch only what you need. ' +
+        'Do not re-fetch content already covered by a complete baton_project_context brief unless a specific fact is still missing or the user asks for deeper history; provide purpose when intentionally expanding. ' +
+        'Always use baton_search first to find relevant IDs, then fetch only what you need. ' +
         'Accepts typed refs from search results (e.g. "obs:42", "skill:3") and durable refs from a project brief (e.g. "durable:<uuid>") via the typedRefs field, ' +
         'or legacy numeric ids / object refs for backward compatibility.',
       inputSchema: {
-        ids: z.array(z.number()).optional().describe('Observation IDs to fetch (legacy, from memorix_search results)'),
+        ids: z.array(z.number()).optional().describe('Observation IDs to fetch (legacy, from baton_search results)'),
         refs: z.array(
           z.object({
             id: z.number().describe('Observation ID'),
@@ -313,7 +313,7 @@ export function registerRetrievalTools(server: McpServer, ctx: ServerToolContext
       const hasCrossProjectRef = safeRefs.some((ref) => ref.projectId && ref.projectId !== ctx.project.id)
         || observationTypedRefs.some((ref) => ref.includes('@') && !ref.endsWith(`@${ctx.project.id}`));
       if (!hasCrossProjectRef) {
-        const boundary = ctx.requireExplicitAutopilotExpansion('memorix_detail', purpose);
+        const boundary = ctx.requireExplicitAutopilotExpansion('baton_detail', purpose);
         if (boundary) return boundary;
         const requestedObservationIds = [
           ...safeIds,
@@ -323,7 +323,7 @@ export function registerRetrievalTools(server: McpServer, ctx: ServerToolContext
             return match ? [Number(match[1])] : [];
           }),
         ];
-        const duplicate = ctx.blockCoveredAutopilotEvidence('memorix_detail', requestedObservationIds, force);
+        const duplicate = ctx.blockCoveredAutopilotEvidence('baton_detail', requestedObservationIds, force);
         if (duplicate) return duplicate;
       }
 
@@ -391,13 +391,13 @@ export function registerRetrievalTools(server: McpServer, ctx: ServerToolContext
   );
 
   /**
-   * memorix_graph_context — Prompt-ready memory graph packet
+   * baton_graph_context — Prompt-ready memory graph packet
    *
    * Gives agents a compact, high-signal map of relevant memories, entities,
    * relations, and quality risks without forcing broad search/detail loops.
    */
   server.registerTool(
-    'memorix_graph_context',
+    'baton_graph_context',
     {
       title: 'Memory Graph Context',
       description:
@@ -446,11 +446,11 @@ export function registerRetrievalTools(server: McpServer, ctx: ServerToolContext
   // ================================================================
 
   server.registerTool(
-    'memorix_evidence',
+    'baton_evidence',
     {
       title: 'Evidence Cards',
       description:
-        'Inspect the bounded, project-scoped provenance cards behind Memorix context. ' +
+        'Inspect the bounded, project-scoped provenance cards behind Baton context. ' +
         'Use list for a compact index, get/events for one source, sync to repair the projection, ' +
         'and stale when known source files changed. Cards expose sourceRef, locator, capturedHash, and freshness.',
       inputSchema: {
@@ -498,7 +498,7 @@ export function registerRetrievalTools(server: McpServer, ctx: ServerToolContext
   );
 
   server.registerTool(
-    'memorix_feedback',
+    'baton_feedback',
     {
       title: 'Memory Feedback',
       description:

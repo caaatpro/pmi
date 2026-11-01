@@ -25,7 +25,7 @@ export function resolveInitScope(args: InitArgs, selectedScope?: InitScope): Ini
 
 export function getInitTargetDir(scope: InitScope, cwd: string, homeDir: string): string {
   return scope === 'global'
-    ? path.join(homeDir, '.memorix')
+    ? path.join(homeDir, '.baton')
     : cwd;
 }
 
@@ -48,7 +48,7 @@ export function getEnvTemplateTarget(
   options: EnvTemplateTargetOptions,
 ): string {
   const filename = options.hasDotenvExample
-    ? '.env.memorix-example'
+    ? '.env.baton-example'
     : '.env.example';
   return path.join(targetDir, filename);
 }
@@ -58,5 +58,5 @@ export function getInitConfigFilename(): string {
 }
 
 export function getInitProjectConfigFilename(): string {
-  return 'memorix.toml';
+  return 'baton.toml';
 }

@@ -1,5 +1,5 @@
 /**
- * CLI Command: memorix init
+ * CLI Command: baton init
  *
  * Interactive generator for TOML configuration.
  * Supports both machine-level defaults and project-level overrides.
@@ -28,12 +28,12 @@ type InitInjectMode = 'minimal' | 'full' | 'silent';
 export default defineCommand({
   meta: {
     name: 'init',
-    description: 'Initialize Memorix TOML configuration',
+    description: 'Initialize Baton TOML configuration',
   },
   args: {
     global: {
       type: 'boolean',
-      description: 'Create global defaults under ~/.memorix',
+      description: 'Create global defaults under ~/.baton',
       required: false,
     },
     project: {
@@ -43,12 +43,12 @@ export default defineCommand({
     },
   },
   run: async ({ args }) => {
-    p.intro('Initialize Memorix Configuration');
+    p.intro('Initialize Baton Configuration');
 
     let selectedScope: InitScope | undefined;
     if (!args.global && !args.project) {
       const scope = await p.select({
-        message: 'Where should Memorix start from?',
+        message: 'Where should Baton start from?',
         options: [
           {
             value: 'global',
@@ -159,44 +159,44 @@ export default defineCommand({
     });
 
     const envLines: string[] = [
-      '# Memorix compatibility environment variables',
-      '# Prefer ~/.memorix/config.toml or <git-root>/memorix.toml for normal setup.',
+      '# Baton compatibility environment variables',
+      '# Prefer ~/.baton/config.toml or <git-root>/baton.toml for normal setup.',
       '',
     ];
 
     if (llmProvider !== 'none') {
       envLines.push('# LLM API key');
       if (llmProvider === 'openai' || llmProvider === 'custom' || llmProvider === 'atlascloud' || llmProvider === 'apiroute' || llmProvider === 'cheaperinference') {
-        envLines.push('MEMORIX_LLM_API_KEY=sk-your-key-here');
+        envLines.push('BATON_LLM_API_KEY=sk-your-key-here');
       } else if (llmProvider === 'anthropic') {
-        envLines.push('MEMORIX_LLM_API_KEY=sk-ant-your-key-here');
+        envLines.push('BATON_LLM_API_KEY=sk-ant-your-key-here');
       } else if (llmProvider === 'openrouter') {
-        envLines.push('MEMORIX_LLM_API_KEY=sk-or-your-key-here');
+        envLines.push('BATON_LLM_API_KEY=sk-or-your-key-here');
       } else if (llmProvider === 'requesty') {
-        envLines.push('MEMORIX_LLM_API_KEY=rqsty-your-key-here');
+        envLines.push('BATON_LLM_API_KEY=rqsty-your-key-here');
       }
       if (llmProvider === 'custom') {
-        envLines.push('# MEMORIX_LLM_BASE_URL=http://localhost:11434/v1');
+        envLines.push('# BATON_LLM_BASE_URL=http://localhost:11434/v1');
       }
       envLines.push('');
     }
 
     if (embeddingProvider === 'api') {
       envLines.push('# Embedding API key');
-      envLines.push('# Independent from MEMORIX_LLM_API_KEY; use your embedding provider key here.');
-      envLines.push('# MEMORIX_EMBEDDING_API_KEY=sk-your-key-here');
-      envLines.push('# MEMORIX_EMBEDDING_BASE_URL=https://api.openai.com/v1');
+      envLines.push('# Independent from BATON_LLM_API_KEY; use your embedding provider key here.');
+      envLines.push('# BATON_EMBEDDING_API_KEY=sk-your-key-here');
+      envLines.push('# BATON_EMBEDDING_BASE_URL=https://api.openai.com/v1');
       envLines.push('');
     }
 
     envLines.push('# Optional HTTP rerank (Cohere-compatible POST {base_url}/rerank)');
-    envLines.push('# MEMORIX_RERANK_PROVIDER=http');
-    envLines.push('# MEMORIX_RERANK_MODEL=rerank-model');
-    envLines.push('# MEMORIX_RERANK_BASE_URL=https://api.example.com/v1');
-    envLines.push('# MEMORIX_RERANK_API_KEY=  # required when BASE_URL is not the memory LLM endpoint');
+    envLines.push('# BATON_RERANK_PROVIDER=http');
+    envLines.push('# BATON_RERANK_MODEL=rerank-model');
+    envLines.push('# BATON_RERANK_BASE_URL=https://api.example.com/v1');
+    envLines.push('# BATON_RERANK_API_KEY=  # required when BASE_URL is not the memory LLM endpoint');
     envLines.push('');
     envLines.push('# Optional memory LLM simple key (does not apply to embedding or agent lanes)');
-    envLines.push('# MEMORIX_API_KEY=sk-your-key-here');
+    envLines.push('# BATON_API_KEY=sk-your-key-here');
     envLines.push('');
     envLines.push('# Compatibility variables (lowest priority)');
     envLines.push('# OPENAI_API_KEY=sk-...');
@@ -245,7 +245,7 @@ export default defineCommand({
     p.log.info('Primary config:');
     p.log.info(`  ${targetPath}`);
     if (isGlobal) {
-      p.log.info('Project-level memorix.toml can override these defaults later.');
+      p.log.info('Project-level baton.toml can override these defaults later.');
     } else {
       p.log.info('This project config will override any global defaults on this machine.');
     }
@@ -269,10 +269,10 @@ export function buildInitTomlConfig(options: {
 }): string {
   const isGlobal = options.scope === 'global';
   const lines: string[] = [
-    '# Memorix configuration',
+    '# Baton configuration',
     '#',
     '# Primary user-facing config lives in TOML. Legacy YAML/.env files are still read for compatibility.',
-    `# Generated by: memorix init${isGlobal ? ' --global' : ' --project'}`,
+    `# Generated by: baton init${isGlobal ? ' --global' : ' --project'}`,
     `# Date: ${options.date ?? new Date().toISOString().split('T')[0]}`,
     '#',
     isGlobal
@@ -340,7 +340,7 @@ export function buildInitTomlConfig(options: {
   lines.push('# base_url inherits [memory.llm] when unset.');
   if (isGlobal) {
     lines.push('# Bearer inherits the memory LLM key only when that endpoint matches.');
-    lines.push('# A different rerank URL needs MEMORIX_RERANK_API_KEY.');
+    lines.push('# A different rerank URL needs BATON_RERANK_API_KEY.');
   }
   lines.push('');
 

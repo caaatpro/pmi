@@ -1,6 +1,6 @@
 /**
  * Acceptance TEST 3 and the negative checks of WORKSPACE_RECOVERY.md §10,
- * end to end: real CLI on two machines, pmi-server, Postgres.
+ * end to end: real CLI on two machines, baton-server, Postgres.
  *
  * Alice's working copy has every kind of change (3 modified files, a deleted
  * one, an untracked one, a binary, a rename, staged + unstaged edits of one
@@ -22,7 +22,7 @@ import { createOrganization, createUser, issueToken } from '../../src/server/cen
 import { migrate } from '../../src/server/central/migrations.js';
 import { ServerBlobStorage, applyRetention } from '../../src/server/central/snapshots-repo.js';
 import { createWorkspaceFixture, git, workingCopy, write } from '../workspace-snapshot/fixture.js';
-import { cliBuilt, machine, pmi, stopDaemons, type Machine } from './cli-helper.js';
+import { cliBuilt, machine, baton, stopDaemons, type Machine } from './cli-helper.js';
 import { pgAvailable, pgSkipReason, startPostgres, type TestPostgres } from './pg-helper.js';
 
 let root = '';
@@ -54,7 +54,7 @@ async function api(pathname: string, init: { as: string; method?: string; body?:
 
 describe.skipIf(!pgAvailable || !cliBuilt)('workspace recovery end to end', () => {
   beforeAll(async () => {
-    root = fs.mkdtempSync(path.join(tmpdir(), 'pmi-workspace-'));
+    root = fs.mkdtempSync(path.join(tmpdir(), 'baton-workspace-'));
     blobDir = path.join(root, 'server-blobs');
     pg = await startPostgres();
     db = await openDatabase(pg.url);
@@ -69,26 +69,26 @@ describe.skipIf(!pgAvailable || !cliBuilt)('workspace recovery end to end', () =
     serverUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 
     const repos = createWorkspaceFixture(root, (repo) => git(repo, 'remote', 'set-url', '--push', 'origin', path.join(root, 'origin.git')));
-    // Memorix identity comes from the origin URL; point both clones at the same canonical remote name.
+    // Baton identity comes from the origin URL; point both clones at the same canonical remote name.
     for (const repo of [repos.a, repos.b]) {
       git(repo, 'remote', 'set-url', 'origin', 'https://github.com/acme/store.git');
       git(repo, 'remote', 'add', 'local', repos.origin);
       git(repo, 'fetch', '-q', 'local');
-      // This team does not commit the PMI link file; keep it out of `git status` like any local config.
-      fs.appendFileSync(path.join(repo, '.git', 'info', 'exclude'), '.pmi/\n');
+      // This team does not commit the Baton link file; keep it out of `git status` like any local config.
+      fs.appendFileSync(path.join(repo, '.git', 'info', 'exclude'), '.baton/\n');
     }
-    alice = machine(root, 'alice-home', repos.a, { PMI_DAEMON: 'off' });
-    bob = machine(root, 'bob-home', repos.b, { PMI_DAEMON: 'off' });
+    alice = machine(root, 'alice-home', repos.a, { BATON_DAEMON: 'off' });
+    bob = machine(root, 'bob-home', repos.b, { BATON_DAEMON: 'off' });
 
-    expect((await pmi(alice, 'login', serverUrl, '--token', tokens.alice)).code).toBe(0);
-    expect((await pmi(bob, 'login', serverUrl, '--token', tokens.bob)).code).toBe(0);
-    const linked = await pmi(alice, 'project', 'link', '--create', '--org', 'acme', '--slug', 'store', '--json');
+    expect((await baton(alice, 'login', serverUrl, '--token', tokens.alice)).code).toBe(0);
+    expect((await baton(bob, 'login', serverUrl, '--token', tokens.bob)).code).toBe(0);
+    const linked = await baton(alice, 'project', 'link', '--create', '--org', 'acme', '--slug', 'store', '--json');
     expect(linked.code, linked.stderr).toBe(0);
     projectId = linked.json.projectId;
     for (const [email, role] of [['bob@acme.test', 'developer'], ['vera@acme.test', 'viewer']]) {
       await api(`/v1/projects/${projectId}/grants`, { as: 'alice', method: 'PUT', body: { user: email, role } });
     }
-    expect((await pmi(bob, 'project', 'link')).code).toBe(0);
+    expect((await baton(bob, 'project', 'link')).code).toBe(0);
   }, 180_000);
 
   afterAll(async () => {
@@ -103,7 +103,7 @@ describe.skipIf(!pgAvailable || !cliBuilt)('workspace recovery end to end', () =
 
   it('TEST 3: restores Alice\'s uncommitted work on Bob\'s machine byte for byte', async () => {
     const statusBefore = git(alice.repo, 'status', '--porcelain=v1');
-    const snap = await pmi(alice, 'workspace', 'snapshot', '--json');
+    const snap = await baton(alice, 'workspace', 'snapshot', '--json');
     expect(snap.code, snap.stderr).toBe(0);
     expect(git(alice.repo, 'status', '--porcelain=v1')).toBe(statusBefore);
     snapshotId = snap.json.snapshot.id;
@@ -111,7 +111,7 @@ describe.skipIf(!pgAvailable || !cliBuilt)('workspace recovery end to end', () =
     expect(snap.json.upload.uploadedBlobs).toBeGreaterThan(10);
 
     const target = path.join(root, 'bob-restored');
-    const restored = await pmi(bob, 'workspace', 'restore', snapshotId, '--worktree', target, '--json');
+    const restored = await baton(bob, 'workspace', 'restore', snapshotId, '--worktree', target, '--json');
     expect(restored.code, restored.stderr + restored.stdout).toBe(0);
     expect(restored.json).toMatchObject({ verified: true, conflicts: [], importedCommits: 1 });
 
@@ -130,7 +130,7 @@ describe.skipIf(!pgAvailable || !cliBuilt)('workspace recovery end to end', () =
 
   it('uploads only what changed: one modified file adds its blob and the patch', async () => {
     write(alice.repo, 'b.txt', 'b.txt changed again\n');
-    const second = await pmi(alice, 'workspace', 'snapshot', '--json');
+    const second = await baton(alice, 'workspace', 'snapshot', '--json');
     expect(second.code, second.stderr).toBe(0);
     expect(second.json.upload.uploadedBlobs).toBe(2);
   }, 60_000);
@@ -138,28 +138,28 @@ describe.skipIf(!pgAvailable || !cliBuilt)('workspace recovery end to end', () =
   it('a large file is stored on the server volume and still restores exactly', async () => {
     const big = Buffer.alloc(600 * 1024, 7);
     write(alice.repo, 'assets/big.bin', big);
-    const snap = await pmi(alice, 'workspace', 'snapshot', '--json');
+    const snap = await baton(alice, 'workspace', 'snapshot', '--json');
     const sha = (await db.query<{ sha256: string }>("SELECT sha256 FROM work.blobs WHERE storage = 'fs'"))[0]?.sha256;
     expect(sha).toBeTruthy();
     expect(fs.existsSync(path.join(blobDir, sha.slice(0, 2), sha.slice(2, 4), sha))).toBe(true);
     const target = path.join(root, 'bob-big');
-    const restored = await pmi(bob, 'workspace', 'restore', snap.json.snapshot.id, '--worktree', target, '--json');
+    const restored = await baton(bob, 'workspace', 'restore', snap.json.snapshot.id, '--worktree', target, '--json');
     expect(restored.json?.verified, restored.stderr).toBe(true);
     expect(fs.readFileSync(path.join(target, 'assets/big.bin')).equals(big)).toBe(true);
     fs.rmSync(path.join(alice.repo, 'assets'), { recursive: true });
   }, 60_000);
 
   it('refuses a snapshot whose blob was corrupted on the server, without touching the disk', async () => {
-    const snap = await pmi(alice, 'workspace', 'snapshot', '--json');
+    const snap = await baton(alice, 'workspace', 'snapshot', '--json');
     const id = snap.json.snapshot.id;
     const [manifestRow] = await db.query<{ manifest: any }>('SELECT manifest FROM work.snapshots WHERE id = $1', [id]);
     const victim = manifestRow.manifest.files.find((f: { path: string }) => f.path === 'a.txt').sha256;
     await db.query("UPDATE work.blobs SET data = convert_to('tampered', 'UTF8') WHERE sha256 = $1 AND storage = 'inline'", [victim]);
     // A fresh machine without the blob in its local cache.
-    const carol = machine(root, 'carol-home', bob.repo, { PMI_DAEMON: 'off' });
-    expect((await pmi(carol, 'login', serverUrl, '--token', tokens.bob)).code).toBe(0);
+    const carol = machine(root, 'carol-home', bob.repo, { BATON_DAEMON: 'off' });
+    expect((await baton(carol, 'login', serverUrl, '--token', tokens.bob)).code).toBe(0);
     const target = path.join(root, 'carol-restored');
-    const refused = await pmi(carol, 'workspace', 'restore', id, '--worktree', target);
+    const refused = await baton(carol, 'workspace', 'restore', id, '--worktree', target);
     expect(refused.code).not.toBe(0);
     expect(fs.existsSync(target)).toBe(false);
     expect(git(bob.repo, 'status', '--porcelain=v1')).toBe('');
@@ -167,7 +167,7 @@ describe.skipIf(!pgAvailable || !cliBuilt)('workspace recovery end to end', () =
 
   it('refuses in place on a dirty working copy (exit 2) and leaves it alone', async () => {
     write(bob.repo, 'a.txt', 'bob is editing\n');
-    const refused = await pmi(bob, 'workspace', 'restore', snapshotId, '--in-place');
+    const refused = await baton(bob, 'workspace', 'restore', snapshotId, '--in-place');
     expect(refused.code).toBe(2);
     expect(refused.stderr).toContain('dirty');
     expect(fs.readFileSync(path.join(bob.repo, 'a.txt'), 'utf8')).toBe('bob is editing\n');
@@ -176,22 +176,22 @@ describe.skipIf(!pgAvailable || !cliBuilt)('workspace recovery end to end', () =
 
   it('hands off a session with its working copy: resume restores it into a new worktree', async () => {
     write(alice.repo, 'feature/flag.ts', 'export const enabled = true;\n');
-    const start = await pmi(alice, 'session', 'start', '--agent', 'claude-code', '--task', 'Feature flags', '--json');
+    const start = await baton(alice, 'session', 'start', '--agent', 'claude-code', '--task', 'Feature flags', '--json');
     expect(start.code, start.stderr).toBe(0);
-    const handoff = await pmi(alice, 'session', 'handoff', '--next', 'Wire the flag into checkout', '--json');
+    const handoff = await baton(alice, 'session', 'handoff', '--next', 'Wire the flag into checkout', '--json');
     expect(handoff.code, handoff.stderr).toBe(0);
-    const sessionId = start.json.pmi.sessionId;
+    const sessionId = start.json.baton.sessionId;
     const [pinned] = await db.query<{ pinned: boolean }>('SELECT pinned FROM work.snapshots WHERE session_id = $1 ORDER BY created_at DESC LIMIT 1', [sessionId]);
     expect(pinned.pinned).toBe(true);
 
     const target = path.join(root, 'bob-session');
-    const resume = await pmi(bob, 'session', 'resume', sessionId, '--agent', 'codex', '--worktree', target, '--json');
+    const resume = await baton(bob, 'session', 'resume', sessionId, '--agent', 'codex', '--worktree', target, '--json');
     expect(resume.code, resume.stderr + resume.stdout).toBe(0);
     expect(resume.json.snapshot.id).toMatch(/^snap_/);
     expect(resume.json.restore).toMatchObject({ verified: true, target });
     expect(fs.readFileSync(path.join(target, 'feature/flag.ts'), 'utf8')).toBe('export const enabled = true;\n');
     expect(fs.readFileSync(path.join(target, 'mixed.txt'), 'utf8')).toBe('mixed staged\nplus unstaged\n');
-    const text = await pmi(bob, 'workspace', 'list');
+    const text = await baton(bob, 'workspace', 'list');
     expect(text.stdout).toContain(resume.json.snapshot.id);
   }, 120_000);
 

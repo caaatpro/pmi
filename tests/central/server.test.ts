@@ -93,7 +93,7 @@ describe.skipIf(!pgAvailable)('central server (real Postgres)', () => {
 
   it('rejects requests without a valid token', async () => {
     expect((await call('/v1/me')).status).toBe(401);
-    expect((await call('/v1/me', { token: 'pmi_pat_nope' })).status).toBe(401);
+    expect((await call('/v1/me', { token: 'baton_pat_nope' })).status).toBe(401);
   });
 
   it('lets only org admins create a project, then resolves it for members', async () => {
@@ -123,7 +123,7 @@ describe.skipIf(!pgAvailable)('central server (real Postgres)', () => {
     expect(me.body.projects.map((p: { id: string }) => p.id)).toEqual([projectId]);
   });
 
-  it('materializes pushed memories with PMI classification and history', async () => {
+  it('materializes pushed memories with Baton classification and history', async () => {
     const row = obs(1);
     const pushed = await call('/v1/sync/push', {
       token: memberToken,

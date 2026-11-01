@@ -32,7 +32,7 @@ describe('deduplication plan', () => {
   let store: SqliteBackend;
 
   beforeEach(async () => {
-    dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-dedup-plan-'));
+    dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-dedup-plan-'));
     store = new SqliteBackend();
     await store.init(dataDir);
   });

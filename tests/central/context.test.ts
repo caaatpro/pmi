@@ -198,10 +198,10 @@ describe.skipIf(!pgAvailable)('server context engine (real Postgres + pgvector)'
     const res = await fetch(`${base}/metrics`, { headers: { authorization: 'Bearer metrics-secret' } });
     const text = await res.text();
     expect(res.status).toBe(200);
-    expect(text).toMatch(/pmi_context_builds_total \d+/);
-    expect(text).toMatch(/pmi_memories\{category="architecture_decision"\} \d+/);
-    expect(text).toMatch(/pmi_sessions\{status="completed"\} 190/);
-    expect(text).toContain('pmi_http_requests_total{route="/v1/projects/:id/context",status="200"}');
+    expect(text).toMatch(/baton_context_builds_total \d+/);
+    expect(text).toMatch(/baton_memories\{category="architecture_decision"\} \d+/);
+    expect(text).toMatch(/baton_sessions\{status="completed"\} 190/);
+    expect(text).toContain('baton_http_requests_total{route="/v1/projects/:id/context",status="200"}');
     const [{ n }] = await db.query<{ n: number }>("SELECT count(*)::int AS n FROM work.metrics_events WHERE name = 'context_tokens' AND session_id = 'ses_live'");
     expect(n).toBe(1);
   });

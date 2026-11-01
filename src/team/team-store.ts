@@ -5,7 +5,7 @@
  * CLI identity commands); its agent_id attributes observations and decides
  * personal/team memory visibility. The former coordination features (tasks,
  * messages, file locks, roles, handoff artifacts) were removed in favour of
- * PMI sessions and handoff; their tables are left in place untouched.
+ * Baton sessions and handoff; their tables are left in place untouched.
  *
  * Provides:
  *   - Singleton init/get/reset pattern (same as SessionStore)
@@ -267,7 +267,7 @@ let _teamStoreDataDir: string | null = null;
 
 export function getTeamStore(): TeamStore {
   if (!_teamStore) {
-    throw new Error('[memorix] TeamStore not initialized — call initTeamStore() first');
+    throw new Error('[baton] TeamStore not initialized — call initTeamStore() first');
   }
   return _teamStore;
 }

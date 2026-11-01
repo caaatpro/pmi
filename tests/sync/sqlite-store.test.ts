@@ -33,27 +33,27 @@ function observation(id: number, title: string, projectId = 'org/project'): Obse
 
 describe('real SQLite multi-device sync', () => {
   let roots: string[] = [];
-  const oldFingerprint = process.env.MEMORIX_SYNC_DEVICE_FINGERPRINT;
-  const oldUserNamespace = process.env.MEMORIX_SYNC_USER_NAMESPACE;
+  const oldFingerprint = process.env.BATON_SYNC_DEVICE_FINGERPRINT;
+  const oldUserNamespace = process.env.BATON_SYNC_USER_NAMESPACE;
 
   beforeEach(() => {
-    process.env.MEMORIX_SYNC_USER_NAMESPACE = 'test-user';
+    process.env.BATON_SYNC_USER_NAMESPACE = 'test-user';
   });
 
   afterEach(async () => {
     closeAllDatabases();
     for (const root of roots) await rm(root, { recursive: true, force: true });
     roots = [];
-    if (oldFingerprint === undefined) delete process.env.MEMORIX_SYNC_DEVICE_FINGERPRINT;
-    else process.env.MEMORIX_SYNC_DEVICE_FINGERPRINT = oldFingerprint;
-    if (oldUserNamespace === undefined) delete process.env.MEMORIX_SYNC_USER_NAMESPACE;
-    else process.env.MEMORIX_SYNC_USER_NAMESPACE = oldUserNamespace;
+    if (oldFingerprint === undefined) delete process.env.BATON_SYNC_DEVICE_FINGERPRINT;
+    else process.env.BATON_SYNC_DEVICE_FINGERPRINT = oldFingerprint;
+    if (oldUserNamespace === undefined) delete process.env.BATON_SYNC_USER_NAMESPACE;
+    else process.env.BATON_SYNC_USER_NAMESPACE = oldUserNamespace;
   });
 
   it('reconciles two real SQLite stores without copying database files', async () => {
-    const dataA = await mkdtemp(path.join(os.tmpdir(), 'memorix-sync-sqlite-a-'));
-    const dataB = await mkdtemp(path.join(os.tmpdir(), 'memorix-sync-sqlite-b-'));
-    const remoteDir = await mkdtemp(path.join(os.tmpdir(), 'memorix-sync-relay-'));
+    const dataA = await mkdtemp(path.join(os.tmpdir(), 'baton-sync-sqlite-a-'));
+    const dataB = await mkdtemp(path.join(os.tmpdir(), 'baton-sync-sqlite-b-'));
+    const remoteDir = await mkdtemp(path.join(os.tmpdir(), 'baton-sync-relay-'));
     roots.push(dataA, dataB, remoteDir);
 
     const storeA = new SqliteBackend();
@@ -74,16 +74,16 @@ describe('real SQLite multi-device sync', () => {
     expect(report.applied).toBe(1);
     expect(await storeB.loadByProject('org/project')).toHaveLength(1);
     expect(await storeB.loadAll()).toHaveLength(1);
-    expect(await import('node:fs/promises').then(({ readdir }) => readdir(remoteDir, { recursive: true }))).not.toContain('memorix.db');
+    expect(await import('node:fs/promises').then(({ readdir }) => readdir(remoteDir, { recursive: true }))).not.toContain('baton.db');
 
     storeA.close();
     storeB.close();
   });
 
   it('replicates every project under --scope user without copying the database', async () => {
-    const dataA = await mkdtemp(path.join(os.tmpdir(), 'memorix-sync-user-a-'));
-    const dataB = await mkdtemp(path.join(os.tmpdir(), 'memorix-sync-user-b-'));
-    const remoteDir = await mkdtemp(path.join(os.tmpdir(), 'memorix-sync-user-relay-'));
+    const dataA = await mkdtemp(path.join(os.tmpdir(), 'baton-sync-user-a-'));
+    const dataB = await mkdtemp(path.join(os.tmpdir(), 'baton-sync-user-b-'));
+    const remoteDir = await mkdtemp(path.join(os.tmpdir(), 'baton-sync-user-relay-'));
     roots.push(dataA, dataB, remoteDir);
 
     const storeA = new SqliteBackend();
@@ -117,9 +117,9 @@ describe('real SQLite multi-device sync', () => {
   });
 
   it('remaps imported ids when the target already uses the incoming integer id', async () => {
-    const dataA = await mkdtemp(path.join(os.tmpdir(), 'memorix-sync-user-collision-a-'));
-    const dataB = await mkdtemp(path.join(os.tmpdir(), 'memorix-sync-user-collision-b-'));
-    const remoteDir = await mkdtemp(path.join(os.tmpdir(), 'memorix-sync-user-collision-relay-'));
+    const dataA = await mkdtemp(path.join(os.tmpdir(), 'baton-sync-user-collision-a-'));
+    const dataB = await mkdtemp(path.join(os.tmpdir(), 'baton-sync-user-collision-b-'));
+    const remoteDir = await mkdtemp(path.join(os.tmpdir(), 'baton-sync-user-collision-relay-'));
     roots.push(dataA, dataB, remoteDir);
 
     const storeA = new SqliteBackend();
@@ -149,9 +149,9 @@ describe('real SQLite multi-device sync', () => {
   });
 
   it('applies user-scope tombstones to rows from their source project', async () => {
-    const dataA = await mkdtemp(path.join(os.tmpdir(), 'memorix-sync-user-tombstone-a-'));
-    const dataB = await mkdtemp(path.join(os.tmpdir(), 'memorix-sync-user-tombstone-b-'));
-    const remoteDir = await mkdtemp(path.join(os.tmpdir(), 'memorix-sync-user-tombstone-relay-'));
+    const dataA = await mkdtemp(path.join(os.tmpdir(), 'baton-sync-user-tombstone-a-'));
+    const dataB = await mkdtemp(path.join(os.tmpdir(), 'baton-sync-user-tombstone-b-'));
+    const remoteDir = await mkdtemp(path.join(os.tmpdir(), 'baton-sync-user-tombstone-relay-'));
     roots.push(dataA, dataB, remoteDir);
 
     const storeA = new SqliteBackend();
@@ -182,15 +182,15 @@ describe('real SQLite multi-device sync', () => {
   });
 
   it('refuses a copied data directory until the device identity is rotated', async () => {
-    const data = await mkdtemp(path.join(os.tmpdir(), 'memorix-sync-clone-'));
+    const data = await mkdtemp(path.join(os.tmpdir(), 'baton-sync-clone-'));
     roots.push(data);
-    process.env.MEMORIX_SYNC_DEVICE_FINGERPRINT = 'machine-a';
+    process.env.BATON_SYNC_DEVICE_FINGERPRINT = 'machine-a';
     const store = new SqliteBackend();
     await store.init(data);
     const first = createSqliteSyncStore(data, store, 'org/project');
     const originalDevice = first.deviceId();
 
-    process.env.MEMORIX_SYNC_DEVICE_FINGERPRINT = 'machine-b';
+    process.env.BATON_SYNC_DEVICE_FINGERPRINT = 'machine-b';
     const cloned = createSqliteSyncStore(data, store, 'org/project');
     expect(() => cloned.assertCanPublish()).toThrow(/device clone detected/);
     const rotated = cloned.rotateDevice();

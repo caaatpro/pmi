@@ -9,7 +9,7 @@ const project = {
   rootPath: 'E:/repo',
 };
 
-const createMemorixServerMock = vi.fn();
+const createBatonServerMock = vi.fn();
 const resolveServeProjectMock = vi.fn();
 const detectProjectMock = vi.fn();
 const detectProjectWithDiagnosticsMock = vi.fn();
@@ -82,7 +82,7 @@ vi.mock('@modelcontextprotocol/sdk/server/streamableHttp.js', () => ({
       res.end(JSON.stringify({
         jsonrpc: '2.0',
         result: body?.method === 'tools/list'
-          ? { tools: [{ name: 'memorix_store' }] }
+          ? { tools: [{ name: 'baton_store' }] }
           : { protocolVersion: '2024-11-05', capabilities: { tools: {} } },
         id: body?.id ?? 1,
       }));
@@ -145,7 +145,7 @@ vi.mock('node:fs', async () => {
 });
 
 vi.mock('../../src/server.js', () => ({
-  createMemorixServer: createMemorixServerMock,
+  createBatonServer: createBatonServerMock,
 }));
 
 vi.mock('../../src/server/mcp-binding-store.js', () => ({
@@ -153,7 +153,7 @@ vi.mock('../../src/server/mcp-binding-store.js', () => ({
     async init() {}
     touch() { return undefined; }
     findByProjectRoot() { return undefined; }
-    create() { return { handleId: 'test-handle', projectId: project.id, projectRoot: project.rootPath, dataDir: 'E:/memorix-data' }; }
+    create() { return { handleId: 'test-handle', projectId: project.id, projectRoot: project.rootPath, dataDir: 'E:/baton-data' }; }
   },
 }));
 
@@ -311,8 +311,8 @@ describe('serve command mode support', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     capturedHttpHandler = undefined;
-    process.env.MEMORIX_MODE = undefined;
-    process.env.MEMORIX_PROJECT_ROOT = undefined;
+    process.env.BATON_MODE = undefined;
+    process.env.BATON_PROJECT_ROOT = undefined;
     process.env.INIT_CWD = undefined;
 
     resolveServeProjectMock.mockReturnValue({
@@ -329,13 +329,13 @@ describe('serve command mode support', () => {
     findGitInSubdirsMock.mockReturnValue(null);
     isSystemDirectoryMock.mockReturnValue(false);
     initTeamStoreMock.mockResolvedValue({});
-    getProjectDataDirMock.mockResolvedValue('E:/memorix-data');
+    getProjectDataDirMock.mockResolvedValue('E:/baton-data');
     getBaseDataDirMock.mockReturnValue(os.tmpdir());
-    createMemorixServerMock.mockResolvedValue(makeServerResult());
+    createBatonServerMock.mockResolvedValue(makeServerResult());
     createModernMcpBridgeMock.mockImplementation(async () => {
       const modern = new ModernMcpServer({ name: 'test-modern', version: '1.0.0' });
       modern.registerTool(
-        'memorix_store',
+        'baton_store',
         {
           inputSchema: fromJsonSchema({ type: 'object', additionalProperties: false }),
         },
@@ -346,7 +346,7 @@ describe('serve command mode support', () => {
     createModernMcpRuntimeMock.mockImplementation(async (options: any) => {
       return {
         projectId: project.id,
-        getProjectDataDir: () => 'E:/memorix-data',
+        getProjectDataDir: () => 'E:/baton-data',
         createBridge: () => createModernMcpBridgeMock(options),
         close: async () => {},
       };
@@ -365,8 +365,8 @@ describe('serve command mode support', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-    delete process.env.MEMORIX_MODE;
-    delete process.env.MEMORIX_PROJECT_ROOT;
+    delete process.env.BATON_MODE;
+    delete process.env.BATON_PROJECT_ROOT;
     delete process.env.INIT_CWD;
   });
 
@@ -392,7 +392,7 @@ describe('serve command mode support', () => {
     expect(createModernMcpBridgeMock.mock.calls[0]?.[0]).toMatchObject({ toolProfile: 'micro' });
   });
 
-  it('passes an explicit stdio mode through to createMemorixServer', async () => {
+  it('passes an explicit stdio mode through to createBatonServer', async () => {
     const run = serveCommand.run as ((input: any) => Promise<void>) | undefined;
 
     await run?.({
@@ -407,8 +407,8 @@ describe('serve command mode support', () => {
     expect(createModernMcpBridgeMock.mock.calls[0]?.[0]).toMatchObject({ toolProfile: 'full' });
   });
 
-  it('uses MEMORIX_MODE as the stdio fallback when mode is omitted', async () => {
-    process.env.MEMORIX_MODE = 'team';
+  it('uses BATON_MODE as the stdio fallback when mode is omitted', async () => {
+    process.env.BATON_MODE = 'team';
 
     const run = serveCommand.run as ((input: any) => Promise<void>) | undefined;
 
@@ -427,8 +427,8 @@ describe('serve-http command mode support', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     capturedHttpHandler = undefined;
-    process.env.MEMORIX_MODE = undefined;
-    process.env.MEMORIX_PROJECT_ROOT = undefined;
+    process.env.BATON_MODE = undefined;
+    process.env.BATON_PROJECT_ROOT = undefined;
 
     resolveServeProjectMock.mockReturnValue({
       detectedProject: project,
@@ -443,14 +443,14 @@ describe('serve-http command mode support', () => {
     }));
     findGitInSubdirsMock.mockReturnValue(null);
     initTeamStoreMock.mockResolvedValue({});
-    getProjectDataDirMock.mockResolvedValue('E:/memorix-data');
+    getProjectDataDirMock.mockResolvedValue('E:/baton-data');
     getBaseDataDirMock.mockReturnValue(os.tmpdir());
     createControlPlaneMaintenanceWorkerMock.mockReturnValue({ start: maintenanceWorkerStartMock });
-    createMemorixServerMock.mockResolvedValue(makeServerResult());
+    createBatonServerMock.mockResolvedValue(makeServerResult());
     createModernMcpBridgeMock.mockImplementation(async () => {
       const modern = new ModernMcpServer({ name: 'test-modern', version: '1.0.0' });
       modern.registerTool(
-        'memorix_store',
+        'baton_store',
         {
           inputSchema: fromJsonSchema({ type: 'object', additionalProperties: false }),
         },
@@ -460,7 +460,7 @@ describe('serve-http command mode support', () => {
     });
     createModernMcpRuntimeMock.mockImplementation(async (options: any) => ({
       projectId: project.id,
-      getProjectDataDir: () => 'E:/memorix-data',
+      getProjectDataDir: () => 'E:/baton-data',
       createBridge: () => createModernMcpBridgeMock(options),
       close: async () => {},
     }));
@@ -484,8 +484,8 @@ describe('serve-http command mode support', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-    delete process.env.MEMORIX_MODE;
-    delete process.env.MEMORIX_PROJECT_ROOT;
+    delete process.env.BATON_MODE;
+    delete process.env.BATON_PROJECT_ROOT;
   });
 
   it('declares a mode arg for HTTP profile selection', () => {
@@ -524,12 +524,12 @@ describe('serve-http command mode support', () => {
 
     await capturedHttpHandler!(req, res as any);
 
-    expect(createMemorixServerMock).toHaveBeenCalledTimes(1);
-    expect(createMemorixServerMock.mock.calls[0]?.[3]).toMatchObject({
+    expect(createBatonServerMock).toHaveBeenCalledTimes(1);
+    expect(createBatonServerMock.mock.calls[0]?.[3]).toMatchObject({
       toolProfile: 'full',
       bindingTransport: 'legacy-http',
     });
-    expect(createControlPlaneMaintenanceWorkerMock).toHaveBeenCalledWith('E:/memorix-data', { pollIntervalMs: 2_000 });
+    expect(createControlPlaneMaintenanceWorkerMock).toHaveBeenCalledWith('E:/baton-data', { pollIntervalMs: 2_000 });
     expect(maintenanceWorkerStartMock).toHaveBeenCalledTimes(1);
   });
 
@@ -623,15 +623,15 @@ describe('serve-http command mode support', () => {
 
     expect(listRes.statusCode).toBe(200);
     expect(JSON.parse(listRes.getBody()).result.tools).toEqual(
-      expect.arrayContaining([expect.objectContaining({ name: 'memorix_store' })]),
+      expect.arrayContaining([expect.objectContaining({ name: 'baton_store' })]),
     );
     expect(createModernMcpRuntimeMock.mock.calls[0]?.[0]).toMatchObject({
       bindingTransport: 'stateless-http',
     });
   });
 
-  it('uses MEMORIX_MODE as the HTTP fallback when mode is omitted', async () => {
-    process.env.MEMORIX_MODE = 'lite';
+  it('uses BATON_MODE as the HTTP fallback when mode is omitted', async () => {
+    process.env.BATON_MODE = 'lite';
 
     const run = serveHttpCommand.run as ((input: any) => Promise<void>) | undefined;
 
@@ -659,6 +659,6 @@ describe('serve-http command mode support', () => {
 
     await capturedHttpHandler!(req, res as any);
 
-    expect(createMemorixServerMock.mock.calls[0]?.[3]).toMatchObject({ toolProfile: 'lite' });
+    expect(createBatonServerMock.mock.calls[0]?.[3]).toMatchObject({ toolProfile: 'lite' });
   });
 });

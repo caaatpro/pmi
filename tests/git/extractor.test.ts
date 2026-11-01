@@ -30,7 +30,7 @@ describe('Git Project Detection', () => {
     const { mkdtempSync } = await import('node:fs');
     const { tmpdir } = await import('node:os');
     const { join } = await import('node:path');
-    const dir = mkdtempSync(join(tmpdir(), 'memorix-no-git-'));
+    const dir = mkdtempSync(join(tmpdir(), 'baton-no-git-'));
     expect(detectProject(dir)).toBeNull();
   }, 30_000);
 
@@ -39,7 +39,7 @@ describe('Git Project Detection', () => {
     const { tmpdir } = await import('node:os');
     const { join } = await import('node:path');
     const { execSync } = await import('node:child_process');
-    const dir = mkdtempSync(join(tmpdir(), 'memorix-local-git-'));
+    const dir = mkdtempSync(join(tmpdir(), 'baton-local-git-'));
     execSync('git init', { cwd: dir, stdio: 'pipe' });
     const project = detectProject(dir);
     expect(project).not.toBeNull();

@@ -12,27 +12,27 @@ import type { MCPConfigAdapter, MCPServerEntry } from '../../types.js';
  *
  *   $DSH_HOME/cordis.patch.yml   (default: ~/.dsh/cordis.patch.yml)
  *
- * Row shape follows DSH's own shipped Memorix reference
- * (examples/mcp-memory/memorix.cordis.yml in deepseek-ai/deepseek-harness):
+ * Row shape follows DSH's own shipped Baton reference
+ * (examples/mcp-memory/baton.cordis.yml in deepseek-ai/deepseek-harness):
  *
  *   - insert:
- *       - id: memory-memorix
+ *       - id: memory-baton
  *         name: '@deepseek-ai/dsh-mcp-client'
  *         config:
- *           serverName: memorix
+ *           serverName: baton
  *           transport: stdio
- *           command: memorix
+ *           command: baton
  *           args: [serve]
  *
  * The `cwd` key is deliberately omitted so the MCP child inherits the DSH
  * process working directory — the workspace DSH was launched from — which is
- * what keeps Memorix bound to the current Git project.
+ * what keeps Baton bound to the current Git project.
  *
  * Source: https://github.com/deepseek-ai/deepseek-harness/tree/master/packages/mcp/mcp-client
  */
 
 const MCP_CLIENT_PLUGIN = '@deepseek-ai/dsh-mcp-client';
-const MEMORIX_ROW_ID = 'memory-memorix';
+const BATON_ROW_ID = 'memory-baton';
 
 function resolveDshHome(): string {
   const configured = process.env.DSH_HOME?.trim();
@@ -40,14 +40,14 @@ function resolveDshHome(): string {
   return join(homedir(), '.dsh');
 }
 
-function isMemorixRow(row: unknown): row is Record<string, unknown> {
+function isBatonRow(row: unknown): row is Record<string, unknown> {
   if (!row || typeof row !== 'object' || Array.isArray(row)) return false;
   const record = row as Record<string, unknown>;
   if (record.name !== MCP_CLIENT_PLUGIN) return false;
   const config = record.config;
   return Boolean(
     config && typeof config === 'object' && !Array.isArray(config)
-    && (config as Record<string, unknown>).serverName === 'memorix',
+    && (config as Record<string, unknown>).serverName === 'baton',
   );
 }
 
@@ -55,7 +55,7 @@ function rowToEntry(row: Record<string, unknown>): MCPServerEntry | null {
   const config = row.config as Record<string, unknown>;
   if (!config || typeof config !== 'object') return null;
   const entry: MCPServerEntry = {
-    name: 'memorix',
+    name: 'baton',
     command: typeof config.command === 'string' ? config.command : '',
     args: Array.isArray(config.args) ? config.args.filter((arg): arg is string => typeof arg === 'string') : [],
   };
@@ -104,14 +104,14 @@ export class DshMCPAdapter implements MCPConfigAdapter {
       return [];
     }
     return patchRows(document)
-      .filter(isMemorixRow)
+      .filter(isBatonRow)
       .map(rowToEntry)
       .filter((entry): entry is MCPServerEntry => entry !== null);
   }
 
   generate(servers: MCPServerEntry[]): string {
     const rows = servers
-      .filter((server) => server.name === 'memorix')
+      .filter((server) => server.name === 'baton')
       .map((server) => {
         const config: Record<string, unknown> = {
           serverName: server.name,
@@ -127,7 +127,7 @@ export class DshMCPAdapter implements MCPConfigAdapter {
           if (server.env && Object.keys(server.env).length > 0) config.env = server.env;
         }
         const row: Record<string, unknown> = {
-          id: MEMORIX_ROW_ID,
+          id: BATON_ROW_ID,
           name: MCP_CLIENT_PLUGIN,
           config,
         };
@@ -144,4 +144,4 @@ export class DshMCPAdapter implements MCPConfigAdapter {
   }
 }
 
-export { MEMORIX_ROW_ID };
+export { BATON_ROW_ID };

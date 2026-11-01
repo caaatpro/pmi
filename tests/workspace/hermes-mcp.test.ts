@@ -13,12 +13,12 @@ describe('HermesMCPAdapter', () => {
   it('parses Hermes mcp_servers YAML config', () => {
     const servers = adapter.parse([
       'mcp_servers:',
-      '  memorix:',
-      '    command: memorix',
+      '  baton:',
+      '    command: baton',
       '    args:',
       '      - serve',
       '    env:',
-      '      MEMORIX_MODE: full',
+      '      BATON_MODE: full',
       '  remote:',
       '    url: https://example.test/mcp',
       '    headers:',
@@ -29,10 +29,10 @@ describe('HermesMCPAdapter', () => {
 
     expect(servers).toHaveLength(2);
     expect(servers[0]).toMatchObject({
-      name: 'memorix',
-      command: 'memorix',
+      name: 'baton',
+      command: 'baton',
       args: ['serve'],
-      env: { MEMORIX_MODE: 'full' },
+      env: { BATON_MODE: 'full' },
     });
     expect(servers[1]).toMatchObject({
       name: 'remote',
@@ -43,7 +43,7 @@ describe('HermesMCPAdapter', () => {
 
   it('generates Hermes mcp_servers YAML', () => {
     const servers: MCPServerEntry[] = [
-      { name: 'memorix', command: 'memorix', args: ['serve'] },
+      { name: 'baton', command: 'baton', args: ['serve'] },
       {
         name: 'remote',
         command: '',
@@ -57,8 +57,8 @@ describe('HermesMCPAdapter', () => {
     const output = adapter.generate(servers);
     const reparsed = adapter.parse(output);
     expect(output).toContain('mcp_servers:');
-    expect(output).toContain('memorix:');
-    expect(output).toContain('command: memorix');
+    expect(output).toContain('baton:');
+    expect(output).toContain('command: baton');
     expect(output).toContain('enabled: false');
     expect(reparsed.find((server) => server.name === 'remote')).toMatchObject({
       url: 'https://example.test/mcp',

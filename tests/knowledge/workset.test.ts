@@ -15,7 +15,7 @@ import { closeAllDatabases } from '../../src/store/sqlite-db.js';
 let dataDir: string | null = null;
 
 function tempDir(): string {
-  dataDir = mkdtempSync(path.join(tmpdir(), 'memorix-workset-'));
+  dataDir = mkdtempSync(path.join(tmpdir(), 'baton-workset-'));
   return dataDir;
 }
 

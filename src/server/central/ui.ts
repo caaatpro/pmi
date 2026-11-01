@@ -1,5 +1,5 @@
 /**
- * Web UI of the central server (docs/PMI/WEB_UI.md): the React app built by
+ * Web UI of the central server (docs/baton/WEB_UI.md): the React app built by
  * `npm run build:ui` into dist/server/central/ui, served under /ui/. It reads
  * the same /v1 API with the user's personal access token. All files are read
  * once at start into a map, so no request path reaches the file system. The

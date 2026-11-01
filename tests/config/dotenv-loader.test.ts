@@ -15,26 +15,26 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { loadDotenv, resetDotenv, getLoadedEnvFiles, getLoadedEnvKeys } from '../../src/config/dotenv-loader.js';
 
-const TEST_DIR = join(tmpdir(), 'memorix-dotenv-test-' + Date.now());
-const TEST_DIR_B = join(tmpdir(), 'memorix-dotenv-test-b-' + Date.now());
-const TEST_HOME = join(tmpdir(), 'memorix-dotenv-home-' + Date.now());
+const TEST_DIR = join(tmpdir(), 'baton-dotenv-test-' + Date.now());
+const TEST_DIR_B = join(tmpdir(), 'baton-dotenv-test-b-' + Date.now());
+const TEST_HOME = join(tmpdir(), 'baton-dotenv-home-' + Date.now());
 
 beforeEach(() => {
   resetDotenv();
   mkdirSync(TEST_DIR, { recursive: true });
   mkdirSync(TEST_DIR_B, { recursive: true });
-  mkdirSync(join(TEST_HOME, '.memorix'), { recursive: true });
+  mkdirSync(join(TEST_HOME, '.baton'), { recursive: true });
   // Clean up any test env vars
-  delete process.env.MEMORIX_TEST_DOTENV_VAR;
-  delete process.env.MEMORIX_TEST_OVERRIDE_VAR;
-  delete process.env.MEMORIX_TEST_SWITCH_VAR;
+  delete process.env.BATON_TEST_DOTENV_VAR;
+  delete process.env.BATON_TEST_OVERRIDE_VAR;
+  delete process.env.BATON_TEST_SWITCH_VAR;
 });
 
 afterEach(() => {
   resetDotenv();
-  delete process.env.MEMORIX_TEST_DOTENV_VAR;
-  delete process.env.MEMORIX_TEST_OVERRIDE_VAR;
-  delete process.env.MEMORIX_TEST_SWITCH_VAR;
+  delete process.env.BATON_TEST_DOTENV_VAR;
+  delete process.env.BATON_TEST_OVERRIDE_VAR;
+  delete process.env.BATON_TEST_SWITCH_VAR;
   try { rmSync(TEST_DIR, { recursive: true, force: true }); } catch { /* ignore */ }
   try { rmSync(TEST_DIR_B, { recursive: true, force: true }); } catch { /* ignore */ }
   try { rmSync(TEST_HOME, { recursive: true, force: true }); } catch { /* ignore */ }
@@ -42,34 +42,34 @@ afterEach(() => {
 
 describe('loadDotenv', () => {
   it('should load .env from project root', () => {
-    writeFileSync(join(TEST_DIR, '.env'), 'MEMORIX_TEST_DOTENV_VAR=from_project_env\n');
+    writeFileSync(join(TEST_DIR, '.env'), 'BATON_TEST_DOTENV_VAR=from_project_env\n');
 
     loadDotenv(TEST_DIR, { userHomeDir: TEST_HOME });
 
-    expect(process.env.MEMORIX_TEST_DOTENV_VAR).toBe('from_project_env');
+    expect(process.env.BATON_TEST_DOTENV_VAR).toBe('from_project_env');
   });
 
   it('should NOT override existing system env vars', () => {
-    process.env.MEMORIX_TEST_OVERRIDE_VAR = 'from_system';
-    writeFileSync(join(TEST_DIR, '.env'), 'MEMORIX_TEST_OVERRIDE_VAR=from_dotenv\n');
+    process.env.BATON_TEST_OVERRIDE_VAR = 'from_system';
+    writeFileSync(join(TEST_DIR, '.env'), 'BATON_TEST_OVERRIDE_VAR=from_dotenv\n');
 
     loadDotenv(TEST_DIR, { userHomeDir: TEST_HOME });
 
     // System env should win
-    expect(process.env.MEMORIX_TEST_OVERRIDE_VAR).toBe('from_system');
+    expect(process.env.BATON_TEST_OVERRIDE_VAR).toBe('from_system');
   });
 
   it('should not report a system env var as a loaded .env key', () => {
-    process.env.MEMORIX_TEST_OVERRIDE_VAR = 'from_system';
-    writeFileSync(join(TEST_DIR, '.env'), 'MEMORIX_TEST_OVERRIDE_VAR=from_dotenv\n');
+    process.env.BATON_TEST_OVERRIDE_VAR = 'from_system';
+    writeFileSync(join(TEST_DIR, '.env'), 'BATON_TEST_OVERRIDE_VAR=from_dotenv\n');
 
     loadDotenv(TEST_DIR, { userHomeDir: TEST_HOME });
 
-    expect(getLoadedEnvKeys().has('MEMORIX_TEST_OVERRIDE_VAR')).toBe(false);
+    expect(getLoadedEnvKeys().has('BATON_TEST_OVERRIDE_VAR')).toBe(false);
   });
 
   it('should track loaded files in diagnostics', () => {
-    writeFileSync(join(TEST_DIR, '.env'), 'MEMORIX_TEST_DOTENV_VAR=test\n');
+    writeFileSync(join(TEST_DIR, '.env'), 'BATON_TEST_DOTENV_VAR=test\n');
 
     loadDotenv(TEST_DIR, { userHomeDir: TEST_HOME });
 
@@ -86,64 +86,64 @@ describe('loadDotenv', () => {
   });
 
   it('should cache and not re-load for same project root', () => {
-    writeFileSync(join(TEST_DIR, '.env'), 'MEMORIX_TEST_DOTENV_VAR=first_load\n');
+    writeFileSync(join(TEST_DIR, '.env'), 'BATON_TEST_DOTENV_VAR=first_load\n');
 
     loadDotenv(TEST_DIR, { userHomeDir: TEST_HOME });
-    expect(process.env.MEMORIX_TEST_DOTENV_VAR).toBe('first_load');
+    expect(process.env.BATON_TEST_DOTENV_VAR).toBe('first_load');
 
     // Modify .env but should not re-read due to cache
-    writeFileSync(join(TEST_DIR, '.env'), 'MEMORIX_TEST_DOTENV_VAR=second_load\n');
+    writeFileSync(join(TEST_DIR, '.env'), 'BATON_TEST_DOTENV_VAR=second_load\n');
     loadDotenv(TEST_DIR, { userHomeDir: TEST_HOME });
     // Value stays from first load (dotenv already set it in process.env)
-    expect(process.env.MEMORIX_TEST_DOTENV_VAR).toBe('first_load');
+    expect(process.env.BATON_TEST_DOTENV_VAR).toBe('first_load');
   });
 
   it('should reload after resetDotenv', () => {
-    writeFileSync(join(TEST_DIR, '.env'), 'MEMORIX_TEST_DOTENV_VAR=first\n');
+    writeFileSync(join(TEST_DIR, '.env'), 'BATON_TEST_DOTENV_VAR=first\n');
     loadDotenv(TEST_DIR, { userHomeDir: TEST_HOME });
-    expect(process.env.MEMORIX_TEST_DOTENV_VAR).toBe('first');
+    expect(process.env.BATON_TEST_DOTENV_VAR).toBe('first');
 
     resetDotenv();
-    writeFileSync(join(TEST_DIR, '.env'), 'MEMORIX_TEST_DOTENV_VAR=second\n');
+    writeFileSync(join(TEST_DIR, '.env'), 'BATON_TEST_DOTENV_VAR=second\n');
     loadDotenv(TEST_DIR);
-    expect(process.env.MEMORIX_TEST_DOTENV_VAR).toBe('second');
+    expect(process.env.BATON_TEST_DOTENV_VAR).toBe('second');
   });
 
   it('should not leak project A env vars into project B after reset', () => {
-    writeFileSync(join(TEST_DIR, '.env'), 'MEMORIX_TEST_SWITCH_VAR=from_project_a\n');
-    writeFileSync(join(TEST_DIR_B, '.env'), 'MEMORIX_TEST_SWITCH_VAR=from_project_b\n');
+    writeFileSync(join(TEST_DIR, '.env'), 'BATON_TEST_SWITCH_VAR=from_project_a\n');
+    writeFileSync(join(TEST_DIR_B, '.env'), 'BATON_TEST_SWITCH_VAR=from_project_b\n');
 
     loadDotenv(TEST_DIR);
-    expect(process.env.MEMORIX_TEST_SWITCH_VAR).toBe('from_project_a');
+    expect(process.env.BATON_TEST_SWITCH_VAR).toBe('from_project_a');
 
     resetDotenv();
     loadDotenv(TEST_DIR_B, { userHomeDir: TEST_HOME });
-    expect(process.env.MEMORIX_TEST_SWITCH_VAR).toBe('from_project_b');
+    expect(process.env.BATON_TEST_SWITCH_VAR).toBe('from_project_b');
   });
 
   it('should remove injected env vars when switching to a project without .env', () => {
-    writeFileSync(join(TEST_DIR, '.env'), 'MEMORIX_TEST_SWITCH_VAR=from_project_a\n');
+    writeFileSync(join(TEST_DIR, '.env'), 'BATON_TEST_SWITCH_VAR=from_project_a\n');
 
     loadDotenv(TEST_DIR, { userHomeDir: TEST_HOME });
-    expect(process.env.MEMORIX_TEST_SWITCH_VAR).toBe('from_project_a');
+    expect(process.env.BATON_TEST_SWITCH_VAR).toBe('from_project_a');
 
     resetDotenv();
     loadDotenv(TEST_DIR_B, { userHomeDir: TEST_HOME });
-    expect(process.env.MEMORIX_TEST_SWITCH_VAR).toBeUndefined();
+    expect(process.env.BATON_TEST_SWITCH_VAR).toBeUndefined();
   });
 
   it('should reload the user .env when only the configured home changes', () => {
     const homeA = join(TEST_DIR, 'home-a');
     const homeB = join(TEST_DIR, 'home-b');
-    mkdirSync(join(homeA, '.memorix'), { recursive: true });
-    mkdirSync(join(homeB, '.memorix'), { recursive: true });
-    writeFileSync(join(homeA, '.memorix', '.env'), 'MEMORIX_TEST_SWITCH_VAR=from_home_a\n');
-    writeFileSync(join(homeB, '.memorix', '.env'), 'MEMORIX_TEST_SWITCH_VAR=from_home_b\n');
+    mkdirSync(join(homeA, '.baton'), { recursive: true });
+    mkdirSync(join(homeB, '.baton'), { recursive: true });
+    writeFileSync(join(homeA, '.baton', '.env'), 'BATON_TEST_SWITCH_VAR=from_home_a\n');
+    writeFileSync(join(homeB, '.baton', '.env'), 'BATON_TEST_SWITCH_VAR=from_home_b\n');
 
     loadDotenv(undefined, { userHomeDir: homeA });
-    expect(process.env.MEMORIX_TEST_SWITCH_VAR).toBe('from_home_a');
+    expect(process.env.BATON_TEST_SWITCH_VAR).toBe('from_home_a');
     loadDotenv(undefined, { userHomeDir: homeB });
-    expect(process.env.MEMORIX_TEST_SWITCH_VAR).toBe('from_home_b');
+    expect(process.env.BATON_TEST_SWITCH_VAR).toBe('from_home_b');
   });
 });
 

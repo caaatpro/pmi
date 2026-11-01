@@ -14,32 +14,32 @@ describe('background start lock', () => {
   });
 
   it('does not fall back to an unlocked start after contention', async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memorix-background-lock-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'baton-background-lock-'));
     lockPath = path.join(dir, 'background.lock');
 
     const first = await _testing.acquireBackgroundLock(lockPath);
     expect(first.acquired).toBe(true);
     await expect(_testing.acquireBackgroundLock(lockPath, 15_000, 50)).rejects.toThrow(
-      /Another Memorix background start is still in progress/,
+      /Another Baton background start is still in progress/,
     );
     _testing.releaseBackgroundLock(first);
     expect(fs.existsSync(lockPath)).toBe(false);
   });
 
   it('keeps a live slow owner from being reclaimed as stale', async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memorix-background-lock-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'baton-background-lock-'));
     lockPath = path.join(dir, 'background.lock');
 
     const first = await _testing.acquireBackgroundLock(lockPath, 1, 250);
     expect(first.acquired).toBe(true);
     await expect(_testing.acquireBackgroundLock(lockPath, 1, 50)).rejects.toThrow(
-      /Another Memorix background start is still in progress/,
+      /Another Baton background start is still in progress/,
     );
     _testing.releaseBackgroundLock(first);
   });
 
   it('does not remove a replacement lock when an old owner releases late', async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memorix-background-lock-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'baton-background-lock-'));
     lockPath = path.join(dir, 'background.lock');
 
     const first = await _testing.acquireBackgroundLock(lockPath);
@@ -54,7 +54,7 @@ describe('background start lock', () => {
   });
 
   it('reclaims a stale lock whose owner is no longer running', async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memorix-background-lock-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'baton-background-lock-'));
     lockPath = path.join(dir, 'background.lock');
     fs.writeFileSync(lockPath, JSON.stringify({ pid: 999999, acquiredAt: Date.now() - 60_000 }));
     const past = Date.now() / 1000 - 60;
@@ -70,18 +70,18 @@ describe('Windows background launcher', () => {
   it('builds a hidden, independent PowerShell launch command with quoted paths', () => {
     const script = _testing.buildWindowsBackgroundStartScript({
       nodePath: 'C:\\Program Files\\nodejs\\node.exe',
-      cliEntry: 'C:\\Users\\Test User\\AppData\\Roaming\\npm\\node_modules\\memorix\\dist\\cli\\index.js',
+      cliEntry: 'C:\\Users\\Test User\\AppData\\Roaming\\npm\\node_modules\\baton\\dist\\cli\\index.js',
       port: 43219,
       cwd: 'C:\\Users\\Test User\\project folder',
-      stdoutLogFile: 'C:\\Users\\Test User\\.memorix\\background.log.stdout',
-      stderrLogFile: 'C:\\Users\\Test User\\.memorix\\background.log',
+      stdoutLogFile: 'C:\\Users\\Test User\\.baton\\background.log.stdout',
+      stderrLogFile: 'C:\\Users\\Test User\\.baton\\background.log',
     });
 
     expect(script).toContain('Start-Process');
     expect(script).toContain('-WindowStyle Hidden');
     expect(script).toContain('-RedirectStandardOutput');
     expect(script).toContain('-RedirectStandardError');
-    expect(script).toContain('"C:\\Users\\Test User\\AppData\\Roaming\\npm\\node_modules\\memorix\\dist\\cli\\index.js"');
+    expect(script).toContain('"C:\\Users\\Test User\\AppData\\Roaming\\npm\\node_modules\\baton\\dist\\cli\\index.js"');
     expect(script).toContain('serve-http --port 43219');
   });
 
@@ -104,13 +104,13 @@ describe('Windows background launcher', () => {
   });
 
   it('falls back to argv[1] when this module is not a compiled dist sibling', () => {
-    const fallback = '/tmp/wrong-memorix/dist/cli/index.js';
+    const fallback = '/tmp/wrong-baton/dist/cli/index.js';
     expect(_testing.resolveBackgroundCliEntry(fallback)).toBe(fallback);
   });
 
   it('spawns the bundled CLI file, not the library stdio entry', () => {
-    const bundledCli = '/opt/memorix/dist/cli/index.js';
-    const libraryStdio = '/opt/memorix/dist/index.js';
+    const bundledCli = '/opt/baton/dist/cli/index.js';
+    const libraryStdio = '/opt/baton/dist/index.js';
     expect(_testing.resolveBackgroundCliEntryFrom(bundledCli, libraryStdio)).toBe(bundledCli);
   });
 
@@ -126,7 +126,7 @@ describe('Windows background launcher', () => {
     error.stack = 'Error: Port must be a whole number\n    at internal-frame';
 
     expect(_testing.formatBackgroundCommandError(error, false)).toBe(
-      '[memorix background] Error: Port must be a whole number\n',
+      '[baton background] Error: Port must be a whole number\n',
     );
     expect(_testing.formatBackgroundCommandError(error, true)).toContain('at internal-frame');
   });

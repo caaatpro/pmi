@@ -6,9 +6,9 @@ import path from 'node:path'
 
 const root = process.cwd()
 const distCli = path.resolve(root, 'dist', 'cli', 'index.js')
-const tempBase = process.env.MEMORIX_TEST_TMPDIR?.trim() || path.join(root, '.tmp-memorix-smoke')
+const tempBase = process.env.BATON_TEST_TMPDIR?.trim() || path.join(root, '.tmp-baton-smoke')
 await mkdir(tempBase, { recursive: true })
-const tempRoot = await mkdtemp(path.join(tempBase, 'memorix-modern-stdio-smoke-'))
+const tempRoot = await mkdtemp(path.join(tempBase, 'baton-modern-stdio-smoke-'))
 const project = path.join(tempRoot, 'project')
 const dataDir = path.join(tempRoot, 'data')
 await mkdir(project, { recursive: true })
@@ -23,12 +23,12 @@ const child = spawn(process.execPath, [distCli, 'serve', '--cwd', project, '--mo
     ...process.env,
     HOME: path.dirname(dataDir),
     USERPROFILE: path.dirname(dataDir),
-    MEMORIX_DATA_DIR: dataDir,
-    MEMORIX_EMBEDDING: 'off',
-    MEMORIX_LLM_API_KEY: '',
+    BATON_DATA_DIR: dataDir,
+    BATON_EMBEDDING: 'off',
+    BATON_LLM_API_KEY: '',
     OPENAI_API_KEY: '',
-    MEMORIX_LLM_PROVIDER: '',
-    MEMORIX_LLM_MODEL: '',
+    BATON_LLM_PROVIDER: '',
+    BATON_LLM_MODEL: '',
     NO_COLOR: '1',
   },
   stdio: ['pipe', 'pipe', 'pipe'],
@@ -98,7 +98,7 @@ function terminate() {
 
 const meta = {
   'io.modelcontextprotocol/protocolVersion': '2026-07-28',
-  'io.modelcontextprotocol/clientInfo': { name: 'memorix-modern-stdio-smoke', version: '1' },
+  'io.modelcontextprotocol/clientInfo': { name: 'baton-modern-stdio-smoke', version: '1' },
   'io.modelcontextprotocol/clientCapabilities': {},
 }
 
@@ -113,18 +113,18 @@ try {
   const listed = await waitFor('list')
   assert.equal(listed.error, undefined)
   assert.equal(listed.result.resultType, 'complete')
-  assert.ok(listed.result.tools.some(tool => tool.name === 'memorix_project_context'))
+  assert.ok(listed.result.tools.some(tool => tool.name === 'baton_project_context'))
 
   send({
     jsonrpc: '2.0',
     id: 'call',
     method: 'tools/call',
-    params: { name: 'memorix_codegraph_status', arguments: {}, _meta: meta },
+    params: { name: 'baton_codegraph_status', arguments: {}, _meta: meta },
   })
   const called = await waitFor('call')
   assert.equal(called.error, undefined)
   assert.equal(called.result.resultType, 'complete')
-  assert.equal(called.result._meta['io.modelcontextprotocol/serverInfo'].name, 'memorix')
+  assert.equal(called.result._meta['io.modelcontextprotocol/serverInfo'].name, 'baton')
   assert.equal(called.result.content[0].type, 'text')
 
   child.stdin.end()

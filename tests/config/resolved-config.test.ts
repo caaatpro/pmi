@@ -16,32 +16,32 @@ import { resetYamlConfigCache } from '../../src/config/yaml-loader.js';
 import { resetDotenv } from '../../src/config/dotenv-loader.js';
 import { getGitConfig, resetConfigCache } from '../../src/config.js';
 
-const TMP = join(tmpdir(), `pmi-resolved-config-test-${process.pid}`);
+const TMP = join(tmpdir(), `baton-resolved-config-test-${process.pid}`);
 const HOME = join(TMP, 'home');
 const PROJECT = join(TMP, 'project');
 
 const ENV_KEYS = [
-  'MEMORIX_AGENT_PROVIDER',
-  'MEMORIX_AGENT_MODEL',
-  'MEMORIX_AGENT_API_KEY',
-  'MEMORIX_AGENT_BASE_URL',
-  'MEMORIX_LLM_PROVIDER',
-  'MEMORIX_LLM_MODEL',
-  'MEMORIX_LLM_API_KEY',
-  'MEMORIX_LLM_BASE_URL',
-  'MEMORIX_API_KEY',
-  'MEMORIX_EMBEDDING',
-  'MEMORIX_EMBEDDING_API_KEY',
-  'MEMORIX_EMBEDDING_BASE_URL',
-  'MEMORIX_EMBEDDING_MODEL',
-  'MEMORIX_EMBEDDING_DIMENSIONS',
-  'MEMORIX_RERANK_PROVIDER',
-  'MEMORIX_RERANK_MODEL',
-  'MEMORIX_RERANK_BASE_URL',
-  'MEMORIX_RERANK_API_KEY',
-  'MEMORIX_CODEGRAPH_EXTERNAL_CONTEXT',
-  'MEMORIX_CODEGRAPH_EXTERNAL_COMMAND',
-  'MEMORIX_CODEGRAPH_EXTERNAL_TIMEOUT_MS',
+  'BATON_AGENT_PROVIDER',
+  'BATON_AGENT_MODEL',
+  'BATON_AGENT_API_KEY',
+  'BATON_AGENT_BASE_URL',
+  'BATON_LLM_PROVIDER',
+  'BATON_LLM_MODEL',
+  'BATON_LLM_API_KEY',
+  'BATON_LLM_BASE_URL',
+  'BATON_API_KEY',
+  'BATON_EMBEDDING',
+  'BATON_EMBEDDING_API_KEY',
+  'BATON_EMBEDDING_BASE_URL',
+  'BATON_EMBEDDING_MODEL',
+  'BATON_EMBEDDING_DIMENSIONS',
+  'BATON_RERANK_PROVIDER',
+  'BATON_RERANK_MODEL',
+  'BATON_RERANK_BASE_URL',
+  'BATON_RERANK_API_KEY',
+  'BATON_CODEGRAPH_EXTERNAL_CONTEXT',
+  'BATON_CODEGRAPH_EXTERNAL_COMMAND',
+  'BATON_CODEGRAPH_EXTERNAL_TIMEOUT_MS',
   'OPENAI_API_KEY',
   'ANTHROPIC_API_KEY',
   'OPENROUTER_API_KEY',
@@ -59,7 +59,7 @@ describe('resolved config', () => {
   beforeEach(() => {
     vi.resetModules();
     rmSync(TMP, { recursive: true, force: true });
-    mkdirSync(join(HOME, '.memorix'), { recursive: true });
+    mkdirSync(join(HOME, '.baton'), { recursive: true });
     mkdirSync(PROJECT, { recursive: true });
     resetTomlConfigCache();
     resetYamlConfigCache();
@@ -72,14 +72,14 @@ describe('resolved config', () => {
   it('uses the Atlas key only when its memory provider is selected', () => {
     process.env.ATLASCLOUD_API_KEY = 'atlas-test-key';
     expect(getResolvedMemoryLane({ projectRoot: null, homeDir: HOME }).llm.apiKey).toBeUndefined();
-    process.env.MEMORIX_LLM_PROVIDER = 'atlascloud';
+    process.env.BATON_LLM_PROVIDER = 'atlascloud';
     expect(getResolvedMemoryLane({ projectRoot: null, homeDir: HOME }).llm.apiKey).toBe('atlas-test-key');
-    process.env.MEMORIX_LLM_API_KEY = 'explicit-test-key';
+    process.env.BATON_LLM_API_KEY = 'explicit-test-key';
     expect(getResolvedMemoryLane({ projectRoot: null, homeDir: HOME }).llm.apiKey).toBe('explicit-test-key');
   });
 
   it('does not borrow other provider keys for Atlas memory', () => {
-    process.env.MEMORIX_LLM_PROVIDER = 'atlascloud';
+    process.env.BATON_LLM_PROVIDER = 'atlascloud';
     process.env.OPENAI_API_KEY = 'openai-test-key';
     process.env.ANTHROPIC_API_KEY = 'anthropic-test-key';
     process.env.OPENROUTER_API_KEY = 'router-test-key';
@@ -89,14 +89,14 @@ describe('resolved config', () => {
   it('uses the Requesty key only when its memory provider is selected', () => {
     process.env.REQUESTY_API_KEY = 'requesty-test-key';
     expect(getResolvedMemoryLane({ projectRoot: null, homeDir: HOME }).llm.apiKey).toBeUndefined();
-    process.env.MEMORIX_LLM_PROVIDER = 'requesty';
+    process.env.BATON_LLM_PROVIDER = 'requesty';
     expect(getResolvedMemoryLane({ projectRoot: null, homeDir: HOME }).llm.apiKey).toBe('requesty-test-key');
-    process.env.MEMORIX_LLM_API_KEY = 'explicit-test-key';
+    process.env.BATON_LLM_API_KEY = 'explicit-test-key';
     expect(getResolvedMemoryLane({ projectRoot: null, homeDir: HOME }).llm.apiKey).toBe('explicit-test-key');
   });
 
   it('does not borrow other provider keys for Requesty memory', () => {
-    process.env.MEMORIX_LLM_PROVIDER = 'requesty';
+    process.env.BATON_LLM_PROVIDER = 'requesty';
     process.env.OPENAI_API_KEY = 'openai-test-key';
     process.env.ANTHROPIC_API_KEY = 'anthropic-test-key';
     process.env.OPENROUTER_API_KEY = 'router-test-key';
@@ -106,19 +106,19 @@ describe('resolved config', () => {
   it('uses the API Route key only for the selected memory preset and preserves explicit keys', () => {
     process.env.API_ROUTE_API_KEY = 'api-route-test-key';
     expect(getResolvedMemoryLane({ projectRoot: null, homeDir: HOME }).llm.apiKey).toBeUndefined();
-    process.env.MEMORIX_LLM_PROVIDER = 'apiroute';
+    process.env.BATON_LLM_PROVIDER = 'apiroute';
     expect(getResolvedMemoryLane({ projectRoot: null, homeDir: HOME }).llm.apiKey).toBe('api-route-test-key');
     expect(getResolvedConfig({ projectRoot: null, homeDir: HOME }).embedding.apiKey).toBeUndefined();
     expect(getResolvedConfig({ projectRoot: null, homeDir: HOME }).agent.apiKey).toBeUndefined();
     // Keep the existing agent-to-memory fallback when no agent lane is configured.
     expect(getResolvedAgentLane({ projectRoot: null, homeDir: HOME }).apiKey).toBe('api-route-test-key');
     expect(getResolvedConfig({ projectRoot: null, homeDir: HOME }).sources.env).toContain('API_ROUTE_API_KEY');
-    process.env.MEMORIX_LLM_API_KEY = 'explicit-test-key';
+    process.env.BATON_LLM_API_KEY = 'explicit-test-key';
     expect(getResolvedMemoryLane({ projectRoot: null, homeDir: HOME }).llm.apiKey).toBe('explicit-test-key');
   });
 
   it('does not borrow other provider keys for API Route memory', () => {
-    process.env.MEMORIX_LLM_PROVIDER = 'apiroute';
+    process.env.BATON_LLM_PROVIDER = 'apiroute';
     process.env.OPENAI_API_KEY = 'openai-test-key';
     process.env.ANTHROPIC_API_KEY = 'anthropic-test-key';
     process.env.OPENROUTER_API_KEY = 'router-test-key';
@@ -131,19 +131,19 @@ describe('resolved config', () => {
   it('uses the Cheaper Inference key only for the selected memory preset and preserves explicit keys', () => {
     process.env.CHEAPER_INFERENCE_API_KEY = 'cheaper-inference-test-key';
     expect(getResolvedMemoryLane({ projectRoot: null, homeDir: HOME }).llm.apiKey).toBeUndefined();
-    process.env.MEMORIX_LLM_PROVIDER = 'cheaperinference';
+    process.env.BATON_LLM_PROVIDER = 'cheaperinference';
     expect(getResolvedMemoryLane({ projectRoot: null, homeDir: HOME }).llm.apiKey).toBe('cheaper-inference-test-key');
     expect(getResolvedConfig({ projectRoot: null, homeDir: HOME }).embedding.apiKey).toBeUndefined();
     expect(getResolvedConfig({ projectRoot: null, homeDir: HOME }).agent.apiKey).toBeUndefined();
     // Keep the existing agent-to-memory fallback when no agent lane is configured.
     expect(getResolvedAgentLane({ projectRoot: null, homeDir: HOME }).apiKey).toBe('cheaper-inference-test-key');
     expect(getResolvedConfig({ projectRoot: null, homeDir: HOME }).sources.env).toContain('CHEAPER_INFERENCE_API_KEY');
-    process.env.MEMORIX_LLM_API_KEY = 'explicit-test-key';
+    process.env.BATON_LLM_API_KEY = 'explicit-test-key';
     expect(getResolvedMemoryLane({ projectRoot: null, homeDir: HOME }).llm.apiKey).toBe('explicit-test-key');
   });
 
   it('does not borrow other provider keys for Cheaper Inference memory', () => {
-    process.env.MEMORIX_LLM_PROVIDER = 'cheaperinference';
+    process.env.BATON_LLM_PROVIDER = 'cheaperinference';
     process.env.OPENAI_API_KEY = 'openai-test-key';
     process.env.ANTHROPIC_API_KEY = 'anthropic-test-key';
     process.env.OPENROUTER_API_KEY = 'router-test-key';
@@ -155,7 +155,7 @@ describe('resolved config', () => {
   });
 
   it('resolves TOML lanes above legacy YAML', () => {
-    writeFileSync(join(HOME, '.memorix', 'config.toml'), [
+    writeFileSync(join(HOME, '.baton', 'config.toml'), [
       '[agent]',
       'provider = "agent-from-toml"',
       'model = "agent-model"',
@@ -168,7 +168,7 @@ describe('resolved config', () => {
       'provider = "api"',
       'model = "embed-model"',
     ].join('\n'), 'utf8');
-    writeFileSync(join(HOME, '.memorix', 'memorix.yml'), 'agent:\n  provider: agent-from-yaml\n', 'utf8');
+    writeFileSync(join(HOME, '.baton', 'baton.yml'), 'agent:\n  provider: agent-from-yaml\n', 'utf8');
 
     const cfg = getResolvedConfig({ projectRoot: null, homeDir: HOME });
 
@@ -178,15 +178,15 @@ describe('resolved config', () => {
   });
 
   it('lets project TOML override global TOML after project root is known', () => {
-    writeFileSync(join(HOME, '.memorix', 'config.toml'), '[agent]\nmodel = "global-model"\n', 'utf8');
-    writeFileSync(join(PROJECT, 'memorix.toml'), '[agent]\nmodel = "project-model"\n', 'utf8');
+    writeFileSync(join(HOME, '.baton', 'config.toml'), '[agent]\nmodel = "global-model"\n', 'utf8');
+    writeFileSync(join(PROJECT, 'baton.toml'), '[agent]\nmodel = "project-model"\n', 'utf8');
 
     expect(getResolvedAgentLane({ projectRoot: PROJECT, homeDir: HOME }).model).toBe('project-model');
   });
 
   it('keeps environment variables above TOML', () => {
-    writeFileSync(join(HOME, '.memorix', 'config.toml'), '[agent]\nmodel = "toml-model"\n', 'utf8');
-    process.env.MEMORIX_AGENT_MODEL = 'env-model';
+    writeFileSync(join(HOME, '.baton', 'config.toml'), '[agent]\nmodel = "toml-model"\n', 'utf8');
+    process.env.BATON_AGENT_MODEL = 'env-model';
 
     expect(getResolvedAgentLane({ projectRoot: null, homeDir: HOME }).model).toBe('env-model');
   });
@@ -194,26 +194,26 @@ describe('resolved config', () => {
   it('loads dotenv before resolving lanes and switches project dotenv cleanly', () => {
     const projectB = join(TMP, 'project-b');
     mkdirSync(projectB, { recursive: true });
-    writeFileSync(join(PROJECT, '.env'), 'MEMORIX_EMBEDDING_API_KEY=project-a-key\n', 'utf8');
-    writeFileSync(join(projectB, '.env'), 'MEMORIX_EMBEDDING_API_KEY=project-b-key\n', 'utf8');
+    writeFileSync(join(PROJECT, '.env'), 'BATON_EMBEDDING_API_KEY=project-a-key\n', 'utf8');
+    writeFileSync(join(projectB, '.env'), 'BATON_EMBEDDING_API_KEY=project-b-key\n', 'utf8');
 
     expect(getResolvedEmbeddingLane({ projectRoot: PROJECT, homeDir: HOME }).apiKey).toBe('project-a-key');
     expect(getResolvedEmbeddingLane({ projectRoot: projectB, homeDir: HOME }).apiKey).toBe('project-b-key');
   });
 
   it('loads the user .env for an unbound dashboard lane without reading a project .env', () => {
-    writeFileSync(join(HOME, '.memorix', '.env'), 'MEMORIX_LLM_API_KEY=user-key\n', 'utf8');
-    writeFileSync(join(PROJECT, '.env'), 'MEMORIX_LLM_API_KEY=project-key\n', 'utf8');
+    writeFileSync(join(HOME, '.baton', '.env'), 'BATON_LLM_API_KEY=user-key\n', 'utf8');
+    writeFileSync(join(PROJECT, '.env'), 'BATON_LLM_API_KEY=project-key\n', 'utf8');
 
     const cfg = getResolvedConfig({ projectRoot: null, homeDir: HOME });
 
     expect(cfg.memory.llm.apiKey).toBe('user-key');
     expect(cfg.memory.llm.apiKey).not.toContain('project-key');
-    expect(cfg.sources.env).toContain('MEMORIX_LLM_API_KEY');
+    expect(cfg.sources.env).toContain('BATON_LLM_API_KEY');
   });
 
   it('keeps env priority above project TOML and never exposes key material in sources', () => {
-    writeFileSync(join(PROJECT, 'memorix.toml'), [
+    writeFileSync(join(PROJECT, 'baton.toml'), [
       '[memory.llm]',
       'model = "project-model"',
       'api_key = "toml-secret"',
@@ -221,8 +221,8 @@ describe('resolved config', () => {
       '[embedding]',
       'provider = "api"',
     ].join('\n'), 'utf8');
-    process.env.MEMORIX_LLM_MODEL = 'env-model';
-    process.env.MEMORIX_LLM_API_KEY = 'env-secret';
+    process.env.BATON_LLM_MODEL = 'env-model';
+    process.env.BATON_LLM_API_KEY = 'env-secret';
 
     const cfg = getResolvedConfig({ projectRoot: PROJECT, homeDir: HOME });
 
@@ -232,15 +232,15 @@ describe('resolved config', () => {
   });
 
   it('keeps embedding lane isolated from memory and agent credentials', () => {
-    process.env.MEMORIX_API_KEY = 'memory-key';
-    process.env.MEMORIX_AGENT_API_KEY = 'agent-key';
+    process.env.BATON_API_KEY = 'memory-key';
+    process.env.BATON_AGENT_API_KEY = 'agent-key';
 
     expect(getResolvedEmbeddingLane({ projectRoot: null, homeDir: HOME }).apiKey).toBeUndefined();
   });
 
   it('uses an OpenRouter key for its embedding lane without enabling the memory LLM lane', () => {
     process.env.OPENROUTER_API_KEY = 'embedding-only-key';
-    writeFileSync(join(HOME, '.memorix', 'config.toml'), [
+    writeFileSync(join(HOME, '.baton', 'config.toml'), [
       '[embedding]',
       'provider = "api"',
       'base_url = "https://openrouter.ai/api/v1"',
@@ -254,45 +254,45 @@ describe('resolved config', () => {
 
   it('allows an OpenRouter key for an explicitly configured memory LLM lane', () => {
     process.env.OPENROUTER_API_KEY = 'memory-openrouter-key';
-    process.env.MEMORIX_LLM_PROVIDER = 'openrouter';
+    process.env.BATON_LLM_PROVIDER = 'openrouter';
 
     expect(getResolvedMemoryLane({ projectRoot: null, homeDir: HOME }).llm.apiKey).toBe('memory-openrouter-key');
   });
 
   it('recognizes an explicit OpenRouter memory base URL without a provider label', () => {
     process.env.OPENROUTER_API_KEY = 'memory-openrouter-base-url-key';
-    process.env.MEMORIX_LLM_BASE_URL = 'https://openrouter.ai/api/v1';
+    process.env.BATON_LLM_BASE_URL = 'https://openrouter.ai/api/v1';
 
     expect(getResolvedMemoryLane({ projectRoot: null, homeDir: HOME }).llm.apiKey).toBe('memory-openrouter-base-url-key');
   });
 
-  it('returns memory LLM simple key from MEMORIX_API_KEY', () => {
-    process.env.MEMORIX_API_KEY = 'memory-key';
+  it('returns memory LLM simple key from BATON_API_KEY', () => {
+    process.env.BATON_API_KEY = 'memory-key';
 
     expect(getResolvedMemoryLane({ projectRoot: null, homeDir: HOME }).llm.apiKey).toBe('memory-key');
   });
 
   it('reports active TOML, legacy, and env config sources', () => {
-    writeFileSync(join(HOME, '.memorix', 'config.toml'), '[agent]\nmodel = "global-model"\n', 'utf8');
-    writeFileSync(join(PROJECT, 'memorix.toml'), '[agent]\nmodel = "project-model"\n', 'utf8');
-    writeFileSync(join(HOME, '.memorix', 'memorix.yml'), 'llm:\n  model: yaml-model\n', 'utf8');
-    process.env.MEMORIX_AGENT_MODEL = 'env-model';
+    writeFileSync(join(HOME, '.baton', 'config.toml'), '[agent]\nmodel = "global-model"\n', 'utf8');
+    writeFileSync(join(PROJECT, 'baton.toml'), '[agent]\nmodel = "project-model"\n', 'utf8');
+    writeFileSync(join(HOME, '.baton', 'baton.yml'), 'llm:\n  model: yaml-model\n', 'utf8');
+    process.env.BATON_AGENT_MODEL = 'env-model';
 
     const cfg = getResolvedConfig({ projectRoot: PROJECT, homeDir: HOME });
 
     expect(cfg.sources.toml).toEqual([
-      join(HOME, '.memorix', 'config.toml'),
-      join(PROJECT, 'memorix.toml'),
+      join(HOME, '.baton', 'config.toml'),
+      join(PROJECT, 'baton.toml'),
     ]);
-    expect(cfg.sources.legacy).toContain(join(HOME, '.memorix', 'memorix.yml'));
-    expect(cfg.sources.env).toContain('MEMORIX_AGENT_MODEL');
+    expect(cfg.sources.legacy).toContain(join(HOME, '.baton', 'baton.yml'));
+    expect(cfg.sources.env).toContain('BATON_AGENT_MODEL');
   });
 
   it('resolves project override from detected git root, not arbitrary nested cwd', () => {
     const nested = join(PROJECT, 'packages', 'app');
     mkdirSync(join(PROJECT, '.git'), { recursive: true });
     mkdirSync(nested, { recursive: true });
-    writeFileSync(join(PROJECT, 'memorix.toml'), '[agent]\nmodel = "git-root-model"\n', 'utf8');
+    writeFileSync(join(PROJECT, 'baton.toml'), '[agent]\nmodel = "git-root-model"\n', 'utf8');
 
     const previousHome = process.env.USERPROFILE;
     process.env.USERPROFILE = HOME;
@@ -301,11 +301,11 @@ describe('resolved config', () => {
     else process.env.USERPROFILE = previousHome;
 
     expect(cfg.agent.model).toBe('git-root-model');
-    expect(cfg.sources.toml).toContain(join(PROJECT, 'memorix.toml'));
+    expect(cfg.sources.toml).toContain(join(PROJECT, 'baton.toml'));
   });
 
   it('resolves git settings from TOML above legacy YAML', () => {
-    writeFileSync(join(HOME, '.memorix', 'config.toml'), [
+    writeFileSync(join(HOME, '.baton', 'config.toml'), [
       '[git]',
       'auto_hook = true',
       'ingest_on_commit = false',
@@ -313,7 +313,7 @@ describe('resolved config', () => {
       'skip_merge_commits = false',
       'exclude_patterns = ["dist/**", "*.lock"]',
     ].join('\n'), 'utf8');
-    writeFileSync(join(HOME, '.memorix', 'memorix.yml'), [
+    writeFileSync(join(HOME, '.baton', 'baton.yml'), [
       'git:',
       '  autoHook: false',
       '  maxDiffSize: 999',
@@ -329,7 +329,7 @@ describe('resolved config', () => {
   });
 
   it('resolves HTTP rerank from env above TOML and inherits the LLM bearer', () => {
-    writeFileSync(join(HOME, '.memorix', 'config.toml'), [
+    writeFileSync(join(HOME, '.baton', 'config.toml'), [
       '[memory.llm]',
       'base_url = "https://llm.example/v1"',
       'api_key = "llm-key"',
@@ -338,7 +338,7 @@ describe('resolved config', () => {
       'provider = "http"',
       'model = "rerank-model"',
     ].join('\n'), 'utf8');
-    process.env.MEMORIX_RERANK_PROVIDER = 'http';
+    process.env.BATON_RERANK_PROVIDER = 'http';
 
     const lane = getResolvedRerankLane({ projectRoot: null, homeDir: HOME });
 
@@ -347,14 +347,14 @@ describe('resolved config', () => {
     expect(lane.baseUrl).toBe('https://llm.example/v1');
     expect(lane.apiKey).toBe('llm-key');
     expect(lane.canSendRequest).toBe(true);
-    expect(getResolvedConfig({ projectRoot: null, homeDir: HOME }).sources.env).toContain('MEMORIX_RERANK_PROVIDER');
+    expect(getResolvedConfig({ projectRoot: null, homeDir: HOME }).sources.env).toContain('BATON_RERANK_PROVIDER');
   });
 
   it('keeps an explicit public host when the user configured it', () => {
-    process.env.MEMORIX_RERANK_PROVIDER = 'http';
-    process.env.MEMORIX_RERANK_BASE_URL = 'https://api.example.com/v1';
-    process.env.MEMORIX_RERANK_MODEL = 'rerank-model';
-    process.env.MEMORIX_RERANK_API_KEY = 'rerank-key';
+    process.env.BATON_RERANK_PROVIDER = 'http';
+    process.env.BATON_RERANK_BASE_URL = 'https://api.example.com/v1';
+    process.env.BATON_RERANK_MODEL = 'rerank-model';
+    process.env.BATON_RERANK_API_KEY = 'rerank-key';
 
     const lane = getResolvedRerankLane({ projectRoot: null, homeDir: HOME });
     expect(lane.provider).toBe('http');
@@ -363,7 +363,7 @@ describe('resolved config', () => {
   });
 
   it('inherits the memory LLM key when the explicit rerank URL is the same endpoint', () => {
-    writeFileSync(join(HOME, '.memorix', 'config.toml'), [
+    writeFileSync(join(HOME, '.baton', 'config.toml'), [
       '[memory.llm]',
       'base_url = "https://llm.example/v1"',
       'api_key = "llm-key"',
@@ -383,7 +383,7 @@ describe('resolved config', () => {
   });
 
   it('inherits the memory LLM key when the rerank URL only adds a /rerank suffix', () => {
-    writeFileSync(join(HOME, '.memorix', 'config.toml'), [
+    writeFileSync(join(HOME, '.baton', 'config.toml'), [
       '[memory.llm]',
       'base_url = "https://llm.example/v1"',
       'api_key = "llm-key"',
@@ -402,7 +402,7 @@ describe('resolved config', () => {
   });
 
   it('does not inherit the memory LLM key when the rerank URL is a different endpoint', () => {
-    writeFileSync(join(HOME, '.memorix', 'config.toml'), [
+    writeFileSync(join(HOME, '.baton', 'config.toml'), [
       '[memory.llm]',
       'base_url = "https://llm.example/v1"',
       'api_key = "llm-key"',
@@ -422,7 +422,7 @@ describe('resolved config', () => {
   });
 
   it('uses a dedicated rerank key when the endpoint differs from the memory LLM', () => {
-    writeFileSync(join(HOME, '.memorix', 'config.toml'), [
+    writeFileSync(join(HOME, '.baton', 'config.toml'), [
       '[memory.llm]',
       'base_url = "https://llm.example/v1"',
       'api_key = "llm-key"',
@@ -441,12 +441,12 @@ describe('resolved config', () => {
   });
 
   it('resolves CodeGraph scan limits from TOML above legacy YAML', () => {
-    writeFileSync(join(HOME, '.memorix', 'config.toml'), [
+    writeFileSync(join(HOME, '.baton', 'config.toml'), [
       '[codegraph]',
       'exclude_patterns = ["vendor/**", "**/generated/**"]',
       'max_file_bytes = 524288',
     ].join('\n'), 'utf8');
-    writeFileSync(join(HOME, '.memorix', 'memorix.yml'), [
+    writeFileSync(join(HOME, '.baton', 'baton.yml'), [
       'codegraph:',
       '  excludePatterns:',
       '    - ignored-from-yaml/**',
@@ -460,14 +460,14 @@ describe('resolved config', () => {
   });
 
   it('resolves bounded external CodeGraph context settings without credentials', () => {
-    writeFileSync(join(HOME, '.memorix', 'config.toml'), [
+    writeFileSync(join(HOME, '.baton', 'config.toml'), [
       '[codegraph]',
       'external_context = "off"',
       'external_command = "C:\\\\tools\\\\codegraph.cmd"',
       'external_timeout_ms = 900',
     ].join('\n'), 'utf8');
-    process.env.MEMORIX_CODEGRAPH_EXTERNAL_CONTEXT = 'auto';
-    process.env.MEMORIX_CODEGRAPH_EXTERNAL_TIMEOUT_MS = '700';
+    process.env.BATON_CODEGRAPH_EXTERNAL_CONTEXT = 'auto';
+    process.env.BATON_CODEGRAPH_EXTERNAL_TIMEOUT_MS = '700';
 
     const cfg = getResolvedConfig({ projectRoot: null, homeDir: HOME });
 
@@ -475,13 +475,13 @@ describe('resolved config', () => {
     expect(cfg.codegraph.externalCommand).toBe('C:\\tools\\codegraph.cmd');
     expect(cfg.codegraph.externalTimeoutMs).toBe(700);
     expect(cfg.sources.env).toEqual(expect.arrayContaining([
-      'MEMORIX_CODEGRAPH_EXTERNAL_CONTEXT',
-      'MEMORIX_CODEGRAPH_EXTERNAL_TIMEOUT_MS',
+      'BATON_CODEGRAPH_EXTERNAL_CONTEXT',
+      'BATON_CODEGRAPH_EXTERNAL_TIMEOUT_MS',
     ]));
   });
 
   it('uses git TOML settings in runtime getGitConfig after project root detection', () => {
-    writeFileSync(join(PROJECT, 'memorix.toml'), [
+    writeFileSync(join(PROJECT, 'baton.toml'), [
       '[git]',
       'auto_hook = true',
       'max_diff_size = 4096',

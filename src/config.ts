@@ -3,13 +3,13 @@
  *
  * Priority chain (highest wins):
  *   1. Environment variables (from MCP JSON `env` field or system env)
- *   2. memorix.toml / ~/.memorix/config.toml
- *   3. memorix.yml / ~/.memorix/memorix.yml compatibility files
- *   4. ~/.memorix/config.json legacy file
+ *   2. baton.toml / ~/.baton/config.toml
+ *   3. baton.yml / ~/.baton/baton.yml compatibility files
+ *   4. ~/.baton/config.json legacy file
  *   5. Hardcoded defaults
  */
 
-import { loadYamlConfig, type MemorixYamlConfig } from './config/yaml-loader.js';
+import { loadYamlConfig, type BatonYamlConfig } from './config/yaml-loader.js';
 import {
   getResolvedAgentLane,
   getResolvedConfig,
@@ -18,16 +18,16 @@ import {
   type ResolvedLaneOptions,
 } from './config/resolved-config.js';
 export { loadDotenv, resetDotenv, getLoadedEnvFiles } from './config/dotenv-loader.js';
-export { loadFileConfig, resetConfigCache, type MemorixConfig } from './config/legacy-loader.js';
+export { loadFileConfig, resetConfigCache, type BatonConfig } from './config/legacy-loader.js';
 
 // ─── Resolved Getters ────────────────────────────────────────────────
 
-/** Memory/background LLM API key: env > memorix.yml > config.json > provider env fallbacks */
+/** Memory/background LLM API key: env > baton.yml > config.json > provider env fallbacks */
 export function getLLMApiKey(options: ResolvedLaneOptions = {}): string | undefined {
   return getResolvedMemoryLane(options).llm.apiKey;
 }
 
-/** LLM provider: env > memorix.yml > config.json > auto-detect */
+/** LLM provider: env > baton.yml > config.json > auto-detect */
 export function getLLMProvider(options: ResolvedLaneOptions = {}): string {
   const provider = getResolvedMemoryLane(options).llm.provider;
   if (provider) return provider;
@@ -37,12 +37,12 @@ export function getLLMProvider(options: ResolvedLaneOptions = {}): string {
   return 'openai';
 }
 
-/** LLM model: env > memorix.yml > config.json > provider default */
+/** LLM model: env > baton.yml > config.json > provider default */
 export function getLLMModel(providerDefault: string, options: ResolvedLaneOptions = {}): string {
   return getResolvedMemoryLane(options).llm.model || providerDefault;
 }
 
-/** LLM base URL: env > memorix.yml > config.json > provider default */
+/** LLM base URL: env > baton.yml > config.json > provider default */
 export function getLLMBaseUrl(providerDefault: string, options: ResolvedLaneOptions = {}): string {
   return getResolvedMemoryLane(options).llm.baseUrl || providerDefault;
 }
@@ -67,7 +67,7 @@ export function getAgentLLMBaseUrl(providerDefault: string, options: ResolvedLan
   return getResolvedAgentLane(options).baseUrl || getLLMBaseUrl(providerDefault, options);
 }
 
-/** Embedding mode: env > memorix.yml > config.json > 'off' */
+/** Embedding mode: env > baton.yml > config.json > 'off' */
 export function getEmbeddingMode(): 'off' | 'fastembed' | 'transformers' | 'api' | 'auto' {
   const provider = getResolvedEmbeddingLane().provider?.toLowerCase()?.trim();
   if (provider === 'fastembed' || provider === 'transformers' || provider === 'api' || provider === 'auto') return provider;
@@ -79,12 +79,12 @@ export function getEmbeddingApiKey(): string | undefined {
   return getResolvedEmbeddingLane().apiKey;
 }
 
-/** Embedding base URL: env > memorix.yml > config.json > provider default */
+/** Embedding base URL: env > baton.yml > config.json > provider default */
 export function getEmbeddingBaseUrl(): string {
   return getResolvedEmbeddingLane().baseUrl || 'https://api.openai.com/v1';
 }
 
-/** Embedding model: env > memorix.yml > config.json > provider-aware default */
+/** Embedding model: env > baton.yml > config.json > provider-aware default */
 export function getEmbeddingModel(): string {
   const lane = getResolvedEmbeddingLane();
   return defaultEmbeddingModelFor(lane.baseUrl, lane.model);
@@ -114,7 +114,7 @@ export function defaultEmbeddingModelFor(
   return 'text-embedding-3-small';
 }
 
-/** Embedding dimensions override: env > memorix.yml > config.json > null (auto-detect) */
+/** Embedding dimensions override: env > baton.yml > config.json > null (auto-detect) */
 export function getEmbeddingDimensions(): number | null {
   return getResolvedEmbeddingLane().dimensions ?? null;
 }
@@ -122,7 +122,7 @@ export function getEmbeddingDimensions(): number | null {
 // ─── YAML-specific getters (new config sections) ────────────────────
 
 /** Git-Memory pipeline config */
-export function getGitConfig(options: ResolvedLaneOptions = {}): NonNullable<MemorixYamlConfig['git']> {
+export function getGitConfig(options: ResolvedLaneOptions = {}): NonNullable<BatonYamlConfig['git']> {
   const git = getResolvedConfig(options).git;
   return {
     autoHook: git.autoHook,
@@ -135,7 +135,7 @@ export function getGitConfig(options: ResolvedLaneOptions = {}): NonNullable<Mem
 }
 
 /** Server config */
-export function getServerConfig(): NonNullable<MemorixYamlConfig['server']> {
+export function getServerConfig(): NonNullable<BatonYamlConfig['server']> {
   const server = getResolvedConfig().server;
   return {
     transport: server.transport,

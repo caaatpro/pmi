@@ -62,7 +62,7 @@ function ensureVersionedPath(projectRoot: string, rootPath: string): string {
 
 async function isIgnoredByGit(projectRoot: string, workspaceRoot: string): Promise<boolean> {
   const relative = path.relative(projectRoot, workspaceRoot).split(path.sep).join('/');
-  const probes = [relative, relative.replace(/\/+$/, '') + '/.memorix-workspace-probe'];
+  const probes = [relative, relative.replace(/\/+$/, '') + '/.baton-workspace-probe'];
   for (const probe of probes) {
     try {
       await execFileAsync('git', ['-C', projectRoot, 'check-ignore', '--quiet', '--no-index', '--', probe], {
@@ -126,9 +126,9 @@ async function writeIfMissing(filePath: string, content: string): Promise<void> 
 
 function schemaContent(): string {
   return [
-    '# Memorix Knowledge Workspace',
+    '# Baton Knowledge Workspace',
     '',
-    'This workspace is compiled from source-qualified Memorix claims.',
+    'This workspace is compiled from source-qualified Baton claims.',
     'Topic pages are proposal-first: review and apply a proposal before relying',
     'on it as a published project knowledge page.',
     '',

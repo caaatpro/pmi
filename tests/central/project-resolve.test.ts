@@ -15,7 +15,7 @@ import { openDatabase, type Database } from '../../src/server/central/db.js';
 import { createCentralServer } from '../../src/server/central/http.js';
 import { addOrgMember, createOrganization, createUser, issueToken } from '../../src/server/central/identity.js';
 import { migrate } from '../../src/server/central/migrations.js';
-import { cliBuilt, createRepoPair, git, machine, pmi, type Machine } from './cli-helper.js';
+import { cliBuilt, createRepoPair, git, machine, baton, type Machine } from './cli-helper.js';
 import { pgAvailable, pgSkipReason, startPostgres, type TestPostgres } from './pg-helper.js';
 
 const ROOT = 'b'.repeat(40);
@@ -123,7 +123,7 @@ describe.skipIf(!pgAvailable)('project resolution for forks (real Postgres)', ()
   });
 });
 
-describe.skipIf(!pgAvailable || !cliBuilt)('pmi project link for a fork (real Postgres, built CLI)', () => {
+describe.skipIf(!pgAvailable || !cliBuilt)('baton project link for a fork (real Postgres, built CLI)', () => {
   let root = '';
   let upstream: Machine;
   let fork: Machine;
@@ -139,13 +139,13 @@ describe.skipIf(!pgAvailable || !cliBuilt)('pmi project link for a fork (real Po
     await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
     base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 
-    root = mkdtempSync(path.join(tmpdir(), 'pmi-fork-link-'));
+    root = mkdtempSync(path.join(tmpdir(), 'baton-fork-link-'));
     const [repoA, repoB] = createRepoPair(root, 'https://github.com/acme/shop.git');
     git(repoB, 'remote', 'set-url', 'origin', 'https://github.com/lead/shop.git');
-    upstream = machine(root, 'upstream', repoA, { PMI_DAEMON: 'off' });
-    fork = machine(root, 'fork', repoB, { PMI_DAEMON: 'off' });
-    for (const m of [upstream, fork]) expect((await pmi(m, 'login', base, '--token', token)).code).toBe(0);
-    const created = await pmi(upstream, 'project', 'link', '--create', '--org', 'acme', '--slug', 'shop', '--json');
+    upstream = machine(root, 'upstream', repoA, { BATON_DAEMON: 'off' });
+    fork = machine(root, 'fork', repoB, { BATON_DAEMON: 'off' });
+    for (const m of [upstream, fork]) expect((await baton(m, 'login', base, '--token', token)).code).toBe(0);
+    const created = await baton(upstream, 'project', 'link', '--create', '--org', 'acme', '--slug', 'shop', '--json');
     expect(created.code, created.stderr).toBe(0);
   }, 180_000);
 
@@ -157,22 +157,22 @@ describe.skipIf(!pgAvailable || !cliBuilt)('pmi project link for a fork (real Po
   }, 60_000);
 
   it('shows the colliding project with a ready command, then links the fork to its own project', async () => {
-    const refused = await pmi(fork, 'project', 'link');
+    const refused = await baton(fork, 'project', 'link');
     expect(refused.code).toBe(1);
     expect(refused.stderr).toContain('--create');
     expect(refused.stderr).toContain('Matching projects:');
     expect(refused.stderr).toContain('acme/shop [acme/shop]');
 
-    const json = await pmi(fork, 'project', 'link', '--json');
+    const json = await baton(fork, 'project', 'link', '--json');
     expect(JSON.parse(json.stderr)).toMatchObject({ code: 'identity_mismatch', candidates: [{ org: 'acme', slug: 'shop' }] });
 
-    const created = await pmi(fork, 'project', 'link', '--create', '--org', 'acme', '--slug', 'shop-fork', '--json');
+    const created = await baton(fork, 'project', 'link', '--create', '--org', 'acme', '--slug', 'shop-fork', '--json');
     expect(created.code, created.stderr).toBe(0);
     expect(created.json).toMatchObject({ slug: 'shop-fork', legacyProjectId: 'lead/shop', created: true });
 
-    const relinked = await pmi(fork, 'project', 'link', '--json');
+    const relinked = await baton(fork, 'project', 'link', '--json');
     expect(relinked.json).toMatchObject({ slug: 'shop-fork', created: false });
-    const upstreamAgain = await pmi(upstream, 'project', 'link', '--json');
+    const upstreamAgain = await baton(upstream, 'project', 'link', '--json');
     expect(upstreamAgain.json).toMatchObject({ slug: 'shop', created: false });
   }, 120_000);
 });

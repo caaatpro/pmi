@@ -23,7 +23,7 @@ describe('WorkBuddy integration', () => {
   let tempHome = '';
 
   beforeEach(() => {
-    tempHome = mkdtempSync(path.join(tmpdir(), 'memorix-workbuddy-'));
+    tempHome = mkdtempSync(path.join(tmpdir(), 'baton-workbuddy-'));
     homedirMock.mockReturnValue(tempHome);
   });
 
@@ -43,26 +43,26 @@ describe('WorkBuddy integration', () => {
       expect(adapter.getConfigPath(undefined)).toBe(path.join(tempHome, '.workbuddy', 'mcp.json'));
     });
 
-    it('round-trips a stdio Memorix entry through generate/parse', () => {
+    it('round-trips a stdio Baton entry through generate/parse', () => {
       const adapter = new WorkbuddyMCPAdapter();
       const generated = adapter.generate([{
-        name: 'memorix',
-        command: 'memorix',
+        name: 'baton',
+        command: 'baton',
         args: ['serve'],
       }]);
 
       const parsed = JSON.parse(generated);
-      expect(parsed.mcpServers.memorix).toMatchObject({ command: 'memorix', args: ['serve'] });
+      expect(parsed.mcpServers.baton).toMatchObject({ command: 'baton', args: ['serve'] });
 
       const entries = adapter.parse(generated);
       expect(entries).toHaveLength(1);
-      expect(entries[0]).toMatchObject({ name: 'memorix', command: 'memorix', args: ['serve'] });
+      expect(entries[0]).toMatchObject({ name: 'baton', command: 'baton', args: ['serve'] });
     });
 
     it('round-trips a streamable-http entry', () => {
       const adapter = new WorkbuddyMCPAdapter();
       const generated = adapter.generate([{
-        name: 'memorix',
+        name: 'baton',
         command: '',
         args: [],
         url: 'http://localhost:3211/mcp',
@@ -70,7 +70,7 @@ describe('WorkBuddy integration', () => {
 
       const entries = adapter.parse(generated);
       expect(entries).toHaveLength(1);
-      expect(entries[0]).toMatchObject({ name: 'memorix', url: 'http://localhost:3211/mcp' });
+      expect(entries[0]).toMatchObject({ name: 'baton', url: 'http://localhost:3211/mcp' });
     });
 
     it('preserves unrelated servers when parsing', () => {
@@ -78,12 +78,12 @@ describe('WorkBuddy integration', () => {
       const content = JSON.stringify({
         mcpServers: {
           other: { command: 'other-tool', args: [] },
-          memorix: { command: 'memorix', args: ['serve'] },
+          baton: { command: 'baton', args: ['serve'] },
         },
       });
 
       const entries = adapter.parse(content);
-      expect(entries.map((e) => e.name)).toEqual(['other', 'memorix']);
+      expect(entries.map((e) => e.name)).toEqual(['other', 'baton']);
     });
   });
 
@@ -94,16 +94,18 @@ describe('WorkBuddy integration', () => {
 
       const content = readFileSync(path.join(tempHome, '.workbuddy', 'mcp.json'), 'utf-8');
       const parsed = JSON.parse(content);
-      expect(Object.keys(parsed.mcpServers)).toEqual(['memorix']);
+      expect(Object.keys(parsed.mcpServers)).toEqual(['baton']);
     });
 
     it('writes project-scope config to <project>/.workbuddy/mcp.json without polluting user-level', async () => {
       const root = path.join(tmpdir(), 'wb-project');
+      // Fixed path in the OS temp dir: start clean so an earlier run cannot leak entries in.
+      rmSync(root, { recursive: true, force: true });
       await installMcpConfig({ agent: 'workbuddy', mcp: 'stdio', global: false, projectRoot: root });
 
       const content = readFileSync(path.join(root, '.workbuddy', 'mcp.json'), 'utf-8');
       const parsed = JSON.parse(content);
-      expect(Object.keys(parsed.mcpServers)).toEqual(['memorix']);
+      expect(Object.keys(parsed.mcpServers)).toEqual(['baton']);
       // Project install must not leak into the user-level file.
       expect(existsSync(path.join(tempHome, '.workbuddy', 'mcp.json'))).toBe(false);
     });
@@ -119,7 +121,7 @@ describe('WorkBuddy integration', () => {
       await installMcpConfig({ agent: 'workbuddy', mcp: 'stdio', global: false, projectRoot: root });
 
       const parsed = JSON.parse(readFileSync(projectFile, 'utf-8'));
-      expect(Object.keys(parsed.mcpServers).sort()).toEqual(['memorix', 'other']);
+      expect(Object.keys(parsed.mcpServers).sort()).toEqual(['baton', 'other']);
     });
   });
 
@@ -141,7 +143,7 @@ describe('WorkBuddy integration', () => {
       expect(result.configPath).toBe('');
       expect(result.generated.note).toMatch(/no hook system|mcp only/i);
       // Neither the generic default nor any global file may be created.
-      expect(existsSync(path.join(root, '.memorix', 'hooks.json'))).toBe(false);
+      expect(existsSync(path.join(root, '.baton', 'hooks.json'))).toBe(false);
       expect(existsSync(path.join(tempHome, '.workbuddy', 'hooks.json'))).toBe(false);
     });
   });
@@ -157,7 +159,7 @@ describe('WorkBuddy integration', () => {
 
     it('treats hook uninstall as a no-op at both scopes', async () => {
       const root = path.join(tmpdir(), 'wb-hook-uninstall');
-      const hooksFile = path.join(root, '.memorix', 'hooks.json');
+      const hooksFile = path.join(root, '.baton', 'hooks.json');
       mkdirSync(path.dirname(hooksFile), { recursive: true });
       writeFileSync(hooksFile, '{}', 'utf-8');
 
@@ -174,7 +176,7 @@ describe('WorkBuddy integration', () => {
       const projectFile = path.join(root, '.workbuddy', 'mcp.json');
       mkdirSync(path.dirname(projectFile), { recursive: true });
       writeFileSync(projectFile, JSON.stringify({
-        mcpServers: { memorix: { command: 'memorix', args: ['serve'] } },
+        mcpServers: { baton: { command: 'baton', args: ['serve'] } },
       }), 'utf-8');
 
       const entries = getMCPConfigEntries(tempHome, root);

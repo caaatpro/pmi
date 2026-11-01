@@ -19,8 +19,8 @@ import { getSession } from './sessions-repo.js';
 
 export const INLINE_BLOB_LIMIT = 256 * 1024;
 
-/** `PMIE1` + key id (8) + IV (12) + GCM tag (16) + ciphertext. */
-const ENCRYPTED_MAGIC = Buffer.from('PMIE1');
+/** `BTNE1` + key id (8) + IV (12) + GCM tag (16) + ciphertext. */
+const ENCRYPTED_MAGIC = Buffer.from('BTNE1');
 
 function keyId(key: Buffer): Buffer {
   return createHash('sha256').update(key).digest().subarray(0, 8);
@@ -39,11 +39,11 @@ export interface BlobKeys {
   previous: Buffer[];
 }
 
-/** PMI_BLOB_KEY (current) and PMI_BLOB_KEYS_OLD (comma-separated previous keys). */
+/** BATON_BLOB_KEY (current) and BATON_BLOB_KEYS_OLD (comma-separated previous keys). */
 export function blobKeysFromEnv(env: NodeJS.ProcessEnv = process.env): BlobKeys {
   return {
-    ...(env.PMI_BLOB_KEY?.trim() ? { current: parseKey(env.PMI_BLOB_KEY, 'PMI_BLOB_KEY') } : {}),
-    previous: (env.PMI_BLOB_KEYS_OLD ?? '').split(',').filter((value) => value.trim()).map((value) => parseKey(value, 'PMI_BLOB_KEYS_OLD')),
+    ...(env.BATON_BLOB_KEY?.trim() ? { current: parseKey(env.BATON_BLOB_KEY, 'BATON_BLOB_KEY') } : {}),
+    previous: (env.BATON_BLOB_KEYS_OLD ?? '').split(',').filter((value) => value.trim()).map((value) => parseKey(value, 'BATON_BLOB_KEYS_OLD')),
   };
 }
 
@@ -64,7 +64,7 @@ export function decryptBlob(stored: Buffer, keys: BlobKeys): Buffer {
   if (!stored.subarray(0, ENCRYPTED_MAGIC.length).equals(ENCRYPTED_MAGIC)) return stored;
   const id = stored.subarray(5, 13);
   const key = [keys.current, ...keys.previous].find((candidate) => candidate && keyId(candidate).equals(id));
-  if (!key) throw new HttpError(500, 'blob_key_missing', 'a blob is encrypted with a key this server does not have (set PMI_BLOB_KEYS_OLD)');
+  if (!key) throw new HttpError(500, 'blob_key_missing', 'a blob is encrypted with a key this server does not have (set BATON_BLOB_KEYS_OLD)');
   const decipher = createDecipheriv('aes-256-gcm', key, stored.subarray(13, 25));
   decipher.setAuthTag(stored.subarray(25, 41));
   return Buffer.concat([decipher.update(stored.subarray(41)), decipher.final()]);
@@ -119,7 +119,7 @@ export class ServerBlobStorage {
    * finishing a rotation). Each blob is verified before it is replaced.
    */
   async reencryptAll(db: Queryable): Promise<{ rewritten: number; failed: string[] }> {
-    if (!this.keys.current) throw new Error('set PMI_BLOB_KEY before re-encrypting');
+    if (!this.keys.current) throw new Error('set BATON_BLOB_KEY before re-encrypting');
     const currentId = keyId(this.keys.current);
     let rewritten = 0;
     const failed: string[] = [];
@@ -283,7 +283,7 @@ export async function applyRetention(
   const snapshots = await db.query<{ id: string }>(
     `WITH ranked AS (
        SELECT s.id, s.pinned, s.created_at, se.status,
-              -- Snapshots without a session (pmi workspace snapshot) form one series per project.
+              -- Snapshots without a session (baton workspace snapshot) form one series per project.
               row_number() OVER (PARTITION BY COALESCE(s.session_id, 'project:' || s.project_id) ORDER BY s.created_at DESC) AS newest,
               row_number() OVER (PARTITION BY COALESCE(s.session_id, 'project:' || s.project_id), date_trunc('day', s.created_at) ORDER BY s.created_at DESC) AS daily
          FROM work.snapshots s LEFT JOIN work.sessions se ON se.id = s.session_id)

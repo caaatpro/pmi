@@ -32,7 +32,7 @@ describe('persistent semantic shadow index', () => {
     if (!(await isSemanticIndexAvailable())) {
       throw new Error('LanceDB is unavailable in the supported Node test environment');
     }
-    dataDir = await mkdtemp(path.join(tmpdir(), 'memorix-semantic-'));
+    dataDir = await mkdtemp(path.join(tmpdir(), 'baton-semantic-'));
     const profile = createSemanticIndexProfile({ name: 'test-embedding', dimensions: 3 });
 
     await upsertSemanticVectors(dataDir, profile, [
@@ -68,9 +68,9 @@ describe('persistent semantic shadow index', () => {
     if (!(await isSemanticIndexAvailable())) {
       throw new Error('LanceDB is unavailable in the supported Node test environment');
     }
-    dataDir = await mkdtemp(path.join(tmpdir(), 'memorix-semantic-indexed-'));
-    const previousThreshold = process.env.MEMORIX_SEMANTIC_INDEX_THRESHOLD;
-    process.env.MEMORIX_SEMANTIC_INDEX_THRESHOLD = '1';
+    dataDir = await mkdtemp(path.join(tmpdir(), 'baton-semantic-indexed-'));
+    const previousThreshold = process.env.BATON_SEMANTIC_INDEX_THRESHOLD;
+    process.env.BATON_SEMANTIC_INDEX_THRESHOLD = '1';
     try {
       const profile = createSemanticIndexProfile({ name: 'indexed-embedding', dimensions: 3 });
       await upsertSemanticVectors(dataDir, profile, [
@@ -81,8 +81,8 @@ describe('persistent semantic shadow index', () => {
       const result = await searchSemanticVectors({ dataDir, profile, vector: [1, 0, 0], limit: 1 });
       expect(result?.[0]?.observationId).toBe(1);
     } finally {
-      if (previousThreshold === undefined) delete process.env.MEMORIX_SEMANTIC_INDEX_THRESHOLD;
-      else process.env.MEMORIX_SEMANTIC_INDEX_THRESHOLD = previousThreshold;
+      if (previousThreshold === undefined) delete process.env.BATON_SEMANTIC_INDEX_THRESHOLD;
+      else process.env.BATON_SEMANTIC_INDEX_THRESHOLD = previousThreshold;
     }
   });
 
@@ -90,7 +90,7 @@ describe('persistent semantic shadow index', () => {
     if (!(await isSemanticIndexAvailable())) {
       throw new Error('LanceDB is unavailable in the supported Node test environment');
     }
-    dataDir = await mkdtemp(path.join(tmpdir(), 'memorix-semantic-empty-'));
+    dataDir = await mkdtemp(path.join(tmpdir(), 'baton-semantic-empty-'));
     const profile = createSemanticIndexProfile({ name: 'empty-embedding', dimensions: 3 });
 
     await expect(searchSemanticVectors({
@@ -105,7 +105,7 @@ describe('persistent semantic shadow index', () => {
     if (!(await isSemanticIndexAvailable())) {
       throw new Error('LanceDB is unavailable in the supported Node test environment');
     }
-    dataDir = await mkdtemp(path.join(tmpdir(), 'memorix-semantic-batch-'));
+    dataDir = await mkdtemp(path.join(tmpdir(), 'baton-semantic-batch-'));
     const profile = createSemanticIndexProfile({ name: 'batched-embedding', dimensions: 3 });
     await Promise.all(Array.from({ length: 25 }, (_, observationId) => upsertSemanticVector(dataDir, profile, {
       observationId: observationId + 1,
@@ -121,7 +121,7 @@ describe('persistent semantic shadow index', () => {
   });
 
   it('repairs persisted tables without an embedding provider', async () => {
-    dataDir = await mkdtemp(path.join(tmpdir(), 'memorix-semantic-repair-'));
+    dataDir = await mkdtemp(path.join(tmpdir(), 'baton-semantic-repair-'));
     const profile = createSemanticIndexProfile({ name: 'repair-embedding', dimensions: 3 });
     await upsertSemanticVectors(dataDir, profile, [
       { observationId: 1, projectId: 'project-alpha', status: 'active', vector: [1, 0, 0] },
@@ -133,7 +133,7 @@ describe('persistent semantic shadow index', () => {
   });
 
   it('flushes pending writes before closing one data directory', async () => {
-    dataDir = await mkdtemp(path.join(tmpdir(), 'memorix-semantic-close-'));
+    dataDir = await mkdtemp(path.join(tmpdir(), 'baton-semantic-close-'));
     const profile = createSemanticIndexProfile({ name: 'close-embedding', dimensions: 3 });
     const write = upsertSemanticVector(dataDir, profile, {
       observationId: 1, projectId: 'project-alpha', status: 'active', vector: [1, 0, 0],

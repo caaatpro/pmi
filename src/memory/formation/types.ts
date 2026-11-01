@@ -15,7 +15,7 @@
 import type { ObservationType } from '../../types.js';
 
 // ============================================================
-// Pipeline Input (what comes in from memorix_store or hooks)
+// Pipeline Input (what comes in from baton_store or hooks)
 // ============================================================
 
 /** Raw input to the Formation Pipeline */

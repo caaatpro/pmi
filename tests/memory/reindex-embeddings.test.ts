@@ -6,7 +6,7 @@ import path from 'node:path';
 
 // Some writes are not mocked, so the fake project must live in a temp dir
 // rather than a Windows-style path that becomes a relative directory elsewhere.
-const TEST_PROJECT_DIR = path.join(tmpdir(), `pmi-reindex-embeddings-${process.pid}`);
+const TEST_PROJECT_DIR = path.join(tmpdir(), `baton-reindex-embeddings-${process.pid}`);
 afterAll(() => rmSync(TEST_PROJECT_DIR, { recursive: true, force: true }));
 
 const mockResetDb = vi.fn();
@@ -111,7 +111,7 @@ describe('reindexObservations', () => {
     const testObs = [
       {
         id: 1,
-        projectId: 'AVIDS2/memorix',
+        projectId: 'AVIDS2/baton',
         entityName: 'search-layer',
         type: 'what-changed',
         title: 'Semantic retrieval hardening',
@@ -126,7 +126,7 @@ describe('reindexObservations', () => {
       },
       {
         id: 2,
-        projectId: 'AVIDS2/memorix',
+        projectId: 'AVIDS2/baton',
         entityName: 'quality-check',
         type: 'discovery',
         title: 'Historical memories need vectors',
@@ -162,7 +162,7 @@ describe('reindexObservations', () => {
     expect(mockInsertObservation).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        id: 'AVIDS2/memorix:1',
+        id: 'AVIDS2/baton:1',
         observationId: 1,
         embedding: [0.1, 0.2],
       }),
@@ -170,7 +170,7 @@ describe('reindexObservations', () => {
     expect(mockInsertObservation).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
-        id: 'AVIDS2/memorix:2',
+        id: 'AVIDS2/baton:2',
         observationId: 2,
         embedding: [0.3, 0.4],
       }),

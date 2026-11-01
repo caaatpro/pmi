@@ -1,5 +1,5 @@
 /**
- * Local session continuity store (SQLite, migration `pmi-2-session-continuity`).
+ * Local session continuity store (SQLite, migration `baton-2-session-continuity`).
  *
  * Every change is written here first: the session row, immutable checkpoints,
  * and an outbox of operations for the central server. Checkpoints are
@@ -95,7 +95,7 @@ export class LocalSessionStore {
   }
 
   get(id: string): LocalSession | undefined {
-    const row = this.db.prepare('SELECT * FROM pmi_sessions WHERE id = ?').get(id);
+    const row = this.db.prepare('SELECT * FROM baton_sessions WHERE id = ?').get(id);
     return row ? rowToSession(row) : undefined;
   }
 
@@ -105,7 +105,7 @@ export class LocalSessionStore {
     if (filter.projectId) { where.push('project_id = ?'); params.push(filter.projectId); }
     if (filter.statuses?.length) { where.push(`status IN (${filter.statuses.map(() => '?').join(', ')})`); params.push(...filter.statuses); }
     if (filter.deviceOnly) { where.push('device_id = ?'); params.push(this.deviceId); }
-    const sql = `SELECT * FROM pmi_sessions ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY updated_at DESC`;
+    const sql = `SELECT * FROM baton_sessions ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY updated_at DESC`;
     return this.db.prepare(sql).all(...params).map(rowToSession);
   }
 
@@ -120,13 +120,13 @@ export class LocalSessionStore {
     // upgrade), so every write transaction here runs as BEGIN IMMEDIATE.
     const write = this.db.transaction(() => {
       this.db.prepare(`
-        INSERT INTO pmi_sessions (id, project_id, status, state_json, workspace_root, device_id, agent_pid,
+        INSERT INTO baton_sessions (id, project_id, status, state_json, workspace_root, device_id, agent_pid,
                                   last_activity_at, checkpoint_seq, created_at, updated_at)
         VALUES (@id, @project_id, @status, @state_json, @workspace_root, @device_id, @agent_pid, @now, @seq, @now, @now)
         ON CONFLICT(id) DO UPDATE SET
           status = excluded.status, state_json = excluded.state_json, workspace_root = excluded.workspace_root,
           device_id = excluded.device_id, agent_pid = excluded.agent_pid, last_activity_at = excluded.last_activity_at,
-          checkpoint_seq = MAX(pmi_sessions.checkpoint_seq, excluded.checkpoint_seq), updated_at = excluded.updated_at
+          checkpoint_seq = MAX(baton_sessions.checkpoint_seq, excluded.checkpoint_seq), updated_at = excluded.updated_at
       `).run({
         id: state.sessionId,
         project_id: state.projectId,
@@ -150,23 +150,23 @@ export class LocalSessionStore {
     const now = new Date().toISOString();
     const next = boundState({ ...mutate(structuredClone(current.state)), updatedAt: now });
     this.assertTransition(current.status, next.status);
-    this.db.prepare('UPDATE pmi_sessions SET status = ?, state_json = ?, last_activity_at = ?, updated_at = ? WHERE id = ?')
+    this.db.prepare('UPDATE baton_sessions SET status = ?, state_json = ?, last_activity_at = ?, updated_at = ? WHERE id = ?')
       .run(next.status, JSON.stringify(next), now, now, id);
     return this.require(id);
   }
 
   touch(id: string): void {
     const now = new Date().toISOString();
-    this.db.prepare('UPDATE pmi_sessions SET last_activity_at = ? WHERE id = ?').run(now, id);
+    this.db.prepare('UPDATE baton_sessions SET last_activity_at = ? WHERE id = ?').run(now, id);
   }
 
   setFingerprintTracking(id: string, fields: { pendingFingerprint: string | null; pendingSince: string | null }): void {
-    this.db.prepare('UPDATE pmi_sessions SET pending_fingerprint = ?, pending_since = ? WHERE id = ?')
+    this.db.prepare('UPDATE baton_sessions SET pending_fingerprint = ?, pending_since = ? WHERE id = ?')
       .run(fields.pendingFingerprint, fields.pendingSince, id);
   }
 
   markHeartbeat(id: string): void {
-    this.db.prepare('UPDATE pmi_sessions SET last_heartbeat_at = ? WHERE id = ?').run(new Date().toISOString(), id);
+    this.db.prepare('UPDATE baton_sessions SET last_heartbeat_at = ? WHERE id = ?').run(new Date().toISOString(), id);
   }
 
   /**
@@ -180,7 +180,7 @@ export class LocalSessionStore {
   ): LocalCheckpoint {
     const run = this.db.transaction(() => {
       const current = this.require(id);
-      if (FINAL_STATUSES.includes(current.status)) throw new Error(`[pmi] session cannot move from ${current.status}: it is closed`);
+      if (FINAL_STATUSES.includes(current.status)) throw new Error(`[baton] session cannot move from ${current.status}: it is closed`);
       const now = new Date().toISOString();
       const seq = current.checkpointSeq + 1;
       const checkpointId = `${id}:${seq}`;
@@ -190,7 +190,7 @@ export class LocalSessionStore {
       const state = boundState({ ...base, status, lastCheckpoint: { id: checkpointId, seq, at: now, trigger }, updatedAt: now });
       this.db.prepare(`INSERT INTO session_checkpoints (id, session_id, seq, trigger, state_json, fingerprint, created_at)
                        VALUES (?, ?, ?, ?, ?, ?, ?)`).run(checkpointId, id, seq, trigger, JSON.stringify(state), options.fingerprint ?? null, now);
-      this.db.prepare(`UPDATE pmi_sessions SET status = ?, state_json = ?, checkpoint_seq = ?, last_checkpoint_at = ?,
+      this.db.prepare(`UPDATE baton_sessions SET status = ?, state_json = ?, checkpoint_seq = ?, last_checkpoint_at = ?,
                               last_fingerprint = COALESCE(?, last_fingerprint), pending_fingerprint = NULL, pending_since = NULL,
                               updated_at = ? WHERE id = ?`)
         .run(status, JSON.stringify(state), seq, now, options.fingerprint ?? null, now, id);
@@ -218,7 +218,7 @@ export class LocalSessionStore {
       this.assertTransition(current.status, status);
       const now = new Date().toISOString();
       const state = { ...current.state, status, updatedAt: now };
-      this.db.prepare('UPDATE pmi_sessions SET status = ?, state_json = ?, updated_at = ? WHERE id = ?').run(status, JSON.stringify(state), now, id);
+      this.db.prepare('UPDATE baton_sessions SET status = ?, state_json = ?, updated_at = ? WHERE id = ?').run(status, JSON.stringify(state), now, id);
       if (op) this.enqueue(id, op.kind, op.payload);
     });
     run.immediate();
@@ -261,11 +261,11 @@ export class LocalSessionStore {
 
   private require(id: string): LocalSession {
     const session = this.get(id);
-    if (!session) throw new Error(`[pmi] unknown session ${id}`);
+    if (!session) throw new Error(`[baton] unknown session ${id}`);
     return session;
   }
 
   private assertTransition(from: SessionStatus, to: SessionStatus): void {
-    if (!canTransitionSession(from, to)) throw new Error(`[pmi] session cannot move from ${from} to ${to}`);
+    if (!canTransitionSession(from, to)) throw new Error(`[baton] session cannot move from ${from} to ${to}`);
   }
 }

@@ -6,20 +6,20 @@ import process from 'node:process'
 
 const root = process.cwd()
 const distCli = path.resolve(root, 'dist', 'cli', 'index.js')
-const tempBase = process.env.MEMORIX_TEST_TMPDIR?.trim() || path.join(root, '.tmp-memorix-smoke')
+const tempBase = process.env.BATON_TEST_TMPDIR?.trim() || path.join(root, '.tmp-baton-smoke')
 await mkdir(tempBase, { recursive: true })
-const tempRoot = await mkdtemp(path.join(tempBase, 'memorix-modern-smoke-'))
+const tempRoot = await mkdtemp(path.join(tempBase, 'baton-modern-smoke-'))
 const project = path.join(tempRoot, 'project')
 const dataDir = path.join(tempRoot, 'data')
 const port = 39_000 + Math.floor(Math.random() * 1_000)
 const env = {
   ...process.env,
-  MEMORIX_DATA_DIR: dataDir,
-  MEMORIX_EMBEDDING: 'off',
-  MEMORIX_LLM_API_KEY: '',
+  BATON_DATA_DIR: dataDir,
+  BATON_EMBEDDING: 'off',
+  BATON_LLM_API_KEY: '',
   OPENAI_API_KEY: '',
-  MEMORIX_LLM_PROVIDER: '',
-  MEMORIX_LLM_MODEL: '',
+  BATON_LLM_PROVIDER: '',
+  BATON_LLM_MODEL: '',
   NO_COLOR: '1',
 }
 
@@ -62,7 +62,7 @@ async function waitForHealth() {
 
 const meta = {
   'io.modelcontextprotocol/protocolVersion': '2026-07-28',
-  'io.modelcontextprotocol/clientInfo': { name: 'memorix-modern-smoke', version: '1' },
+  'io.modelcontextprotocol/clientInfo': { name: 'baton-modern-smoke', version: '1' },
   'io.modelcontextprotocol/clientCapabilities': {},
 }
 
@@ -96,17 +96,17 @@ try {
   assert.equal(discovery.response.status, 200)
   assert.equal(discovery.body.result.resultType, 'complete')
   assert.deepEqual(discovery.body.result.supportedVersions, ['2026-07-28'])
-  assert.equal(discovery.body.result._meta['io.modelcontextprotocol/serverInfo'].name, 'memorix')
+  assert.equal(discovery.body.result._meta['io.modelcontextprotocol/serverInfo'].name, 'baton')
 
   const listed = await request('tools/list', 'list')
   assert.equal(listed.response.status, 200)
   assert.equal(listed.body.result.resultType, 'complete')
-  assert.ok(listed.body.result.tools.some(tool => tool.name === 'memorix_project_context'))
+  assert.ok(listed.body.result.tools.some(tool => tool.name === 'baton_project_context'))
 
-  const called = await request('tools/call', 'call', { name: 'memorix_codegraph_status', arguments: {} })
+  const called = await request('tools/call', 'call', { name: 'baton_codegraph_status', arguments: {} })
   assert.equal(called.response.status, 200)
   assert.equal(called.body.result.resultType, 'complete')
-  assert.equal(called.body.result._meta['io.modelcontextprotocol/serverInfo'].name, 'memorix')
+  assert.equal(called.body.result._meta['io.modelcontextprotocol/serverInfo'].name, 'baton')
   assert.equal(called.body.result.content[0].type, 'text')
 
   console.log(JSON.stringify({ smoke: 'passed', transport: 'http', port, modern: true }))

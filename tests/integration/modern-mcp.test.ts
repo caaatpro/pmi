@@ -10,7 +10,7 @@ import { createModernMcpBridge } from '../../src/server/modern-mcp-bridge.js';
 
 const modernMeta = {
   'io.modelcontextprotocol/protocolVersion': '2026-07-28',
-  'io.modelcontextprotocol/clientInfo': { name: 'memorix-modern-test', version: '1.0.0' },
+  'io.modelcontextprotocol/clientInfo': { name: 'baton-modern-test', version: '1.0.0' },
   'io.modelcontextprotocol/clientCapabilities': {},
 };
 
@@ -37,7 +37,7 @@ function modernRequest(
 }
 
 async function makeProject(): Promise<{ root: string; dataDir: string }> {
-  const root = await mkdtemp(path.join(tmpdir(), 'memorix-modern-mcp-'));
+  const root = await mkdtemp(path.join(tmpdir(), 'baton-modern-mcp-'));
   const dataDir = path.join(root, 'data');
   await mkdir(dataDir, { recursive: true });
   execFileSync('git', ['init'], { cwd: root, stdio: 'ignore', windowsHide: true });
@@ -59,13 +59,13 @@ describe('official MCP v2 modern bridge', () => {
     resetGraphStore();
     closeAllDatabases();
     if (project) await rm(project.root, { recursive: true, force: true });
-    delete process.env.MEMORIX_DATA_DIR;
+    delete process.env.BATON_DATA_DIR;
     project = undefined;
   });
 
   it('serves discovery, metadata, tool listing, and tool calls over modern HTTP', async () => {
     project = await makeProject();
-    process.env.MEMORIX_DATA_DIR = project.dataDir;
+    process.env.BATON_DATA_DIR = project.dataDir;
     const handler = createMcpHandler(
       () => createModernMcpBridge({
         projectRoot: project!.root,
@@ -85,30 +85,30 @@ describe('official MCP v2 modern bridge', () => {
     expect(discovery.result.supportedVersions).toEqual(['2026-07-28']);
     expect(discovery.result.ttlMs).toBe(0);
     expect(discovery.result.cacheScope).toBe('private');
-    expect(discovery.result._meta['io.modelcontextprotocol/serverInfo'].name).toBe('memorix');
+    expect(discovery.result._meta['io.modelcontextprotocol/serverInfo'].name).toBe('baton');
 
     const listResponse = await handler.fetch(modernRequest('tools/list', 'list'));
     const listed = await listResponse.json() as any;
     expect(listResponse.status).toBe(200);
     expect(listed.result.resultType).toBe('complete');
     expect(listed.result.ttlMs).toBe(0);
-    expect(listed.result._meta['io.modelcontextprotocol/serverInfo'].name).toBe('memorix');
+    expect(listed.result._meta['io.modelcontextprotocol/serverInfo'].name).toBe('baton');
     expect(listed.result.tools).toEqual(expect.arrayContaining([
-      expect.objectContaining({ name: 'memorix_project_context' }),
+      expect.objectContaining({ name: 'baton_project_context' }),
     ]));
 
     const callResponse = await handler.fetch(modernRequest('tools/call', 'call', {
-      name: 'memorix_codegraph_status',
+      name: 'baton_codegraph_status',
       arguments: {},
     }));
     const called = await callResponse.json() as any;
     expect(callResponse.status).toBe(200);
     expect(called.result.resultType).toBe('complete');
-    expect(called.result._meta['io.modelcontextprotocol/serverInfo'].name).toBe('memorix');
+    expect(called.result._meta['io.modelcontextprotocol/serverInfo'].name).toBe('baton');
     expect(called.result.content[0].type).toBe('text');
 
     const sessionResponse = await handler.fetch(modernRequest('tools/call', 'session', {
-      name: 'memorix_session_start',
+      name: 'baton_session_start',
       arguments: { agent: 'modern-mcp-test' },
     }));
     const sessionCalled = await sessionResponse.json() as any;
@@ -189,7 +189,7 @@ describe('official MCP v2 modern bridge', () => {
 
   it('serves the same bridge over modern stdio without a legacy handshake', async () => {
     project = await makeProject();
-    process.env.MEMORIX_DATA_DIR = project.dataDir;
+    process.env.BATON_DATA_DIR = project.dataDir;
     const input = new PassThrough();
     const output = new PassThrough();
     const lines: any[] = [];
@@ -235,7 +235,7 @@ describe('official MCP v2 modern bridge', () => {
     const listed = await waitFor('list');
     expect(listed.result.resultType).toBe('complete');
     expect(listed.result.tools).toEqual(expect.arrayContaining([
-      expect.objectContaining({ name: 'memorix_project_context' }),
+      expect.objectContaining({ name: 'baton_project_context' }),
     ]));
 
     await handle.close();

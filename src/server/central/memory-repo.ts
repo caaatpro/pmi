@@ -24,7 +24,7 @@ import type { Queryable } from './db.js';
 import { audit, type AuthUser, type ProjectRecord } from './identity.js';
 
 /** Device id the server uses for the batches it serves; clients key their cursor by it. */
-export const SERVER_DEVICE_ID = 'pmi-server';
+export const SERVER_DEVICE_ID = 'baton-server';
 
 export type PushOutcome = 'applied' | 'duplicate' | 'stale' | 'rejected';
 
@@ -254,7 +254,7 @@ async function upsertMemoryRow(
 
 /**
  * A memory written by the server itself (git analysis, confirmations): a new
- * revision by `pmi-server`, with history and a changes-feed entry, so every
+ * revision by `baton-server`, with history and a changes-feed entry, so every
  * client receives it like any other edit. Unchanged content is a no-op.
  */
 export async function writeServerMemory(
@@ -302,7 +302,7 @@ export interface FeedChange {
 /**
  * Changes after `after`, oldest first. Only the latest change of each memory
  * is served (`server_seq = seq`), so a client catching up never replays
- * intermediate versions. `legacyProjectId` limits rows to the Memorix
+ * intermediate versions. `legacyProjectId` limits rows to the Baton
  * identity the caller replicates.
  */
 export async function readChanges(
@@ -429,7 +429,7 @@ export async function memoriesByIds(db: Queryable, ids: string[]): Promise<Array
 
 /**
  * A person confirms or deprecates a memory. The server authors a new
- * revision (writer `pmi-server`) with the new confidence in the body, so
+ * revision (writer `baton-server`) with the new confidence in the body, so
  * every client receives it through the changes feed like any other edit.
  */
 export async function setConfidence(

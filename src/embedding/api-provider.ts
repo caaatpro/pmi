@@ -23,7 +23,7 @@ import {
 } from './provider.js';
 
 function cacheDir(): string {
-  return process.env.MEMORIX_DATA_DIR || join(homedir(), '.memorix', 'data');
+  return process.env.BATON_DATA_DIR || join(homedir(), '.baton', 'data');
 }
 function cacheFile(): string {
   return join(cacheDir(), '.embedding-api-cache.json');
@@ -71,7 +71,7 @@ function payloadBytes(vector: number[]): number {
 }
 
 function maxCachePayloadBytes(): number {
-  const raw = process.env.MEMORIX_EMBEDDING_CACHE_MAX_BYTES;
+  const raw = process.env.BATON_EMBEDDING_CACHE_MAX_BYTES;
   if (raw) {
     const parsed = Number.parseInt(raw, 10);
     if (Number.isFinite(parsed) && parsed > 0) return parsed;
@@ -555,7 +555,7 @@ async function loadDiskCache(): Promise<number> {
       loaded = await loadCacheJsonl(jsonlPath);
     }
     diskCacheLoadCount += 1;
-    console.error(`[memorix] Loaded ${loaded} cached API embeddings from disk`);
+    console.error(`[baton] Loaded ${loaded} cached API embeddings from disk`);
   } catch {
     // No cache file or corrupt cache; start fresh. Never save an empty map
     // over a larger on-disk cache — saveDiskCacheNow refuses that shrink.
@@ -806,7 +806,7 @@ export async function saveDiskCacheNow(): Promise<void> {
     const existing = await resolveOnDiskCount(jsonlPath);
     if (existing > 0 && cache.size < Math.ceil(existing * 0.5)) {
       console.error(
-        `[memorix] Refusing to overwrite embedding cache (${existing} on disk vs ${cache.size} in memory)`,
+        `[baton] Refusing to overwrite embedding cache (${existing} on disk vs ${cache.size} in memory)`,
       );
       diskCacheDirty = false;
       return;
@@ -904,7 +904,7 @@ export interface APIEmbeddingProviderCreateOptions {
 }
 
 function resolveEnvEmbeddingApiKey(): string | undefined {
-  return process.env.MEMORIX_EMBEDDING_API_KEY;
+  return process.env.BATON_EMBEDDING_API_KEY;
 }
 
 function getPreferredBatchSize(config: APIEmbeddingConfig): number {
@@ -973,7 +973,7 @@ export class APIEmbeddingProvider implements EmbeddingProvider {
       if (probeDimensions !== null) dimensionSource = 'vector-cache';
     }
     if (probeDimensions !== null) {
-      console.error(`[memorix] API embedding: ${config.model} @ ${config.baseUrl} (${probeDimensions}d) [${dimensionSource}]`);
+      console.error(`[baton] API embedding: ${config.model} @ ${config.baseUrl} (${probeDimensions}d) [${dimensionSource}]`);
       if (dimensionSource === 'dims-cache') {
         void saveCachedVectorDimensions(config, probeDimensions);
       }
@@ -983,12 +983,12 @@ export class APIEmbeddingProvider implements EmbeddingProvider {
         timeoutMs: options.requestTimeoutMs,
         retry: options.retry,
       });
-      console.error(`[memorix] API embedding: ${config.model} @ ${config.baseUrl} (${probeDimensions}d)`);
+      console.error(`[baton] API embedding: ${config.model} @ ${config.baseUrl} (${probeDimensions}d)`);
       // Persist for next cold start
       saveCachedDims(config, probeDimensions).catch(() => {});
     }
     if (config.requestedDimensions) {
-      console.error(`[memorix] Dimension shortening: ${config.requestedDimensions}d requested`);
+      console.error(`[baton] Dimension shortening: ${config.requestedDimensions}d requested`);
     }
 
     // Startup / CLI lexical lanes pass allowNetworkProbe=false. Do not begin
@@ -1026,17 +1026,17 @@ export class APIEmbeddingProvider implements EmbeddingProvider {
       requestedDimensions = cfg.getEmbeddingDimensions();
     } catch {
       baseUrl =
-        process.env.MEMORIX_EMBEDDING_BASE_URL ||
+        process.env.BATON_EMBEDDING_BASE_URL ||
         'https://api.openai.com/v1';
       apiKey = resolveEnvEmbeddingApiKey();
-      model = process.env.MEMORIX_EMBEDDING_MODEL || 'text-embedding-3-small';
-      const dimStr = process.env.MEMORIX_EMBEDDING_DIMENSIONS;
+      model = process.env.BATON_EMBEDDING_MODEL || 'text-embedding-3-small';
+      const dimStr = process.env.BATON_EMBEDDING_DIMENSIONS;
       requestedDimensions = dimStr ? parseInt(dimStr, 10) : null;
     }
 
     if (!apiKey) {
       throw new Error(
-        'No API key for embedding. Set MEMORIX_EMBEDDING_API_KEY or configure embedding.apiKey in memorix.yml / ~/.memorix/config.json.',
+        'No API key for embedding. Set BATON_EMBEDDING_API_KEY or configure embedding.apiKey in baton.yml / ~/.baton/config.json.',
       );
     }
 
@@ -1177,7 +1177,7 @@ export class APIEmbeddingProvider implements EmbeddingProvider {
 
     const cacheHitRate = ((texts.length - uncachedTexts.length) / texts.length * 100).toFixed(1);
     console.error(
-      `[memorix] API embedding ${uncachedTexts.length}/${texts.length} texts (cache hit: ${cacheHitRate}%)`,
+      `[baton] API embedding ${uncachedTexts.length}/${texts.length} texts (cache hit: ${cacheHitRate}%)`,
     );
 
     const processChunk = async (chunkTexts: string[], chunkIndices: number[]): Promise<void> => {
@@ -1210,7 +1210,7 @@ export class APIEmbeddingProvider implements EmbeddingProvider {
         const providerLimit = parseBatchLimit(error);
         if (providerLimit !== null && chunkTexts.length > 1 && providerLimit < chunkTexts.length) {
           console.error(
-            `[memorix] Embedding batch too large for provider, retrying in chunks of ${providerLimit}`,
+            `[baton] Embedding batch too large for provider, retrying in chunks of ${providerLimit}`,
           );
           for (let start = 0; start < chunkTexts.length; start += providerLimit) {
             await processChunk(
@@ -1370,7 +1370,7 @@ async function fetchWithRetry(
       const retryAfter = response.headers.get('retry-after');
       const parsedRetryAfter = retryAfter ? parseInt(retryAfter, 10) * 1000 : NaN;
       const waitMs = Number.isFinite(parsedRetryAfter) ? parsedRetryAfter : delay;
-      console.error(`[memorix] Embedding API ${response.status}, retry ${attempt + 1}/${MAX_RETRIES} in ${waitMs}ms`);
+      console.error(`[baton] Embedding API ${response.status}, retry ${attempt + 1}/${MAX_RETRIES} in ${waitMs}ms`);
       await waitForRetry(waitMs, options.signal);
       return fetchWithRetry(url, apiKey, body, options, attempt + 1, nativeGemini);
     }

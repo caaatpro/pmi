@@ -84,7 +84,7 @@ export default defineCommand({
         case 'search': {
           const query = getStringArg(args.query as string | undefined, positional);
           if (!query) {
-            emitError('query is required for "memorix memory search"', asJson);
+            emitError('query is required for "baton memory search"', asJson);
             return;
           }
           const limit = parsePositiveInt(args.limit as string | undefined, 10);
@@ -99,7 +99,7 @@ export default defineCommand({
             getStringArg(args.graphQuery as string | undefined, []) ||
             getStringArg(args.query as string | undefined, positional);
           if (!query) {
-            emitError('query is required for "memorix memory graph-context"', asJson);
+            emitError('query is required for "baton memory graph-context"', asJson);
             return;
           }
           const observations = filterReadableObservations(getAllObservations(), reader);
@@ -144,7 +144,7 @@ export default defineCommand({
         case 'store': {
           const narrative = getStringArg(args.text as string | undefined, positional);
           if (!narrative) {
-            emitError('text is required for "memorix memory store"', asJson);
+            emitError('text is required for "baton memory store"', asJson);
             return;
           }
           const title = asStringArg(args.title) || narrative.slice(0, 80);
@@ -182,7 +182,7 @@ export default defineCommand({
           const type = coerceObservationType(args.type as string | undefined);
           const title = asStringArg(args.title);
           if (!title) {
-            emitError('title is required for "memorix memory suggest-topic-key"', asJson);
+            emitError('title is required for "baton memory suggest-topic-key"', asJson);
             return;
           }
           const key = suggestTopicKey(type, title);
@@ -197,7 +197,7 @@ export default defineCommand({
         case 'detail': {
           const refs = parseCsvList(getIdArg(args, positional));
           if (refs.length === 0) {
-            emitError('Provide --id <n>, --ids 1,2,3, or typed refs like obs:42@org/project for "memorix memory detail"', asJson);
+            emitError('Provide --id <n>, --ids 1,2,3, or typed refs like obs:42@org/project for "baton memory detail"', asJson);
             return;
           }
           const scopedRefs = refs.map((ref) => {
@@ -221,7 +221,7 @@ export default defineCommand({
           try {
             id = parseObservationId(rawId);
           } catch {
-            emitError('Provide --id <n> for "memorix memory timeline"', asJson);
+            emitError('Provide --id <n> for "baton memory timeline"', asJson);
             return;
           }
           const result = await compactTimeline(
@@ -243,7 +243,7 @@ export default defineCommand({
         case 'resolve': {
           const ids = parseObservationIds(getIdArg(args, positional));
           if (ids.length === 0) {
-            emitError('Provide --id <n> or --ids 1,2,3 for "memorix memory resolve"', asJson);
+            emitError('Provide --id <n> or --ids 1,2,3 for "baton memory resolve"', asJson);
             return;
           }
           const status = coerceObservationStatus(args.status as string | undefined);
@@ -282,7 +282,7 @@ export default defineCommand({
           if (!isLLMEnabled()) {
             emitResult(
               { project, available: false, usedLLM: false },
-              'LLM not configured. Set MEMORIX_LLM_API_KEY or OPENAI_API_KEY to enable intelligent dedup.\n\nTip: use `memorix memory consolidate --action preview` for similarity-based consolidation without LLM.',
+              'LLM not configured. Set BATON_LLM_API_KEY or OPENAI_API_KEY to enable intelligent dedup.\n\nTip: use `baton memory consolidate --action preview` for similarity-based consolidation without LLM.',
               asJson,
             );
             return;
@@ -363,7 +363,7 @@ export default defineCommand({
             return;
           }
 
-          emitError('action must be preview or execute for "memorix memory consolidate"', asJson);
+          emitError('action must be preview or execute for "baton memory consolidate"', asJson);
           return;
         }
 
@@ -439,7 +439,7 @@ export default defineCommand({
             case 'add': {
               const content = getStringArg(args.text as string | undefined, longTermPositional);
               if (!content) {
-                emitError('text is required for "memorix memory long-term add"', asJson);
+                emitError('text is required for "baton memory long-term add"', asJson);
                 return;
               }
               const result = await createManualLongTermMemory({
@@ -475,7 +475,7 @@ export default defineCommand({
                 || longTermPositional[0]?.trim();
               const observationId = Number.parseInt(rawId || '', 10);
               if (!Number.isFinite(observationId)) {
-                emitError('fromObservation or id must be an observation ID for "memorix memory long-term promote"', asJson);
+                emitError('fromObservation or id must be an observation ID for "baton memory long-term promote"', asJson);
                 return;
               }
               const observation = getObservation(observationId, project.id);
@@ -531,7 +531,7 @@ export default defineCommand({
               const supersededBy = asStringArg(args.supersededBy)
                 || asStringArg(args['superseded-by']);
               if (!supersededBy) {
-                emitError('supersededBy is required for "memorix memory long-term supersede"', asJson);
+                emitError('supersededBy is required for "baton memory long-term supersede"', asJson);
                 return;
               }
               await getLongTermMemoryDetail({ dataDir, id: memoryId(), reader: longTermReader });
@@ -604,26 +604,26 @@ function parseObservationIds(value: unknown): number[] {
 }
 
 function printMemoryUsage(): void {
-  console.log('Memorix Memory Commands');
+  console.log('Baton Memory Commands');
   console.log('');
   console.log('Usage:');
-  console.log('  memorix memory search --query "timeout bug" [--limit 10] [--quality fast|balanced|thorough]');
-  console.log('  memorix memory recent [--limit 10]');
-  console.log('  memorix memory store --text "..." [--title "..."] [--type discovery] [--visibility project|personal|team]');
-  console.log('  memorix memory suggest-topic-key --type decision --title "..."');
-  console.log('  memorix memory detail --id 42');
-  console.log('  memorix memory detail obs:42@org/project');
-  console.log('  memorix memory timeline --id 42 [--before 3 --after 3]');
-  console.log('  memorix memory resolve --ids 42,43 [--status resolved|archived] [--dry-run]');
-  console.log('  memorix memory deduplicate [--query "..."] [--dryRun]');
-  console.log('  memorix memory consolidate [--action preview|execute] [--threshold 0.45]');
-  console.log('  memorix memory long-term list [--all]');
-  console.log('  memorix memory long-term add --kind semantic --scope user --portability portable --title "..." --text "..." [--tags "..."] [--applicability "..."]');
-  console.log('  memorix memory long-term promote --fromObservation 42 --kind procedural --scope project');
-  console.log('  memorix memory long-term qualify --id <id> --reason "verified against evidence"');
-  console.log('  memorix memory long-term approve --id <id> --reason "reviewed by operator"');
-  console.log('  memorix memory long-term archive --id <id> --reason "no longer current"');
-  console.log('  memorix memory long-term supersede --id <old-id> --superseded-by <qualified-id> --reason "replaced"');
+  console.log('  baton memory search --query "timeout bug" [--limit 10] [--quality fast|balanced|thorough]');
+  console.log('  baton memory recent [--limit 10]');
+  console.log('  baton memory store --text "..." [--title "..."] [--type discovery] [--visibility project|personal|team]');
+  console.log('  baton memory suggest-topic-key --type decision --title "..."');
+  console.log('  baton memory detail --id 42');
+  console.log('  baton memory detail obs:42@org/project');
+  console.log('  baton memory timeline --id 42 [--before 3 --after 3]');
+  console.log('  baton memory resolve --ids 42,43 [--status resolved|archived] [--dry-run]');
+  console.log('  baton memory deduplicate [--query "..."] [--dryRun]');
+  console.log('  baton memory consolidate [--action preview|execute] [--threshold 0.45]');
+  console.log('  baton memory long-term list [--all]');
+  console.log('  baton memory long-term add --kind semantic --scope user --portability portable --title "..." --text "..." [--tags "..."] [--applicability "..."]');
+  console.log('  baton memory long-term promote --fromObservation 42 --kind procedural --scope project');
+  console.log('  baton memory long-term qualify --id <id> --reason "verified against evidence"');
+  console.log('  baton memory long-term approve --id <id> --reason "reviewed by operator"');
+  console.log('  baton memory long-term archive --id <id> --reason "no longer current"');
+  console.log('  baton memory long-term supersede --id <old-id> --superseded-by <qualified-id> --reason "replaced"');
 }
 
 function longTermKind(value: unknown): 'episodic' | 'semantic' | 'procedural' {

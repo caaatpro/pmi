@@ -48,13 +48,13 @@ function observation(overrides: Partial<Observation> = {}): Observation {
 
 describe('persistent lexical fallback when a configured embedding provider fails at runtime', () => {
   let dataDir: string;
-  const originalThreshold = process.env.MEMORIX_ORAMA_HYDRATION_THRESHOLD;
+  const originalThreshold = process.env.BATON_ORAMA_HYDRATION_THRESHOLD;
 
   beforeEach(async () => {
-    dataDir = await mkdtemp(path.join(tmpdir(), 'memorix-lexical-fallback-'));
+    dataDir = await mkdtemp(path.join(tmpdir(), 'baton-lexical-fallback-'));
     // Force "large corpus" persistent mode with just one observation, instead
     // of needing 10k+ real rows to reach the default threshold.
-    process.env.MEMORIX_ORAMA_HYDRATION_THRESHOLD = '1';
+    process.env.BATON_ORAMA_HYDRATION_THRESHOLD = '1';
     const store = await createObservationStore(dataDir);
     setObservationStore(store);
     await store.insert(observation());
@@ -66,7 +66,7 @@ describe('persistent lexical fallback when a configured embedding provider fails
     vi.mocked(getEmbeddingProvider).mockResolvedValue(flakyProvider);
     resetObservationStore();
     closeAllDatabases();
-    process.env.MEMORIX_ORAMA_HYDRATION_THRESHOLD = originalThreshold;
+    process.env.BATON_ORAMA_HYDRATION_THRESHOLD = originalThreshold;
     if (dataDir) await rm(dataDir, { recursive: true, force: true });
   });
 

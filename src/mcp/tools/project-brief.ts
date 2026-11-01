@@ -1,6 +1,6 @@
 /**
- * Project brief tools inherited from Memorix: memorix_project_context (Memory Autopilot),
- * memorix_codegraph_status, memorix_context_pack, memorix_knowledge.
+ * Project brief tools inherited from Baton: baton_project_context (Memory Autopilot),
+ * baton_codegraph_status, baton_context_pack, baton_knowledge.
  *
  * Split out of src/server.ts without behaviour changes; connection state comes
  * from `ServerToolContext`.
@@ -14,7 +14,7 @@ import { READ_ONLY_TASK_PATTERN } from './helpers.js';
 
 export function registerProjectBriefTools(server: McpServer, ctx: ServerToolContext): void {
   server.registerTool(
-    'memorix_project_context',
+    'baton_project_context',
     {
       title: 'Memory Autopilot Project Context',
       description:
@@ -111,7 +111,7 @@ export function registerProjectBriefTools(server: McpServer, ctx: ServerToolCont
   );
 
   server.registerTool(
-    'memorix_codegraph_status',
+    'baton_codegraph_status',
     {
       title: 'CodeGraph Memory Status',
       description: 'Show CodeGraph Memory provider and index status for the current project.',
@@ -144,13 +144,13 @@ export function registerProjectBriefTools(server: McpServer, ctx: ServerToolCont
   );
 
   server.registerTool(
-    'memorix_context_pack',
+    'baton_context_pack',
     {
       title: 'Context Pack',
       description:
         'Build a prompt-ready working context pack for a coding task. ' +
         'Combines relevant memories, CodeGraph Memory facts, freshness warnings, suggested reads, and verification hints. ' +
-        'After a complete memorix_project_context brief, provide purpose only when deliberately expanding beyond it.',
+        'After a complete baton_project_context brief, provide purpose only when deliberately expanding beyond it.',
       inputSchema: {
         task: z.string().describe('Current coding task or question'),
         limit: z.preprocess(
@@ -165,7 +165,7 @@ export function registerProjectBriefTools(server: McpServer, ctx: ServerToolCont
     async ({ task, limit, purpose }) => {
       const unresolved = ctx.requireResolvedProject('build a context pack for the current project');
       if (unresolved) return unresolved;
-      const boundary = ctx.requireExplicitAutopilotExpansion('memorix_context_pack', purpose);
+      const boundary = ctx.requireExplicitAutopilotExpansion('baton_context_pack', purpose);
       if (boundary) return boundary;
 
       const [
@@ -261,7 +261,7 @@ export function registerProjectBriefTools(server: McpServer, ctx: ServerToolCont
   );
 
   server.registerTool(
-    'memorix_knowledge',
+    'baton_knowledge',
     {
       title: 'Knowledge Workspace',
       description:

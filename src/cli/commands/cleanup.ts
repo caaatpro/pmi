@@ -1,16 +1,16 @@
 /**
- * CLI Command: memorix cleanup
+ * CLI Command: baton cleanup
  *
  * Identifies and removes low-quality auto-generated observations.
  * Also detects and archives demo/test/system-self pollution.
  * Inspired by Mem0's memory consolidation and Graphiti's temporal pruning.
  *
  * Usage:
- *   memorix cleanup                — Interactive: preview & confirm deletion of low-quality
- *   memorix cleanup --noise        — Also archive demo/test/Memorix-self pollution
- *   memorix cleanup --dry          — Preview only, no changes
- *   memorix cleanup --force        — Apply without confirmation
- *   memorix cleanup --project X    — Target a specific projectId
+ *   baton cleanup                — Interactive: preview & confirm deletion of low-quality
+ *   baton cleanup --noise        — Also archive demo/test/Baton-self pollution
+ *   baton cleanup --dry          — Preview only, no changes
+ *   baton cleanup --force        — Apply without confirmation
+ *   baton cleanup --project X    — Target a specific projectId
  */
 
 import { defineCommand } from 'citty';

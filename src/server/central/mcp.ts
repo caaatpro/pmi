@@ -1,12 +1,12 @@
 /**
  * MCP over Streamable HTTP on the central server (`POST /mcp`), for agents
- * that reach PMI without a local client (Server-only mode, ARCHITECTURE.md §3).
+ * that reach Baton without a local client (Server-only mode, ARCHITECTURE.md §3).
  *
  * Stateless: every request is authenticated with the caller's personal access
  * token, gets its own McpServer bound to that user, and every tool runs
  * through `authorize()` and inside `db.asUser()`, so row-level security
- * applies to MCP exactly as to REST. Tool names follow the PMI surface
- * (docs/PMI/API.md §2); the rest of that surface lands with later phases.
+ * applies to MCP exactly as to REST. Tool names follow the Baton surface
+ * (docs/baton/API.md §2); the rest of that surface lands with later phases.
  */
 import type http from 'node:http';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -30,10 +30,10 @@ function failure(error: unknown): ToolResult {
 }
 
 export function createUserMcpServer(db: Database, user: AuthUser, version: string): McpServer {
-  const server = new McpServer({ name: 'pmi-server', version });
+  const server = new McpServer({ name: 'baton-server', version });
 
   server.registerTool('project_list', {
-    description: 'List the PMI projects you can access, with your role in each.',
+    description: 'List the Baton projects you can access, with your role in each.',
     inputSchema: {},
   }, async () => {
     try {

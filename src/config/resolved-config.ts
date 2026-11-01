@@ -9,8 +9,8 @@ import {
   getProjectYamlPath,
 } from './config-paths.js';
 import { loadFileConfig } from './legacy-loader.js';
-import { loadTomlConfig, type MemorixTomlConfig } from './toml-loader.js';
-import { loadYamlConfig, type MemorixYamlConfig } from './yaml-loader.js';
+import { loadTomlConfig, type BatonTomlConfig } from './toml-loader.js';
+import { loadYamlConfig, type BatonYamlConfig } from './yaml-loader.js';
 import { loadDotenv } from './dotenv-loader.js';
 
 export interface ResolvedLaneOptions {
@@ -18,7 +18,7 @@ export interface ResolvedLaneOptions {
   homeDir?: string;
 }
 
-export interface ResolvedMemorixConfig {
+export interface ResolvedBatonConfig {
   agent: {
     provider?: string;
     model?: string;
@@ -80,13 +80,13 @@ export interface ResolvedMemorixConfig {
   };
 }
 
-export function getResolvedConfig(options: ResolvedLaneOptions = {}): ResolvedMemorixConfig {
+export function getResolvedConfig(options: ResolvedLaneOptions = {}): ResolvedBatonConfig {
   const homeDir = options.homeDir ?? homedir();
   const projectRoot = options.projectRoot === undefined ? detectProject()?.rootPath ?? null : options.projectRoot;
 
   // Make .env a first-class config source so every consumer of this resolved
   // config (embedding API key, LLM base URL, etc.) sees values from
-  // ~/.memorix/.env / <project>/.env. loadDotenv() is idempotent — guarded by
+  // ~/.baton/.env / <project>/.env. loadDotenv() is idempotent — guarded by
   // a module-level `dotenvLoaded` flag — so repeat calls within one process
   // are essentially free, and it never overrides an already-set process env.
   loadDotenv(projectRoot === null ? undefined : projectRoot ?? undefined, { userHomeDir: homeDir });
@@ -94,23 +94,23 @@ export function getResolvedConfig(options: ResolvedLaneOptions = {}): ResolvedMe
   const toml = loadTomlConfig({ projectRoot: projectRoot ?? null, homeDir });
   const yaml = loadYamlConfig(projectRoot ?? null, { homeDir });
   const legacy = loadFileConfig(homeDir);
-  const embeddingBaseUrl = first(process.env.MEMORIX_EMBEDDING_BASE_URL, toml.embedding?.base_url, yaml.embedding?.baseUrl, legacy.embeddingApi?.baseUrl);
+  const embeddingBaseUrl = first(process.env.BATON_EMBEDDING_BASE_URL, toml.embedding?.base_url, yaml.embedding?.baseUrl, legacy.embeddingApi?.baseUrl);
   const openRouterEmbeddingApiKey = isOpenRouterUrl(embeddingBaseUrl) ? process.env.OPENROUTER_API_KEY : undefined;
   const requestyEmbeddingApiKey = isRequestyUrl(embeddingBaseUrl) ? process.env.REQUESTY_API_KEY : undefined;
   const memoryLlmProvider = first(
-    process.env.MEMORIX_LLM_PROVIDER,
+    process.env.BATON_LLM_PROVIDER,
     toml.memory?.llm?.provider,
     yaml.llm?.provider,
     legacy.llm?.provider,
   );
   const memoryLlmModel = first(
-    process.env.MEMORIX_LLM_MODEL,
+    process.env.BATON_LLM_MODEL,
     toml.memory?.llm?.model,
     yaml.llm?.model,
     legacy.llm?.model,
   );
   const memoryLlmBaseUrl = first(
-    process.env.MEMORIX_LLM_BASE_URL,
+    process.env.BATON_LLM_BASE_URL,
     toml.memory?.llm?.base_url,
     yaml.llm?.baseUrl,
     legacy.llm?.baseUrl,
@@ -124,8 +124,8 @@ export function getResolvedConfig(options: ResolvedLaneOptions = {}): ResolvedMe
   const isCheaperInference = memoryLlmProvider === 'cheaperinference';
   const usesPresetKeyOnly = isAtlasCloud || isRequesty || isApiRoute || isCheaperInference;
   const memoryLlmApiKey = first(
-    process.env.MEMORIX_LLM_API_KEY,
-    process.env.MEMORIX_API_KEY,
+    process.env.BATON_LLM_API_KEY,
+    process.env.BATON_API_KEY,
     toml.memory?.llm?.api_key,
     yaml.llm?.apiKey,
     legacy.llm?.apiKey,
@@ -138,32 +138,32 @@ export function getResolvedConfig(options: ResolvedLaneOptions = {}): ResolvedMe
     usesPresetKeyOnly ? undefined : openRouterMemoryLlmApiKey,
   );
 
-  const resolved: ResolvedMemorixConfig = {
+  const resolved: ResolvedBatonConfig = {
     agent: {
       provider: first(
-        process.env.MEMORIX_AGENT_PROVIDER,
-        process.env.MEMORIX_AGENT_LLM_PROVIDER,
+        process.env.BATON_AGENT_PROVIDER,
+        process.env.BATON_AGENT_LLM_PROVIDER,
         toml.agent?.provider,
         yaml.agent?.provider,
         legacy.agent?.provider,
       ),
       model: first(
-        process.env.MEMORIX_AGENT_MODEL,
-        process.env.MEMORIX_AGENT_LLM_MODEL,
+        process.env.BATON_AGENT_MODEL,
+        process.env.BATON_AGENT_LLM_MODEL,
         toml.agent?.model,
         yaml.agent?.model,
         legacy.agent?.model,
       ),
       baseUrl: first(
-        process.env.MEMORIX_AGENT_BASE_URL,
-        process.env.MEMORIX_AGENT_LLM_BASE_URL,
+        process.env.BATON_AGENT_BASE_URL,
+        process.env.BATON_AGENT_LLM_BASE_URL,
         toml.agent?.base_url,
         yaml.agent?.baseUrl,
         legacy.agent?.baseUrl,
       ),
       apiKey: first(
-        process.env.MEMORIX_AGENT_API_KEY,
-        process.env.MEMORIX_AGENT_LLM_API_KEY,
+        process.env.BATON_AGENT_API_KEY,
+        process.env.BATON_AGENT_LLM_API_KEY,
         toml.agent?.api_key,
         yaml.agent?.apiKey,
         legacy.agent?.apiKey,
@@ -182,11 +182,11 @@ export function getResolvedConfig(options: ResolvedLaneOptions = {}): ResolvedMe
       },
     },
     embedding: {
-      provider: first(process.env.MEMORIX_EMBEDDING, toml.embedding?.provider, yaml.embedding?.provider, legacy.embedding, 'off'),
-      model: first(process.env.MEMORIX_EMBEDDING_MODEL, toml.embedding?.model, yaml.embedding?.model, legacy.embeddingApi?.model),
+      provider: first(process.env.BATON_EMBEDDING, toml.embedding?.provider, yaml.embedding?.provider, legacy.embedding, 'off'),
+      model: first(process.env.BATON_EMBEDDING_MODEL, toml.embedding?.model, yaml.embedding?.model, legacy.embeddingApi?.model),
       baseUrl: embeddingBaseUrl,
-      apiKey: first(process.env.MEMORIX_EMBEDDING_API_KEY, toml.embedding?.api_key, yaml.embedding?.apiKey, legacy.embeddingApi?.apiKey, openRouterEmbeddingApiKey, requestyEmbeddingApiKey),
-      dimensions: firstNumber(parseNumber(process.env.MEMORIX_EMBEDDING_DIMENSIONS), toml.embedding?.dimensions, yaml.embedding?.dimensions, legacy.embeddingApi?.dimensions),
+      apiKey: first(process.env.BATON_EMBEDDING_API_KEY, toml.embedding?.api_key, yaml.embedding?.apiKey, legacy.embeddingApi?.apiKey, openRouterEmbeddingApiKey, requestyEmbeddingApiKey),
+      dimensions: firstNumber(parseNumber(process.env.BATON_EMBEDDING_DIMENSIONS), toml.embedding?.dimensions, yaml.embedding?.dimensions, legacy.embeddingApi?.dimensions),
     },
     rerank: resolveRerankLane({
       toml,
@@ -206,18 +206,18 @@ export function getResolvedConfig(options: ResolvedLaneOptions = {}): ResolvedMe
       excludePatterns: firstArray(toml.codegraph?.exclude_patterns, yaml.codegraph?.excludePatterns),
       maxFileBytes: firstNumber(toml.codegraph?.max_file_bytes, yaml.codegraph?.maxFileBytes),
       externalContext: first(
-        normalizeExternalContext(process.env.MEMORIX_CODEGRAPH_EXTERNAL_CONTEXT),
+        normalizeExternalContext(process.env.BATON_CODEGRAPH_EXTERNAL_CONTEXT),
         toml.codegraph?.external_context,
         yaml.codegraph?.externalContext,
         'auto',
       )!,
       externalCommand: first(
-        process.env.MEMORIX_CODEGRAPH_EXTERNAL_COMMAND,
+        process.env.BATON_CODEGRAPH_EXTERNAL_COMMAND,
         toml.codegraph?.external_command,
         yaml.codegraph?.externalCommand,
       ),
       externalTimeoutMs: firstNumber(
-        parseNumber(process.env.MEMORIX_CODEGRAPH_EXTERNAL_TIMEOUT_MS),
+        parseNumber(process.env.BATON_CODEGRAPH_EXTERNAL_TIMEOUT_MS),
         toml.codegraph?.external_timeout_ms,
         yaml.codegraph?.externalTimeoutMs,
       ),
@@ -245,12 +245,12 @@ export function getResolvedConfig(options: ResolvedLaneOptions = {}): ResolvedMe
   return resolved;
 }
 
-export function getResolvedConfigForCwd(cwd = process.cwd()): ResolvedMemorixConfig {
+export function getResolvedConfigForCwd(cwd = process.cwd()): ResolvedBatonConfig {
   const project = detectProject(cwd);
   return getResolvedConfig({ projectRoot: project?.rootPath ?? null });
 }
 
-export function getResolvedAgentLane(options: ResolvedLaneOptions = {}): ResolvedMemorixConfig['agent'] {
+export function getResolvedAgentLane(options: ResolvedLaneOptions = {}): ResolvedBatonConfig['agent'] {
   const resolved = getResolvedConfig(options);
   return {
     ...resolved.agent,
@@ -261,15 +261,15 @@ export function getResolvedAgentLane(options: ResolvedLaneOptions = {}): Resolve
   };
 }
 
-export function getResolvedMemoryLane(options: ResolvedLaneOptions = {}): ResolvedMemorixConfig['memory'] {
+export function getResolvedMemoryLane(options: ResolvedLaneOptions = {}): ResolvedBatonConfig['memory'] {
   return getResolvedConfig(options).memory;
 }
 
-export function getResolvedEmbeddingLane(options: ResolvedLaneOptions = {}): ResolvedMemorixConfig['embedding'] {
+export function getResolvedEmbeddingLane(options: ResolvedLaneOptions = {}): ResolvedBatonConfig['embedding'] {
   return getResolvedConfig(options).embedding;
 }
 
-export function getResolvedRerankLane(options: ResolvedLaneOptions = {}): ResolvedMemorixConfig['rerank'] {
+export function getResolvedRerankLane(options: ResolvedLaneOptions = {}): ResolvedBatonConfig['rerank'] {
   return getResolvedConfig(options).rerank;
 }
 
@@ -305,31 +305,31 @@ function getExistingConfigSources(paths: string[]): string[] {
 
 function getEnvSourceNames(): string[] {
   return [
-    'MEMORIX_AGENT_PROVIDER',
-    'MEMORIX_AGENT_MODEL',
-    'MEMORIX_AGENT_API_KEY',
-    'MEMORIX_AGENT_BASE_URL',
-    'MEMORIX_AGENT_LLM_PROVIDER',
-    'MEMORIX_AGENT_LLM_MODEL',
-    'MEMORIX_AGENT_LLM_API_KEY',
-    'MEMORIX_AGENT_LLM_BASE_URL',
-    'MEMORIX_LLM_PROVIDER',
-    'MEMORIX_LLM_MODEL',
-    'MEMORIX_LLM_API_KEY',
-    'MEMORIX_LLM_BASE_URL',
-    'MEMORIX_API_KEY',
-    'MEMORIX_EMBEDDING',
-    'MEMORIX_EMBEDDING_API_KEY',
-    'MEMORIX_EMBEDDING_BASE_URL',
-    'MEMORIX_EMBEDDING_MODEL',
-    'MEMORIX_EMBEDDING_DIMENSIONS',
-    'MEMORIX_RERANK_PROVIDER',
-    'MEMORIX_RERANK_MODEL',
-    'MEMORIX_RERANK_BASE_URL',
-    'MEMORIX_RERANK_API_KEY',
-    'MEMORIX_CODEGRAPH_EXTERNAL_CONTEXT',
-    'MEMORIX_CODEGRAPH_EXTERNAL_COMMAND',
-    'MEMORIX_CODEGRAPH_EXTERNAL_TIMEOUT_MS',
+    'BATON_AGENT_PROVIDER',
+    'BATON_AGENT_MODEL',
+    'BATON_AGENT_API_KEY',
+    'BATON_AGENT_BASE_URL',
+    'BATON_AGENT_LLM_PROVIDER',
+    'BATON_AGENT_LLM_MODEL',
+    'BATON_AGENT_LLM_API_KEY',
+    'BATON_AGENT_LLM_BASE_URL',
+    'BATON_LLM_PROVIDER',
+    'BATON_LLM_MODEL',
+    'BATON_LLM_API_KEY',
+    'BATON_LLM_BASE_URL',
+    'BATON_API_KEY',
+    'BATON_EMBEDDING',
+    'BATON_EMBEDDING_API_KEY',
+    'BATON_EMBEDDING_BASE_URL',
+    'BATON_EMBEDDING_MODEL',
+    'BATON_EMBEDDING_DIMENSIONS',
+    'BATON_RERANK_PROVIDER',
+    'BATON_RERANK_MODEL',
+    'BATON_RERANK_BASE_URL',
+    'BATON_RERANK_API_KEY',
+    'BATON_CODEGRAPH_EXTERNAL_CONTEXT',
+    'BATON_CODEGRAPH_EXTERNAL_COMMAND',
+    'BATON_CODEGRAPH_EXTERNAL_TIMEOUT_MS',
     'OPENROUTER_API_KEY',
     'REQUESTY_API_KEY',
     'API_ROUTE_API_KEY',
@@ -375,24 +375,24 @@ function normalizeRerankProvider(value: string | undefined): 'off' | 'http' {
 }
 
 function resolveRerankLane(args: {
-  toml: MemorixTomlConfig;
-  yaml: MemorixYamlConfig;
+  toml: BatonTomlConfig;
+  yaml: BatonYamlConfig;
   memoryLlmApiKey?: string;
   memoryLlmBaseUrl?: string;
-}): ResolvedMemorixConfig['rerank'] {
+}): ResolvedBatonConfig['rerank'] {
   const provider = normalizeRerankProvider(first(
-    process.env.MEMORIX_RERANK_PROVIDER,
+    process.env.BATON_RERANK_PROVIDER,
     args.toml.rerank?.provider,
     args.yaml.rerank?.provider,
     'off',
   ));
   const model = first(
-    process.env.MEMORIX_RERANK_MODEL,
+    process.env.BATON_RERANK_MODEL,
     args.toml.rerank?.model,
     args.yaml.rerank?.model,
   );
   const explicitBaseUrl = first(
-    process.env.MEMORIX_RERANK_BASE_URL,
+    process.env.BATON_RERANK_BASE_URL,
     args.toml.rerank?.base_url,
     args.yaml.rerank?.baseUrl,
   );
@@ -400,7 +400,7 @@ function resolveRerankLane(args: {
     ? first(explicitBaseUrl, args.memoryLlmBaseUrl)
     : explicitBaseUrl;
   const dedicatedApiKey = first(
-    process.env.MEMORIX_RERANK_API_KEY,
+    process.env.BATON_RERANK_API_KEY,
     args.toml.rerank?.api_key,
     args.yaml.rerank?.apiKey,
   );

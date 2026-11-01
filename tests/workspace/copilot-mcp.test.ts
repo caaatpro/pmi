@@ -15,13 +15,13 @@ describe('CopilotMCPAdapter', () => {
         it('should parse new mcp.json "servers" format', () => {
             const config = JSON.stringify({
                 servers: {
-                    memorix: { command: 'memorix', args: ['serve'] },
+                    baton: { command: 'baton', args: ['serve'] },
                 },
             });
             const servers = adapter.parse(config);
             expect(servers).toHaveLength(1);
-            expect(servers[0].name).toBe('memorix');
-            expect(servers[0].command).toBe('memorix');
+            expect(servers[0].name).toBe('baton');
+            expect(servers[0].command).toBe('baton');
         });
 
         it('should parse legacy settings.json "mcp.servers" format', () => {
@@ -29,13 +29,13 @@ describe('CopilotMCPAdapter', () => {
                 'editor.fontSize': 14,
                 mcp: {
                     servers: {
-                        memorix: { command: 'npx', args: ['-y', 'memorix', 'serve'] },
+                        baton: { command: 'npx', args: ['-y', 'baton', 'serve'] },
                     },
                 },
             });
             const servers = adapter.parse(config);
             expect(servers).toHaveLength(1);
-            expect(servers[0].name).toBe('memorix');
+            expect(servers[0].name).toBe('baton');
             expect(servers[0].command).toBe('npx');
         });
 

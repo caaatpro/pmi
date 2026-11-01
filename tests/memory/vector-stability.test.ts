@@ -186,7 +186,7 @@ describe('Vector Stability', () => {
 
     mockStore.loadAll.mockResolvedValue([]);
     mockStore.loadIdCounter.mockResolvedValue(1);
-    await initObservations('/tmp/memorix-vector-cli-write', {
+    await initObservations('/tmp/baton-vector-cli-write', {
       embeddingWriteMode: 'deferred',
       projectRoot: 'E:/repo',
     });
@@ -210,11 +210,11 @@ describe('Vector Stability', () => {
     expect(launchDetachedVectorBackfill).toHaveBeenCalledWith({
       projectId: 'test/vector-cli-write',
       projectRoot: 'E:/repo',
-      dataDir: '/tmp/memorix-vector-cli-write',
+      dataDir: '/tmp/baton-vector-cli-write',
     });
     expect(getVectorMissingIds('test/vector-cli-write')).toContain(observation.id);
 
-    await initObservations('/tmp/memorix-vector-default-write', { embeddingWriteMode: 'background' });
+    await initObservations('/tmp/baton-vector-default-write', { embeddingWriteMode: 'background' });
   });
 
   it('keeps obs in vectorMissingIds when provider is temporarily unavailable (not disabled)', async () => {
@@ -468,7 +468,7 @@ describe('Vector Stability', () => {
     const { initObservations, reindexObservations, getVectorMissingIds } =
       await import('../../src/memory/observations.js');
 
-    await initObservations('/tmp/memorix-vector-stability');
+    await initObservations('/tmp/baton-vector-stability');
     const count = await reindexObservations();
 
     expect(count).toBe(1);
@@ -521,7 +521,7 @@ describe('Vector Stability', () => {
 
     const { initObservations, reindexObservations, getVectorMissingIds } =
       await import('../../src/memory/observations.js');
-    await initObservations('/tmp/memorix-vector-stale-cache');
+    await initObservations('/tmp/baton-vector-stale-cache');
 
     const count = await reindexObservations();
 
@@ -575,7 +575,7 @@ describe('Vector Stability', () => {
 
     const { initObservations, prepareSearchIndex, getVectorMissingIds } =
       await import('../../src/memory/observations.js');
-    await initObservations('/tmp/memorix-vector-hydration');
+    await initObservations('/tmp/baton-vector-hydration');
 
     await prepareSearchIndex();
 

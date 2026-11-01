@@ -1,8 +1,8 @@
 /**
- * CLI Command: memorix ingest log
+ * CLI Command: baton ingest log
  *
  * Batch ingest recent git commits as memories.
- * This is the Git→Memory direction — unique to Memorix.
+ * This is the Git→Memory direction — unique to Baton.
  */
 
 import { defineCommand } from 'citty';

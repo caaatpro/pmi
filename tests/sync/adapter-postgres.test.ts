@@ -24,18 +24,18 @@ class InMemorySqlClient implements SqlClient {
         && batch.device_id === deviceId && Number(batch.sequence) <= cutoff).length }] as T[];
     }
     if (sql.includes('to_regclass')) {
-      return [{ name: this.batchesReady ? 'memorix_sync_batches' : null }] as T[];
+      return [{ name: this.batchesReady ? 'baton_sync_batches' : null }] as T[];
     }
-    if (sql.includes('FROM memorix_sync_cursors') && this.cursorsReady) {
+    if (sql.includes('FROM baton_sync_cursors') && this.cursorsReady) {
       const applied = this.cursors.get(String(params[0]));
       return (applied ? [{ applied: structuredClone(applied) }] : []) as T[];
     }
-    if (sql.includes('SELECT payload FROM memorix_sync_batches') && this.batchesReady) {
+    if (sql.includes('SELECT payload FROM baton_sync_batches') && this.batchesReady) {
       const key = `${params[0]}:${params[1]}:${params[2]}`;
       const row = this.batches.get(key);
       return (row ? [{ payload: structuredClone(row.payload) }] : []) as T[];
     }
-    if (sql.includes('FROM memorix_sync_batches') && this.batchesReady) {
+    if (sql.includes('FROM baton_sync_batches') && this.batchesReady) {
       const since = new Map<string, number>();
       for (const match of sql.matchAll(/device_id = \$(\d+) AND sequence > \$(\d+)/g)) {
         since.set(String(params[Number(match[1]) - 1]), Number(params[Number(match[2]) - 1]));
@@ -62,18 +62,18 @@ class InMemorySqlClient implements SqlClient {
   }
 
   async exec(sql: string, params: unknown[]): Promise<void> {
-    if (sql.includes('CREATE TABLE IF NOT EXISTS memorix_sync_batches')) {
+    if (sql.includes('CREATE TABLE IF NOT EXISTS baton_sync_batches')) {
       this.batchesReady = true;
       return;
     }
-    if (sql.includes('CREATE TABLE IF NOT EXISTS memorix_sync_cursors')) {
+    if (sql.includes('CREATE TABLE IF NOT EXISTS baton_sync_cursors')) {
       this.cursorsReady = true;
       return;
     }
-    if (sql.includes('ALTER TABLE memorix_sync_batches') || sql.includes('CREATE UNIQUE INDEX IF NOT EXISTS memorix_sync_batches_scope_key')) {
+    if (sql.includes('ALTER TABLE baton_sync_batches') || sql.includes('CREATE UNIQUE INDEX IF NOT EXISTS baton_sync_batches_scope_key')) {
       return;
     }
-    if (sql.includes('INSERT INTO memorix_sync_batches') && this.batchesReady) {
+    if (sql.includes('INSERT INTO baton_sync_batches') && this.batchesReady) {
       const [namespace, deviceId, sequence, producedAt, encodedPayload] = params as [string, string, number, string, string];
       const key = `${namespace}:${deviceId}:${sequence}`;
       if (!this.batches.has(key)) {
@@ -87,12 +87,12 @@ class InMemorySqlClient implements SqlClient {
       }
       return;
     }
-    if (sql.includes('INSERT INTO memorix_sync_cursors') && this.cursorsReady) {
+    if (sql.includes('INSERT INTO baton_sync_cursors') && this.cursorsReady) {
       const [deviceId, encodedApplied] = params as [string, string];
       this.cursors.set(deviceId, JSON.parse(encodedApplied) as Record<string, number>);
       return;
     }
-    if (sql.includes('DELETE FROM memorix_sync_batches')) {
+    if (sql.includes('DELETE FROM baton_sync_batches')) {
       const deviceId = String(params[1]);
       const cutoff = Number(params[2] ?? -1);
       for (const [key, batch] of this.batches) {

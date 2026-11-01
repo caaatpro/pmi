@@ -1,6 +1,6 @@
 /**
- * Agent integration tools inherited from Memorix (full profile): memorix_rules_sync,
- * memorix_workspace_sync.
+ * Agent integration tools inherited from Baton (full profile): baton_rules_sync,
+ * baton_workspace_sync.
  *
  * Split out of src/server.ts without behaviour changes; connection state comes
  * from `ServerToolContext`.
@@ -16,13 +16,13 @@ import { AGENT_TARGETS, RULE_SOURCES } from './helpers.js';
 
 export function registerIntegrationTools(server: McpServer, ctx: ServerToolContext): void {
   // ============================================================
-  // Rules Sync Tool (P2 — Memorix differentiator)
+  // Rules Sync Tool (P2 — Baton differentiator)
   // ============================================================
 
 
-  /** memorix_rules_sync — scan, dedup, and generate rules across agents */
+  /** baton_rules_sync — scan, dedup, and generate rules across agents */
   server.registerTool(
-    'memorix_rules_sync',
+    'baton_rules_sync',
     {
       title: 'Rules Sync',
       description:
@@ -93,9 +93,9 @@ export function registerIntegrationTools(server: McpServer, ctx: ServerToolConte
   // ============================================================
 
 
-  /** memorix_workspace_sync — migrate entire workspace config across agents */
+  /** baton_workspace_sync — migrate entire workspace config across agents */
   server.registerTool(
-    'memorix_workspace_sync',
+    'baton_workspace_sync',
     {
       title: 'Workspace Sync',
       description:

@@ -9,7 +9,7 @@
  * Layer 3 (detail)   → Full observation content (~500-1000 tokens/result)
  */
 
-import type { SearchOptions, IndexEntry, TimelineContext, MemorixDocument, ObservationRef, MemoryRef, ObservationReader } from '../types.js';
+import type { SearchOptions, IndexEntry, TimelineContext, BatonDocument, ObservationRef, MemoryRef, ObservationReader } from '../types.js';
 import {
   searchObservations,
   getTimeline,
@@ -141,15 +141,15 @@ export async function compactSearch(options: SearchOptions, surface: RetrievalSu
     if (!projectHasStoredMemory) {
       formatted =
         options.reader
-          ? `No Memorix memories are available to this session yet.\n\n` +
+          ? `No Baton memories are available to this session yet.\n\n` +
             `The tool call worked, but this session has no project-visible memory to retrieve.`
-          : `This project does not have any Memorix memories yet.\n\n` +
+          : `This project does not have any Baton memories yet.\n\n` +
             `It looks like a fresh project: the tool call worked, but there is nothing stored to retrieve yet.\n\n` +
             `Memories will start appearing after observations, session summaries, hook captures, or git-memory are written.`;
     } else {
       formatted =
         `No memories found for the current query.\n\n` +
-        `This project does have stored Memorix memories, but none matched the current query/filter. ` +
+        `This project does have stored Baton memories, but none matched the current query/filter. ` +
         `Try a more specific topic, use /memory status for runtime diagnostics, or ask for recent memory if you want a broad overview.`;
     }
   }
@@ -228,7 +228,7 @@ export async function compactDetail(
   idsOrRefs: number[] | ObservationRef[] | string[],
   options: { reader?: ObservationReader } = {},
 ): Promise<{
-  documents: MemorixDocument[];
+  documents: BatonDocument[];
   formatted: string;
   totalTokens: number;
 }> {
@@ -263,12 +263,12 @@ export async function compactDetail(
     .filter((x) => x.ref.kind === 'skill');
 
   // Per-slot results — keyed by original parsedRefs index
-  const slotDoc = new Map<number, MemorixDocument>();
+  const slotDoc = new Map<number, BatonDocument>();
   const slotFormatted = new Map<number, string>();
 
   // --- Legacy mini-skill refs (skill:3) ---
   // Mini-skills were converted into coding_convention memories by migration
-  // pmi-5, keyed by topicKey mini-skill/<id>/<fingerprint>; such a ref opens that memory.
+  // baton-5, keyed by topicKey mini-skill/<id>/<fingerprint>; such a ref opens that memory.
   if (skillRefsIndexed.length > 0) {
     const readable = filterReadableObservations(getAllObservations(), options.reader);
     for (const { ref, idx } of skillRefsIndexed) {
@@ -290,11 +290,11 @@ export async function compactDetail(
   // Prefer in-memory observations for current-project reliability, but fall back
   // to the global Orama index so cross-project search results can still open.
   // Security: refs WITHOUT projectId are treated as ambiguous — the in-memory
-  // lookup may return a wrong-project observation. Callers (memorix_detail tool)
+  // lookup may return a wrong-project observation. Callers (baton_detail tool)
   // should always inject projectId for bare numeric IDs.
   await ensureFreshIndex(); // freshness gate for the observation index
   const toRefKey = (ref: ObservationRef) => `${ref.projectId ?? ''}::${ref.id}`;
-  const documentMap = new Map<string, MemorixDocument>();
+  const documentMap = new Map<string, BatonDocument>();
   const missingRefs: ObservationRef[] = [];
   for (const ref of refs) {
     const obs = getObservation(ref.id, ref.projectId);
@@ -447,7 +447,7 @@ export async function compactDetail(
   }
 
   // Reassemble in original parsedRefs order
-  const allDocuments: MemorixDocument[] = [];
+  const allDocuments: BatonDocument[] = [];
   const allFormattedParts: string[] = [];
   for (let i = 0; i < parsedRefs.length; i++) {
     const doc = slotDoc.get(i);
@@ -472,7 +472,7 @@ async function getPersistedObservation(ref: ObservationRef) {
   }
 }
 
-function observationToDocument(obs: ReturnType<typeof getAllObservations>[number]): MemorixDocument {
+function observationToDocument(obs: ReturnType<typeof getAllObservations>[number]): BatonDocument {
   return {
     id: makeOramaObservationId(obs.projectId, obs.id),
     observationId: obs.id,

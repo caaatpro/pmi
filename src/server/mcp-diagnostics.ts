@@ -3,7 +3,7 @@
 export const CURRENT_MCP_PROTOCOL_VERSION = '2026-07-28';
 export const LEGACY_MCP_PROTOCOL_VERSION = '2025-11-25';
 export const OLDEST_LEGACY_MCP_PROTOCOL_VERSION = '2024-11-05';
-export const MCP_SERVER_NAME = 'io.github.AVIDS2/memorix';
+export const MCP_SERVER_NAME = 'baton';
 
 export interface McpDiagnostics {
   serverName: string;
@@ -43,7 +43,7 @@ export function getMcpDiagnostics(): McpDiagnostics {
       polling: 'unsupported',
       subscriptions: 'supported',
       // The protocol envelope is emitted, but TTL is intentionally zero until
-      // Memorix can invalidate a durable per-project list cache correctly.
+      // Baton can invalidate a durable per-project list cache correctly.
       listCache: 'protocol-hints-only',
       explicitProjectHandle: 'supported',
     },

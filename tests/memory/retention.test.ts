@@ -23,9 +23,9 @@ import {
 } from '../../src/memory/retention.js';
 import { initObservationStore, resetObservationStore, getObservationStore } from '../../src/store/obs-store.js';
 import { closeAllDatabases } from '../../src/store/sqlite-db.js';
-import type { MemorixDocument } from '../../src/types.js';
+import type { BatonDocument } from '../../src/types.js';
 
-function makeDoc(overrides: Partial<MemorixDocument> = {}): MemorixDocument {
+function makeDoc(overrides: Partial<BatonDocument> = {}): BatonDocument {
   return {
     id: 'obs-1',
     observationId: 1,
@@ -246,7 +246,7 @@ describe('Retention & Decay', () => {
     let tmpDir: string;
 
     beforeEach(async () => {
-      tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-archive-test-'));
+      tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-archive-test-'));
     });
 
     afterEach(async () => {

@@ -57,7 +57,7 @@ export function classifyNoiseObservation(
   const concepts = (observation.concepts ?? []).map((concept) => concept.trim().toLowerCase());
 
   if (
-    entityName === 'memorix.demo'
+    entityName === 'baton.demo'
     || entityName.startsWith('for_memmcp_test')
     || concepts.some((concept) => EXPLICIT_NOISE_MARKERS.has(concept))
   ) {

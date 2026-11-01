@@ -38,15 +38,15 @@ async function runCommand(args: Record<string, unknown>) {
 
 describe('codegraph CLI command', () => {
   const originalCwd = process.cwd();
-  const originalDataDir = process.env.MEMORIX_DATA_DIR;
-  const originalEmbedding = process.env.MEMORIX_EMBEDDING;
+  const originalDataDir = process.env.BATON_DATA_DIR;
+  const originalEmbedding = process.env.BATON_EMBEDDING;
   const originalGitOptionalLocks = process.env.GIT_OPTIONAL_LOCKS;
   let sandboxRoot = '';
   let repoDir = '';
   let dataDir = '';
 
   beforeEach(() => {
-    sandboxRoot = mkdtempSync(path.join(tmpdir(), 'memorix-codegraph-cli-'));
+    sandboxRoot = mkdtempSync(path.join(tmpdir(), 'baton-codegraph-cli-'));
     repoDir = path.join(sandboxRoot, 'repo');
     dataDir = path.join(sandboxRoot, 'data');
     mkdirSync(path.join(repoDir, 'src'), { recursive: true });
@@ -55,21 +55,21 @@ describe('codegraph CLI command', () => {
     process.env.GIT_OPTIONAL_LOCKS = '0';
     execSync('git init', { cwd: repoDir, stdio: 'ignore' });
     process.chdir(repoDir);
-    process.env.MEMORIX_DATA_DIR = dataDir;
-    process.env.MEMORIX_EMBEDDING = 'off';
+    process.env.BATON_DATA_DIR = dataDir;
+    process.env.BATON_EMBEDDING = 'off';
   });
 
   afterEach(async () => {
     process.chdir(originalCwd);
     if (originalDataDir === undefined) {
-      delete process.env.MEMORIX_DATA_DIR;
+      delete process.env.BATON_DATA_DIR;
     } else {
-      process.env.MEMORIX_DATA_DIR = originalDataDir;
+      process.env.BATON_DATA_DIR = originalDataDir;
     }
     if (originalEmbedding === undefined) {
-      delete process.env.MEMORIX_EMBEDDING;
+      delete process.env.BATON_EMBEDDING;
     } else {
-      process.env.MEMORIX_EMBEDDING = originalEmbedding;
+      process.env.BATON_EMBEDDING = originalEmbedding;
     }
     if (originalGitOptionalLocks === undefined) {
       delete process.env.GIT_OPTIONAL_LOCKS;
@@ -124,10 +124,10 @@ describe('codegraph CLI command', () => {
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('Usage:');
-    expect(result.stdout).toContain('memorix codegraph refresh');
-    expect(result.stdout).toContain('memorix codegraph diff');
-    expect(result.stdout).toContain('memorix codegraph impact --path');
-    expect(result.stdout).toContain('memorix codegraph context-pack --task');
+    expect(result.stdout).toContain('baton codegraph refresh');
+    expect(result.stdout).toContain('baton codegraph diff');
+    expect(result.stdout).toContain('baton codegraph impact --path');
+    expect(result.stdout).toContain('baton codegraph context-pack --task');
   });
 
   it('compares the last two refreshes and reports bounded current graph impact', async () => {
@@ -199,7 +199,7 @@ describe('codegraph CLI command', () => {
     const result = await runCommand({ _: ['context-pack'], task: 'continue auth bug' });
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('Memorix Autopilot Brief');
+    expect(result.stdout).toContain('Baton Autopilot Brief');
     expect(result.stdout).toContain('authMiddleware');
     expect(result.stdout).toContain('src/auth.ts');
   });
@@ -214,7 +214,7 @@ describe('codegraph CLI command', () => {
     const parsed = JSON.parse(result.stdout);
     expect(parsed).toMatchObject({
       schemaVersion: '1',
-      brief: expect.stringContaining('Memorix Autopilot Brief'),
+      brief: expect.stringContaining('Baton Autopilot Brief'),
       receipt: expect.objectContaining({ target: 'context-pack' }),
       code: expect.objectContaining({ selected: expect.any(String) }),
       loadout: expect.objectContaining({ agent: 'codex' }),

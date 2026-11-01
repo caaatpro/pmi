@@ -1,7 +1,7 @@
 /**
  * Real Postgres for central-server tests.
  *
- * - `PMI_TEST_PG_URL` set (CI service container): each call creates a fresh
+ * - `BATON_TEST_PG_URL` set (CI service container): each call creates a fresh
  *   database on that server and drops it afterwards.
  * - Otherwise, when Docker is available: a throwaway `pgvector/pgvector:pg17`
  *   container per test file, removed in `stop()`.
@@ -22,8 +22,8 @@ function dockerAvailable(): boolean {
   }
 }
 
-export const pgAvailable = Boolean(process.env.PMI_TEST_PG_URL) || dockerAvailable();
-export const pgSkipReason = 'Postgres tests need Docker or PMI_TEST_PG_URL; skipped';
+export const pgAvailable = Boolean(process.env.BATON_TEST_PG_URL) || dockerAvailable();
+export const pgSkipReason = 'Postgres tests need Docker or BATON_TEST_PG_URL; skipped';
 
 export interface TestPostgres {
   url: string;
@@ -65,12 +65,12 @@ async function waitForPostgres(url: string, timeoutMs = 60_000): Promise<void> {
 function sweepOrphans(): void {
   let names: string[] = [];
   try {
-    names = execFileSync('docker', ['ps', '-a', '--filter', 'name=pmi-test-pg-', '--format', '{{.Names}}'], { encoding: 'utf8' }).split('\n').filter(Boolean);
+    names = execFileSync('docker', ['ps', '-a', '--filter', 'name=baton-test-pg-', '--format', '{{.Names}}'], { encoding: 'utf8' }).split('\n').filter(Boolean);
   } catch {
     return;
   }
   for (const name of names) {
-    const pid = Number(/^pmi-test-pg-(\d+)-/.exec(name)?.[1]);
+    const pid = Number(/^baton-test-pg-(\d+)-/.exec(name)?.[1]);
     if (!pid || pid === process.pid) continue;
     try {
       process.kill(pid, 0);
@@ -88,9 +88,9 @@ process.once('exit', () => {
 });
 
 export async function startPostgres(): Promise<TestPostgres> {
-  const shared = process.env.PMI_TEST_PG_URL;
+  const shared = process.env.BATON_TEST_PG_URL;
   if (shared) {
-    const name = `pmi_test_${randomBytes(6).toString('hex')}`;
+    const name = `baton_test_${randomBytes(6).toString('hex')}`;
     await withAdminClient(shared, (query) => query(`CREATE DATABASE ${name}`));
     const url = new URL(shared);
     url.pathname = `/${name}`;
@@ -101,11 +101,11 @@ export async function startPostgres(): Promise<TestPostgres> {
   }
 
   sweepOrphans();
-  const container = `pmi-test-pg-${process.pid}-${randomBytes(3).toString('hex')}`;
+  const container = `baton-test-pg-${process.pid}-${randomBytes(3).toString('hex')}`;
   started.add(container);
   execFileSync('docker', [
     'run', '-d', '--rm', '--name', container,
-    '-e', 'POSTGRES_PASSWORD=pmi', '-e', 'POSTGRES_USER=pmi', '-e', 'POSTGRES_DB=pmi',
+    '-e', 'POSTGRES_PASSWORD=baton', '-e', 'POSTGRES_USER=baton', '-e', 'POSTGRES_DB=baton',
     '-p', '127.0.0.1::5432',
     PG_IMAGE,
   ], { stdio: 'pipe' });
@@ -116,7 +116,7 @@ export async function startPostgres(): Promise<TestPostgres> {
   try {
     const mapping = execFileSync('docker', ['port', container, '5432/tcp'], { encoding: 'utf8' }).trim().split('\n')[0];
     const port = mapping.slice(mapping.lastIndexOf(':') + 1);
-    const url = `postgres://pmi:pmi@127.0.0.1:${port}/pmi`;
+    const url = `postgres://baton:baton@127.0.0.1:${port}/baton`;
     await waitForPostgres(url);
     return { url, stop };
   } catch (error) {

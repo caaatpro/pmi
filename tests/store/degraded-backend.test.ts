@@ -7,7 +7,7 @@ describe('DegradedBackend', () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = mkdtempSync(join(os.tmpdir(), 'memorix-degraded-'));
+    tmpDir = mkdtempSync(join(os.tmpdir(), 'baton-degraded-'));
   });
 
   afterEach(() => {

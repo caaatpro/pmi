@@ -9,8 +9,8 @@ describe('File Lock', () => {
   let lockPath: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-lock-test-'));
-    lockPath = path.join(tmpDir, '.memorix.lock');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-lock-test-'));
+    lockPath = path.join(tmpDir, '.baton.lock');
   });
 
   afterEach(async () => {

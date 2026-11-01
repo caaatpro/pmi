@@ -14,7 +14,7 @@ import { WorkspaceSyncApplier } from '../../src/workspace/applier.js';
 let testDir: string;
 
 beforeEach(async () => {
-  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memorix-applier-'));
+  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baton-applier-'));
 });
 
 describe('WorkspaceSyncApplier', () => {

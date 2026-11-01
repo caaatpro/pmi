@@ -11,10 +11,10 @@ import { ClaudeCodeMCPAdapter } from '../../src/workspace/mcp-adapters/claude-co
 
 const sampleServers: MCPServerEntry[] = [
   {
-    name: 'memorix',
+    name: 'baton',
     command: 'npx',
-    args: ['-y', 'memorix-mcp'],
-    env: { MEMORIX_PROJECT: 'my-project' },
+    args: ['-y', 'baton-mcp'],
+    env: { BATON_PROJECT: 'my-project' },
   },
   {
     name: 'context7',
@@ -39,10 +39,10 @@ describe('WindsurfMCPAdapter', () => {
 
   const windsurfConfig = JSON.stringify({
     mcpServers: {
-      memorix: {
+      baton: {
         command: 'npx',
-        args: ['-y', 'memorix-mcp'],
-        env: { MEMORIX_PROJECT: 'my-project' },
+        args: ['-y', 'baton-mcp'],
+        env: { BATON_PROJECT: 'my-project' },
       },
       context7: {
         command: 'npx',
@@ -58,10 +58,10 @@ describe('WindsurfMCPAdapter', () => {
   it('parse should extract servers from JSON config', () => {
     const servers = adapter.parse(windsurfConfig);
     expect(servers).toHaveLength(2);
-    expect(servers[0].name).toBe('memorix');
+    expect(servers[0].name).toBe('baton');
     expect(servers[0].command).toBe('npx');
-    expect(servers[0].args).toEqual(['-y', 'memorix-mcp']);
-    expect(servers[0].env).toEqual({ MEMORIX_PROJECT: 'my-project' });
+    expect(servers[0].args).toEqual(['-y', 'baton-mcp']);
+    expect(servers[0].env).toEqual({ BATON_PROJECT: 'my-project' });
     expect(servers[1].name).toBe('context7');
   });
 
@@ -74,8 +74,8 @@ describe('WindsurfMCPAdapter', () => {
     const output = adapter.generate(sampleServers.slice(0, 2));
     const parsed = JSON.parse(output);
     expect(parsed.mcpServers).toBeDefined();
-    expect(parsed.mcpServers.memorix.command).toBe('npx');
-    expect(parsed.mcpServers.memorix.args).toEqual(['-y', 'memorix-mcp']);
+    expect(parsed.mcpServers.baton.command).toBe('npx');
+    expect(parsed.mcpServers.baton.args).toEqual(['-y', 'baton-mcp']);
     expect(parsed.mcpServers.context7).toBeDefined();
   });
 
@@ -105,7 +105,7 @@ describe('WindsurfMCPAdapter', () => {
   it('parse should handle disabled flag and env: null', () => {
     const config = JSON.stringify({
       mcpServers: {
-        memorix: {
+        baton: {
           command: 'node',
           args: ['serve'],
           disabled: false,
@@ -144,10 +144,10 @@ describe('CursorMCPAdapter', () => {
 
   const cursorConfig = JSON.stringify({
     mcpServers: {
-      memorix: {
+      baton: {
         command: 'npx',
-        args: ['-y', 'memorix-mcp'],
-        env: { MEMORIX_PROJECT: 'my-project' },
+        args: ['-y', 'baton-mcp'],
+        env: { BATON_PROJECT: 'my-project' },
       },
     },
   });
@@ -159,13 +159,13 @@ describe('CursorMCPAdapter', () => {
   it('parse should extract servers', () => {
     const servers = adapter.parse(cursorConfig);
     expect(servers).toHaveLength(1);
-    expect(servers[0].name).toBe('memorix');
+    expect(servers[0].name).toBe('baton');
   });
 
   it('generate should produce valid Cursor JSON config', () => {
     const output = adapter.generate(sampleServers.slice(0, 1));
     const parsed = JSON.parse(output);
-    expect(parsed.mcpServers.memorix).toBeDefined();
+    expect(parsed.mcpServers.baton).toBeDefined();
   });
 });
 
@@ -177,12 +177,12 @@ describe('CodexMCPAdapter', () => {
   const adapter = new CodexMCPAdapter();
 
   const codexConfig = `
-[mcp_servers.memorix]
+[mcp_servers.baton]
 command = "npx"
-args = ["-y", "memorix-mcp"]
+args = ["-y", "baton-mcp"]
 
-[mcp_servers.memorix.env]
-MEMORIX_PROJECT = "my-project"
+[mcp_servers.baton.env]
+BATON_PROJECT = "my-project"
 
 [mcp_servers.context7]
 command = "npx"
@@ -199,11 +199,11 @@ url = "https://mcp.figma.com/mcp"
   it('parse should extract servers from TOML config', () => {
     const servers = adapter.parse(codexConfig);
     expect(servers.length).toBeGreaterThanOrEqual(2);
-    const memorix = servers.find((s: MCPServerEntry) => s.name === 'memorix');
-    expect(memorix).toBeDefined();
-    expect(memorix!.command).toBe('npx');
-    expect(memorix!.args).toEqual(['-y', 'memorix-mcp']);
-    expect(memorix!.env).toEqual({ MEMORIX_PROJECT: 'my-project' });
+    const baton = servers.find((s: MCPServerEntry) => s.name === 'baton');
+    expect(baton).toBeDefined();
+    expect(baton!.command).toBe('npx');
+    expect(baton!.args).toEqual(['-y', 'baton-mcp']);
+    expect(baton!.env).toEqual({ BATON_PROJECT: 'my-project' });
   });
 
   it('parse should handle URL-based servers', () => {
@@ -219,9 +219,9 @@ url = "https://mcp.figma.com/mcp"
 
   it('generate should produce valid TOML config', () => {
     const output = adapter.generate(sampleServers.slice(0, 2));
-    expect(output).toContain('[mcp_servers.memorix]');
+    expect(output).toContain('[mcp_servers.baton]');
     expect(output).toContain('command = "npx"');
-    expect(output).toContain('args = ["-y", "memorix-mcp"]');
+    expect(output).toContain('args = ["-y", "baton-mcp"]');
     expect(output).toContain('[mcp_servers.context7]');
   });
 
@@ -241,10 +241,10 @@ describe('ClaudeCodeMCPAdapter', () => {
 
   const claudeConfig = JSON.stringify({
     mcpServers: {
-      memorix: {
+      baton: {
         command: 'npx',
-        args: ['-y', 'memorix-mcp'],
-        env: { MEMORIX_PROJECT: 'my-project' },
+        args: ['-y', 'baton-mcp'],
+        env: { BATON_PROJECT: 'my-project' },
         alwaysLoad: true,
       },
     },
@@ -257,15 +257,15 @@ describe('ClaudeCodeMCPAdapter', () => {
   it('parse should extract servers', () => {
     const servers = adapter.parse(claudeConfig);
     expect(servers).toHaveLength(1);
-    expect(servers[0].name).toBe('memorix');
+    expect(servers[0].name).toBe('baton');
     expect(servers[0].alwaysLoad).toBe(true);
   });
 
   it('generate should produce valid config', () => {
     const output = adapter.generate([{ ...sampleServers[0], alwaysLoad: true }]);
     const parsed = JSON.parse(output);
-    expect(parsed.mcpServers.memorix).toBeDefined();
-    expect(parsed.mcpServers.memorix.alwaysLoad).toBe(true);
+    expect(parsed.mcpServers.baton).toBeDefined();
+    expect(parsed.mcpServers.baton.alwaysLoad).toBe(true);
   });
 });
 
@@ -286,8 +286,8 @@ describe('Real-world Windsurf config', () => {
         args: ['-y', 'mcp-remote', 'https://mcp.figma.com/mcp'],
         command: 'npx',
       },
-      memorix: {
-        args: ['E:/my_idea_cc/my_copilot/memorix/dist/cli/index.js', 'serve'],
+      baton: {
+        args: ['E:/my_idea_cc/my_copilot/baton/dist/cli/index.js', 'serve'],
         command: 'node',
         disabled: false,
         env: null,
@@ -311,9 +311,9 @@ describe('Real-world Windsurf config', () => {
     expect(ctx7.headers).toEqual({ CONTEXT7_API_KEY: 'ctx7sk-xxx' });
   });
 
-  it('should parse memorix as stdio with env:null handled', () => {
+  it('should parse baton as stdio with env:null handled', () => {
     const servers = adapter.parse(realConfig);
-    const mx = servers.find((s: MCPServerEntry) => s.name === 'memorix')!;
+    const mx = servers.find((s: MCPServerEntry) => s.name === 'baton')!;
     expect(mx.command).toBe('node');
     expect(mx.env).toBeUndefined();
   });
@@ -338,9 +338,9 @@ enabled = true
 [mcp_servers.figma]
 url = "https://mcp.figma.com/mcp"
 
-[mcp_servers.memorix]
+[mcp_servers.baton]
 command = "node"
-args = ["E:/my_idea_cc/my_copilot/memorix/dist/cli/index.js", "serve"]
+args = ["E:/my_idea_cc/my_copilot/baton/dist/cli/index.js", "serve"]
 `;
 
   it('should parse all 4 real servers', () => {
@@ -366,7 +366,7 @@ args = ["E:/my_idea_cc/my_copilot/memorix/dist/cli/index.js", "serve"]
     const servers = adapter.parse(realConfig);
     const names = servers.map((s: MCPServerEntry) => s.name);
     expect(names).not.toContain('config');
-    expect(names).toContain('memorix');
+    expect(names).toContain('baton');
   });
 });
 
@@ -386,9 +386,9 @@ describe('Cross-agent MCP config conversion', () => {
     const codexConfig = codex.generate(servers);
     const recovered = codex.parse(codexConfig);
     expect(recovered).toHaveLength(2);
-    expect(recovered[0].name).toBe('memorix');
+    expect(recovered[0].name).toBe('baton');
     expect(recovered[0].command).toBe('npx');
-    expect(recovered[0].env).toEqual({ MEMORIX_PROJECT: 'my-project' });
+    expect(recovered[0].env).toEqual({ BATON_PROJECT: 'my-project' });
   });
 
   it('Windsurf HTTP → Codex URL round-trip', () => {
@@ -415,7 +415,7 @@ describe('Cross-agent MCP config conversion', () => {
     const cursorConfig = cursor.generate(servers);
     const recovered = cursor.parse(cursorConfig);
     expect(recovered).toHaveLength(2);
-    expect(recovered[0].name).toBe('memorix');
+    expect(recovered[0].name).toBe('baton');
   });
 
   it('Windsurf → Claude Code round-trip preserves server data', () => {

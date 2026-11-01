@@ -46,7 +46,7 @@ export default defineCommand({
           const decision = (args.decision as string | undefined)?.trim();
           const rationale = (args.rationale as string | undefined)?.trim();
           if (!entityName || !decision || !rationale) {
-            emitError('entity, decision, and rationale are required for "memorix reasoning store"', asJson);
+            emitError('entity, decision, and rationale are required for "baton reasoning store"', asJson);
             return;
           }
 
@@ -110,7 +110,7 @@ export default defineCommand({
         case 'search': {
           const query = (args.query as string | undefined)?.trim();
           if (!query) {
-            emitError('query is required for "memorix reasoning search"', asJson);
+            emitError('query is required for "baton reasoning search"', asJson);
             return;
           }
           const scope = (args.scope as string | undefined) === 'global' ? 'global' : 'project';
@@ -132,11 +132,11 @@ export default defineCommand({
         }
 
         default:
-          console.log('Memorix Reasoning Commands');
+          console.log('Baton Reasoning Commands');
           console.log('');
           console.log('Usage:');
-          console.log('  memorix reasoning store --entity auth --decision "Use SQLite" --rationale "..." [--visibility project|personal|team]');
-          console.log('  memorix reasoning search --query "why sqlite" [--scope project|global --limit 10]');
+          console.log('  baton reasoning store --entity auth --decision "Use SQLite" --rationale "..." [--visibility project|personal|team]');
+          console.log('  baton reasoning search --query "why sqlite" [--scope project|global --limit 10]');
       }
     } catch (error) {
       emitError(error instanceof Error ? error.message : String(error), asJson);

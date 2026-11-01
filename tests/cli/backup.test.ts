@@ -15,7 +15,7 @@ afterEach(() => {
 
 describe('local backup and restore', () => {
   it('round-trips the database and blobs, checks integrity, and never deletes the current store', () => {
-    root = fs.mkdtempSync(path.join(tmpdir(), 'pmi-backup-'));
+    root = fs.mkdtempSync(path.join(tmpdir(), 'baton-backup-'));
     const data = path.join(root, 'data');
     getDatabase(data).prepare("INSERT INTO meta (key, value) VALUES ('marker', 'original')").run();
     const sha = new BlobStore(data).put(Buffer.from('blob body'));
@@ -30,10 +30,10 @@ describe('local backup and restore', () => {
     const restored = restoreLocalStore(data, out, true);
     expect(getDatabase(data).prepare("SELECT value FROM meta WHERE key = 'marker'").get()).toEqual({ value: 'original' });
     expect(new BlobStore(data).get(sha).toString()).toBe('blob body');
-    expect(restored.movedAside && fs.existsSync(path.join(restored.movedAside, 'memorix.db'))).toBe(true);
+    expect(restored.movedAside && fs.existsSync(path.join(restored.movedAside, 'baton.db'))).toBe(true);
 
     closeAllDatabases();
-    fs.appendFileSync(path.join(out, 'memorix.db'), 'tampered');
+    fs.appendFileSync(path.join(out, 'baton.db'), 'tampered');
     expect(() => restoreLocalStore(data, out, true)).toThrow(/checksum/);
   });
 });

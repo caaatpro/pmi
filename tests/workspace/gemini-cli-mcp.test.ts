@@ -33,9 +33,9 @@ describe('GeminiCLIMCPAdapter', () => {
         it('should parse standard mcpServers config', () => {
             const config = JSON.stringify({
                 mcpServers: {
-                    memorix: {
+                    baton: {
                         command: 'npx',
-                        args: ['-y', 'memorix'],
+                        args: ['-y', 'baton'],
                     },
                     context7: {
                         command: 'npx',
@@ -48,10 +48,10 @@ describe('GeminiCLIMCPAdapter', () => {
             const servers = adapter.parse(config);
             expect(servers).toHaveLength(2);
 
-            const memorix = servers.find(s => s.name === 'memorix');
-            expect(memorix).toBeDefined();
-            expect(memorix!.command).toBe('npx');
-            expect(memorix!.args).toEqual(['-y', 'memorix']);
+            const baton = servers.find(s => s.name === 'baton');
+            expect(baton).toBeDefined();
+            expect(baton!.command).toBe('npx');
+            expect(baton!.args).toEqual(['-y', 'baton']);
         });
 
         it('should parse HTTP transport with url', () => {
@@ -156,9 +156,9 @@ describe('GeminiCLIMCPAdapter', () => {
         it('should generate valid settings.json for stdio servers', () => {
             const servers: MCPServerEntry[] = [
                 {
-                    name: 'memorix',
+                    name: 'baton',
                     command: 'npx',
-                    args: ['-y', 'memorix'],
+                    args: ['-y', 'baton'],
                 },
             ];
 
@@ -166,9 +166,9 @@ describe('GeminiCLIMCPAdapter', () => {
             const parsed = JSON.parse(output);
 
             expect(parsed.mcpServers).toBeDefined();
-            expect(parsed.mcpServers.memorix).toBeDefined();
-            expect(parsed.mcpServers.memorix.command).toBe('npx');
-            expect(parsed.mcpServers.memorix.args).toEqual(['-y', 'memorix']);
+            expect(parsed.mcpServers.baton).toBeDefined();
+            expect(parsed.mcpServers.baton.command).toBe('npx');
+            expect(parsed.mcpServers.baton.args).toEqual(['-y', 'baton']);
         });
 
         it('should generate valid config for HTTP servers', () => {
@@ -266,9 +266,9 @@ describe('GeminiCLIMCPAdapter', () => {
         it('should survive parse → generate → parse round-trip', () => {
             const original = JSON.stringify({
                 mcpServers: {
-                    memorix: {
+                    baton: {
                         command: 'npx',
-                        args: ['-y', 'memorix'],
+                        args: ['-y', 'baton'],
                         env: { DEBUG: 'true' },
                     },
                     context7: {

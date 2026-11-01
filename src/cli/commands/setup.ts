@@ -1,7 +1,7 @@
 /**
- * CLI Command: memorix setup
+ * CLI Command: baton setup
  *
- * One command for installing the best available Memorix integration for an
+ * One command for installing the best available Baton integration for an
  * agent host. Plugin-capable hosts receive plugin packages; other hosts get
  * host-native MCP config, rules, and hooks where supported.
  */
@@ -39,7 +39,7 @@ import {
   getSetupAgentTargets as readSetupAgentTargets,
   getSetupIntegrationRows as readSetupIntegrationRows,
 } from '../../integrations/registry.js';
-import { OFFICIAL_MEMORIX_SKILLS } from '../../hooks/official-skills.js';
+import { OFFICIAL_BATON_SKILLS } from '../../hooks/official-skills.js';
 import { getCliVersion } from '../version.js';
 
 export type SetupAgent = AgentName | 'all';
@@ -274,7 +274,7 @@ async function copyDir(source: string, destination: string): Promise<void> {
 
 async function writeOfficialSkills(skillsRoot: string): Promise<string[]> {
   const written: string[] = [];
-  for (const skill of OFFICIAL_MEMORIX_SKILLS) {
+  for (const skill of OFFICIAL_BATON_SKILLS) {
     const skillPath = path.join(skillsRoot, skill.name, 'SKILL.md');
     await mkdir(path.dirname(skillPath), { recursive: true });
     await writeFile(skillPath, skill.content, 'utf-8');
@@ -313,7 +313,7 @@ async function stripHookCaptureFromPlugin(pluginPath: string, agent: PluginInsta
 async function stampCodexPluginVersion(pluginPath: string): Promise<void> {
   const manifestPath = path.join(pluginPath, '.codex-plugin', 'plugin.json');
   const manifest = JSON.parse(await readFile(manifestPath, 'utf-8')) as Record<string, unknown>;
-  if (manifest.name !== 'memorix') {
+  if (manifest.name !== 'baton') {
     throw new Error(`Unexpected Codex plugin manifest at ${manifestPath}`);
   }
 
@@ -405,39 +405,39 @@ export function getMcpAdapter(agent: McpConfigAgent): MCPConfigAdapter {
   return adapters[agent];
 }
 
-export const MEMORIX_HTTP_MCP_URL = 'http://localhost:3211/mcp';
+export const BATON_HTTP_MCP_URL = 'http://localhost:3211/mcp';
 
-export function buildMemorixServer(mcp: Exclude<SetupMcpTransport, 'none'>): MCPServerEntry {
+export function buildBatonServer(mcp: Exclude<SetupMcpTransport, 'none'>): MCPServerEntry {
   if (mcp === 'http') {
     return {
-      name: 'memorix',
+      name: 'baton',
       command: '',
       args: [],
-      url: MEMORIX_HTTP_MCP_URL,
+      url: BATON_HTTP_MCP_URL,
     };
   }
 
   return {
-    name: 'memorix',
-    command: 'memorix',
+    name: 'baton',
+    command: 'baton',
     // The installed surface must expose every tool the generated guidance
     // teaches. lite covers the full taught set; micro would hide half of it.
     args: ['serve', '--mode', 'lite'],
   };
 }
 
-function toHttpMemorixServer(existing: Record<string, unknown>): Record<string, unknown> {
-  const next: Record<string, unknown> = { url: MEMORIX_HTTP_MCP_URL };
+function toHttpBatonServer(existing: Record<string, unknown>): Record<string, unknown> {
+  const next: Record<string, unknown> = { url: BATON_HTTP_MCP_URL };
   if (existing.alwaysLoad === true) next.alwaysLoad = true;
   if (typeof existing.type === 'string') next.type = 'http';
   return next;
 }
 
 /**
- * Rewrite a copied plugin/extension MCP manifest from stdio `memorix serve`
+ * Rewrite a copied plugin/extension MCP manifest from stdio `baton serve`
  * to the shared HTTP control plane. Leaves unrelated keys intact.
  */
-export async function rewriteBundledMemorixMcpToHttp(root: string): Promise<string[]> {
+export async function rewriteBundledBatonMcpToHttp(root: string): Promise<string[]> {
   const candidates = ['.mcp.json', 'mcp_config.json', 'gemini-extension.json']
     .map((name) => path.join(root, name));
   const rewritten: string[] = [];
@@ -455,9 +455,9 @@ export async function rewriteBundledMemorixMcpToHttp(root: string): Promise<stri
     const servers = record.mcpServers;
     if (!servers || typeof servers !== 'object' || Array.isArray(servers)) continue;
     const serverMap = servers as Record<string, unknown>;
-    const existing = serverMap.memorix;
+    const existing = serverMap.baton;
     if (!existing || typeof existing !== 'object' || Array.isArray(existing)) continue;
-    serverMap.memorix = toHttpMemorixServer(existing as Record<string, unknown>);
+    serverMap.baton = toHttpBatonServer(existing as Record<string, unknown>);
     await writeFile(filePath, JSON.stringify(record, null, 2) + '\n', 'utf-8');
     rewritten.push(filePath);
   }
@@ -536,8 +536,8 @@ function removeTomlSection(content: string, section: string): string {
 
 function mergeTomlMcpConfig(existingContent: string | null, generatedContent: string): string {
   let content = existingContent ?? '';
-  content = removeTomlSection(content, 'mcp_servers.memorix.env');
-  content = removeTomlSection(content, 'mcp_servers.memorix');
+  content = removeTomlSection(content, 'mcp_servers.baton.env');
+  content = removeTomlSection(content, 'mcp_servers.baton');
   const parts = [content.trimEnd(), generatedContent.trim()].filter(Boolean);
   return `${parts.join('\n\n')}\n`;
 }
@@ -568,19 +568,19 @@ function getTomlSection(content: string, section: string): string | null {
   return lines.slice(start + 1, end).join('\n');
 }
 
-function isLegacyCodexMemorixNodeServer(server: MCPServerEntry): boolean {
-  if (server.name !== 'memorix' || server.command.trim().toLowerCase() !== 'node') return false;
-  const startsMemorixStdio = server.args.some((arg) => arg.trim().toLowerCase() === 'serve');
+function isLegacyCodexBatonNodeServer(server: MCPServerEntry): boolean {
+  if (server.name !== 'baton' || server.command.trim().toLowerCase() !== 'node') return false;
+  const startsBatonStdio = server.args.some((arg) => arg.trim().toLowerCase() === 'serve');
   const sourceEntry = server.args.some((arg) => {
     const normalized = arg.replace(/\\/g, '/').toLowerCase();
-    return /\/memorix\/dist\/cli\/index\.(?:[cm]?js)$/.test(normalized);
+    return /\/baton\/dist\/cli\/index\.(?:[cm]?js)$/.test(normalized);
   });
-  return startsMemorixStdio && sourceEntry;
+  return startsBatonStdio && sourceEntry;
 }
 
 function isOwnedLegacyCodexMcp(content: string): boolean {
-  const section = getTomlSection(content, 'mcp_servers.memorix');
-  if (section === null || getTomlSection(content, 'mcp_servers.memorix.env') !== null) return false;
+  const section = getTomlSection(content, 'mcp_servers.baton');
+  if (section === null || getTomlSection(content, 'mcp_servers.baton.env') !== null) return false;
 
   const allowedKeys = new Set(['command', 'args', 'type', 'startup_timeout_sec', 'tool_timeout_sec', 'enabled']);
   for (const rawLine of section.split(/\r?\n/)) {
@@ -590,15 +590,15 @@ function isOwnedLegacyCodexMcp(content: string): boolean {
     if (!key || !allowedKeys.has(key)) return false;
   }
 
-  const server = new CodexMCPAdapter().parse(content).find((entry) => entry.name === 'memorix');
-  return Boolean(server && isLegacyCodexMemorixNodeServer(server));
+  const server = new CodexMCPAdapter().parse(content).find((entry) => entry.name === 'baton');
+  return Boolean(server && isLegacyCodexBatonNodeServer(server));
 }
 
 /**
- * Codex plugins now own Memorix stdio MCP registration. Remove only the old
+ * Codex plugins now own Baton stdio MCP registration. Remove only the old
  * source-path form emitted by pre-plugin setup, never a user's custom server.
  */
-export async function removeLegacyCodexMemorixMcpConfig(
+export async function removeLegacyCodexBatonMcpConfig(
   configPath = path.join(homedir(), '.codex', 'config.toml'),
 ): Promise<{ configPath: string; removed: boolean }> {
   let existingContent: string;
@@ -610,8 +610,8 @@ export async function removeLegacyCodexMemorixMcpConfig(
 
   if (!isOwnedLegacyCodexMcp(existingContent)) return { configPath, removed: false };
 
-  let nextContent = removeTomlSection(existingContent, 'mcp_servers.memorix.env');
-  nextContent = removeTomlSection(nextContent, 'mcp_servers.memorix');
+  let nextContent = removeTomlSection(existingContent, 'mcp_servers.baton.env');
+  nextContent = removeTomlSection(nextContent, 'mcp_servers.baton');
   await writeFile(configPath, nextContent ? `${nextContent}\n` : '', 'utf-8');
   return { configPath, removed: true };
 }
@@ -636,7 +636,7 @@ function isOwnedLegacyCodexHooks(content: string): boolean {
         if (record.type !== 'command') return false;
         const commands = [record.command, record.commandWindows]
           .filter((command): command is string => typeof command === 'string');
-        if (commands.length === 0 || !commands.every((command) => /^memorix(?:\.cmd)?\s+hook(?:\s|$)/i.test(command.trim()))) {
+        if (commands.length === 0 || !commands.every((command) => /^baton(?:\.cmd)?\s+hook(?:\s|$)/i.test(command.trim()))) {
           return false;
         }
         entryCount += 1;
@@ -649,15 +649,15 @@ function isOwnedLegacyCodexHooks(content: string): boolean {
 }
 
 async function removeOwnedLegacyCodexPluginFolder(homeDir: string): Promise<LegacyArtifactStatus> {
-  const canonicalPath = path.join(homeDir, 'plugins', 'memorix');
-  const legacyPath = path.join(homeDir, '.codex', 'plugins', 'memorix');
+  const canonicalPath = path.join(homeDir, 'plugins', 'baton');
+  const legacyPath = path.join(homeDir, '.codex', 'plugins', 'baton');
   if (!existsSync(legacyPath)) return 'missing';
   if (!existsSync(canonicalPath)) return 'preserved';
 
   try {
     const manifest = JSON.parse(await readFile(path.join(legacyPath, '.codex-plugin', 'plugin.json'), 'utf-8')) as Record<string, unknown>;
     const repository = String(manifest.repository ?? '');
-    if (manifest.name !== 'memorix' || !repository.includes('github.com/AVIDS2/memorix')) return 'preserved';
+    if (manifest.name !== 'baton' || !repository.includes('github.com/caaatpro/pmi')) return 'preserved';
     await rm(legacyPath, { recursive: true, force: true });
     return 'removed';
   } catch {
@@ -676,8 +676,8 @@ export async function migrateLegacyCodexIntegration(options: {
 
   try {
     const content = await readFile(configPath, 'utf-8');
-    if (getTomlSection(content, 'mcp_servers.memorix') !== null) {
-      mcp = (await removeLegacyCodexMemorixMcpConfig(configPath)).removed ? 'removed' : 'preserved';
+    if (getTomlSection(content, 'mcp_servers.baton') !== null) {
+      mcp = (await removeLegacyCodexBatonMcpConfig(configPath)).removed ? 'removed' : 'preserved';
     }
   } catch {
     mcp = 'missing';
@@ -745,8 +745,8 @@ function mergeYamlMcpConfig(existingContent: string | null, generatedContent: st
  * Merge the generated DeepSeek Harness patch rows into an existing
  * `cordis.patch.yml` without clobbering unrelated user patches.
  *
- * DSH patch files are lists of Cordis patch operations. Memorix owns exactly
- * the `@deepseek-ai/dsh-mcp-client` row whose config.serverName is `memorix`;
+ * DSH patch files are lists of Cordis patch operations. Baton owns exactly
+ * the `@deepseek-ai/dsh-mcp-client` row whose config.serverName is `baton`;
  * every other operation is user-owned and must survive the merge. When the
  * existing file is not a parseable list, the generated rows are appended to
  * the raw content instead of overwriting it.
@@ -757,21 +757,21 @@ function mergeDshPatchConfig(existingContent: string | null, generatedContent: s
     return generatedTrimmed.endsWith('\n') ? generatedTrimmed : `${generatedTrimmed}\n`;
   }
 
-  const isMemorixInsertRow = (row: unknown): boolean => {
+  const isBatonInsertRow = (row: unknown): boolean => {
     if (!row || typeof row !== 'object' || Array.isArray(row)) return false;
     const record = row as Record<string, unknown>;
     if (record.name !== '@deepseek-ai/dsh-mcp-client') return false;
     const config = record.config;
     return Boolean(
       config && typeof config === 'object' && !Array.isArray(config)
-      && (config as Record<string, unknown>).serverName === 'memorix',
+      && (config as Record<string, unknown>).serverName === 'baton',
     );
   };
 
-  const opContainsMemorixRow = (op: unknown): boolean => {
+  const opContainsBatonRow = (op: unknown): boolean => {
     if (!op || typeof op !== 'object' || Array.isArray(op)) return false;
     const insert = (op as Record<string, unknown>).insert;
-    return Array.isArray(insert) && insert.some(isMemorixInsertRow);
+    return Array.isArray(insert) && insert.some(isBatonInsertRow);
   };
 
   let existingDocument: unknown;
@@ -785,7 +785,7 @@ function mergeDshPatchConfig(existingContent: string | null, generatedContent: s
     return `${existingContent.trimEnd()}\n\n${generatedTrimmed}\n`;
   }
 
-  const kept = existingDocument.filter((op) => !opContainsMemorixRow(op));
+  const kept = existingDocument.filter((op) => !opContainsBatonRow(op));
   const merged = [...kept, ...(parseYaml(generatedContent) as unknown[])];
   return stringifyYaml(merged, { lineWidth: 0 }) + '\n';
 }
@@ -799,7 +799,7 @@ export async function installMcpConfig(options: {
   const adapter = getMcpAdapter(options.agent);
   const projectRoot = options.global ? undefined : (options.projectRoot ?? process.cwd());
   const configPath = adapter.getConfigPath(projectRoot);
-  const server = buildMemorixServer(options.mcp);
+  const server = buildBatonServer(options.mcp);
   if (options.agent === 'claude' && options.mcp === 'stdio') {
     server.alwaysLoad = true;
   }
@@ -829,7 +829,7 @@ export async function installMcpConfig(options: {
 
 /**
  * Older setups put the project MCP entry into .claude/settings.json, which
- * Claude Code never reads for servers. Drop only our own "memorix" entry
+ * Claude Code never reads for servers. Drop only our own "baton" entry
  * there (and the key if it ends up empty); everything else stays.
  */
 async function removeLegacyClaudeProjectEntry(projectRoot: string): Promise<void> {
@@ -841,8 +841,8 @@ async function removeLegacyClaudeProjectEntry(projectRoot: string): Promise<void
     return;
   }
   const servers = settings.mcpServers as Record<string, unknown> | undefined;
-  if (!servers || typeof servers !== 'object' || !('memorix' in servers)) return;
-  delete servers.memorix;
+  if (!servers || typeof servers !== 'object' || !('baton' in servers)) return;
+  delete servers.baton;
   if (Object.keys(servers).length === 0) delete settings.mcpServers;
   await writeFile(legacyPath, `${JSON.stringify(settings, null, 2)}\n`, 'utf-8');
 }
@@ -873,7 +873,7 @@ async function upsertCodexMarketplace(marketplacePath: string, pluginPath: strin
     : marketplaceDir;
   const sourcePath = relativePosix(marketplaceRoot, pluginPath);
   const entry = {
-    name: 'memorix',
+    name: 'baton',
     source: {
       source: 'local',
       path: sourcePath,
@@ -885,7 +885,7 @@ async function upsertCodexMarketplace(marketplacePath: string, pluginPath: strin
     category: 'Developer Tools',
   };
 
-  const index = catalog.plugins.findIndex((plugin) => plugin.name === 'memorix');
+  const index = catalog.plugins.findIndex((plugin) => plugin.name === 'baton');
   if (index >= 0) {
     catalog.plugins[index] = entry;
   } else {
@@ -899,23 +899,23 @@ async function writeClaudeMarketplace(marketplacePath: string): Promise<void> {
   await mkdir(path.dirname(marketplacePath), { recursive: true });
   const catalog = {
     $schema: 'https://anthropic.com/claude-code/marketplace.schema.json',
-    name: 'memorix-local',
-    description: 'Local marketplace for the Memorix Claude Code plugin.',
+    name: 'baton-local',
+    description: 'Local marketplace for the Baton Claude Code plugin.',
     owner: {
-      name: 'AVIDS2',
-      url: 'https://github.com/AVIDS2',
+      name: 'Baton Hub team',
+      url: 'https://github.com/caaatpro/pmi',
     },
     plugins: [
       {
-        name: 'memorix',
+        name: 'baton',
         description: 'Shared workspace memory for Claude Code and other AI coding agents.',
         version: getCliVersion(),
         author: {
-          name: 'AVIDS2',
-          url: 'https://github.com/AVIDS2',
+          name: 'Baton Hub team',
+          url: 'https://github.com/caaatpro/pmi',
         },
         category: 'development',
-        source: './plugins/memorix',
+        source: './plugins/baton',
         homepage: 'https://mem.rglens.com',
       },
     ],
@@ -926,11 +926,11 @@ async function writeClaudeMarketplace(marketplacePath: string): Promise<void> {
 async function writeCodeBuddyMarketplace(marketplacePath: string): Promise<void> {
   await mkdir(path.dirname(marketplacePath), { recursive: true });
   await writeFile(marketplacePath, JSON.stringify({
-    name: 'memorix-local',
-    description: 'Local marketplace for the Memorix CodeBuddy Code plugin.',
+    name: 'baton-local',
+    description: 'Local marketplace for the Baton CodeBuddy Code plugin.',
     plugins: [{
-      name: 'memorix',
-      source: './plugins/memorix',
+      name: 'baton',
+      source: './plugins/baton',
       description: 'Local-first project memory for CodeBuddy Code and other coding agents.',
       category: 'development',
     }],
@@ -950,12 +950,12 @@ export async function installCodeBuddyPluginPackage(
 ): Promise<CodeBuddyPluginInstallResult> {
   const home = options.homeDir ?? homedir();
   const packageRoot = findPackageRoot();
-  const source = path.join(packageRoot, 'plugins', 'codebuddy', 'memorix');
+  const source = path.join(packageRoot, 'plugins', 'codebuddy', 'baton');
   if (!existsSync(source)) throw new Error(`CodeBuddy plugin template not found: ${source}`);
 
-  const marketplaceRoot = path.join(home, '.codebuddy', 'memorix-local');
+  const marketplaceRoot = path.join(home, '.codebuddy', 'baton-local');
   const marketplacePath = path.join(marketplaceRoot, '.codebuddy-plugin', 'marketplace.json');
-  const pluginPath = path.join(marketplaceRoot, 'plugins', 'memorix');
+  const pluginPath = path.join(marketplaceRoot, 'plugins', 'baton');
   await copyDir(source, pluginPath);
   if (options.includeHooks === false) await stripCodeBuddyHookCapture(pluginPath);
   await writeOfficialSkills(path.join(pluginPath, 'skills'));
@@ -966,14 +966,14 @@ export async function installCodeBuddyPluginPackage(
     pluginPath,
     marketplacePath,
     marketplaceRoot,
-    installHint: 'Setup registers a local CodeBuddy marketplace and installs `memorix@memorix-local` at user scope. Review plugin hooks in `/hooks` before enabling untrusted hook execution.',
+    installHint: 'Setup registers a local CodeBuddy marketplace and installs `baton@baton-local` at user scope. Review plugin hooks in `/hooks` before enabling untrusted hook execution.',
   };
 }
 
 export async function installPluginPackage(options: PluginInstallOptions): Promise<PluginInstallResult> {
   const home = options.homeDir ?? homedir();
   const packageRoot = findPackageRoot();
-  const source = path.join(packageRoot, 'plugins', options.agent, 'memorix');
+  const source = path.join(packageRoot, 'plugins', options.agent, 'baton');
   const includeHooks = options.includeHooks ?? true;
   if (!existsSync(source)) {
     throw new Error(`Plugin package template not found: ${source}`);
@@ -982,7 +982,7 @@ export async function installPluginPackage(options: PluginInstallOptions): Promi
   if (options.agent === 'codex') {
     // Codex discovers personal plugins from the user marketplace. Keep the
     // package outside ~/.codex so setup does not look like project/config state.
-    const pluginPath = path.join(home, 'plugins', 'memorix');
+    const pluginPath = path.join(home, 'plugins', 'baton');
     const marketplacePath = path.join(home, '.agents', 'plugins', 'marketplace.json');
     await copyDir(source, pluginPath);
     await stampCodexPluginVersion(pluginPath);
@@ -998,7 +998,7 @@ export async function installPluginPackage(options: PluginInstallOptions): Promi
   }
 
   if (options.agent === 'copilot') {
-    const pluginPath = path.join(home, '.copilot', 'plugins', 'local', 'memorix');
+    const pluginPath = path.join(home, '.copilot', 'plugins', 'local', 'baton');
     await copyDir(source, pluginPath);
     if (!includeHooks) await stripHookCaptureFromPlugin(pluginPath, 'copilot');
     await writeOfficialSkills(path.join(pluginPath, 'skills'));
@@ -1009,9 +1009,9 @@ export async function installPluginPackage(options: PluginInstallOptions): Promi
     };
   }
 
-  const marketplaceRoot = path.join(home, '.claude', 'plugins', 'marketplaces', 'memorix-local');
+  const marketplaceRoot = path.join(home, '.claude', 'plugins', 'marketplaces', 'baton-local');
   const marketplacePath = path.join(marketplaceRoot, '.claude-plugin', 'marketplace.json');
-  const pluginPath = path.join(marketplaceRoot, 'plugins', 'memorix');
+  const pluginPath = path.join(marketplaceRoot, 'plugins', 'baton');
   await copyDir(source, pluginPath);
   if (!includeHooks) await stripHookCaptureFromPlugin(pluginPath, 'claude');
   await writeOfficialSkills(path.join(pluginPath, 'skills'));
@@ -1021,7 +1021,7 @@ export async function installPluginPackage(options: PluginInstallOptions): Promi
     pluginPath,
     marketplacePath,
     marketplaceRoot,
-    installHint: 'Setup registers the local marketplace and installs `memorix@memorix-local`; restart Claude Code after install.',
+    installHint: 'Setup registers the local marketplace and installs `baton@baton-local`; restart Claude Code after install.',
   };
 }
 
@@ -1030,17 +1030,17 @@ export async function installGeminiExtensionPackage(
 ): Promise<GeminiExtensionInstallResult> {
   const home = options.homeDir ?? homedir();
   const packageRoot = findPackageRoot();
-  const source = path.join(packageRoot, 'plugins', 'gemini', 'memorix');
+  const source = path.join(packageRoot, 'plugins', 'gemini', 'baton');
   if (!existsSync(source)) {
     throw new Error(`Gemini extension template not found: ${source}`);
   }
 
-  const extensionPath = path.join(home, '.gemini', 'extensions', 'memorix');
+  const extensionPath = path.join(home, '.gemini', 'extensions', 'baton');
   await copyDir(source, extensionPath);
   return {
     agent: 'gemini-cli',
     extensionPath,
-    installHint: 'Restart Gemini CLI or run `gemini extensions list` to confirm the Memorix extension is loaded.',
+    installHint: 'Restart Gemini CLI or run `gemini extensions list` to confirm the Baton extension is loaded.',
   };
 }
 
@@ -1048,14 +1048,14 @@ export async function installAntigravityPluginPackage(
   options: AntigravityPluginInstallOptions = {},
 ): Promise<AntigravityPluginInstallResult> {
   const packageRoot = findPackageRoot();
-  const source = path.join(packageRoot, 'plugins', 'antigravity', 'memorix');
+  const source = path.join(packageRoot, 'plugins', 'antigravity', 'baton');
   if (!existsSync(source)) {
     throw new Error(`Antigravity plugin template not found: ${source}`);
   }
 
   const pluginPath = options.global === false
-    ? path.join(options.projectRoot ?? process.cwd(), '.agents', 'plugins', 'memorix')
-    : path.join(options.homeDir ?? homedir(), '.gemini', 'config', 'plugins', 'memorix');
+    ? path.join(options.projectRoot ?? process.cwd(), '.agents', 'plugins', 'baton')
+    : path.join(options.homeDir ?? homedir(), '.gemini', 'config', 'plugins', 'baton');
   await copyDir(source, pluginPath);
   if (options.includeHooks === false) {
     await rm(path.join(pluginPath, 'hooks.json'), { force: true });
@@ -1066,14 +1066,14 @@ export async function installAntigravityPluginPackage(
     agent: 'antigravity',
     pluginPath,
     installHint: options.global === false
-      ? 'Restart Antigravity with this workspace open so .agents/plugins/memorix is discovered.'
-      : 'Restart Antigravity or run the Antigravity CLI so ~/.gemini/config/plugins/memorix is discovered.',
+      ? 'Restart Antigravity with this workspace open so .agents/plugins/baton is discovered.'
+      : 'Restart Antigravity or run the Antigravity CLI so ~/.gemini/config/plugins/baton is discovered.',
   };
 }
 
 export async function installPiPackage(options: PiPackageInstallOptions = {}): Promise<PiPackageInstallResult> {
   const packageRoot = findPackageRoot();
-  const source = path.join(packageRoot, 'plugins', 'pi', 'memorix');
+  const source = path.join(packageRoot, 'plugins', 'pi', 'baton');
   if (!existsSync(source)) {
     throw new Error(`Pi package template not found: ${source}`);
   }
@@ -1081,7 +1081,7 @@ export async function installPiPackage(options: PiPackageInstallOptions = {}): P
   const defaultRoot = options.global
     ? path.join(options.homeDir ?? homedir(), '.pi', 'agent', 'packages')
     : path.join(process.cwd(), '.pi', 'packages');
-  const packagePath = options.packageDir ?? path.join(defaultRoot, 'memorix');
+  const packagePath = options.packageDir ?? path.join(defaultRoot, 'baton');
   await copyDir(source, packagePath);
   await writeOfficialSkills(path.join(packagePath, 'skills'));
   const installHint = options.global
@@ -1100,12 +1100,12 @@ export async function installOpenClawBundlePackage(
 ): Promise<OpenClawBundleInstallResult> {
   const home = options.homeDir ?? homedir();
   const packageRoot = findPackageRoot();
-  const source = path.join(packageRoot, 'plugins', 'openclaw', 'memorix');
+  const source = path.join(packageRoot, 'plugins', 'openclaw', 'baton');
   if (!existsSync(source)) {
     throw new Error(`OpenClaw bundle template not found: ${source}`);
   }
 
-  const bundlePath = path.join(home, '.openclaw', 'extensions', 'memorix');
+  const bundlePath = path.join(home, '.openclaw', 'extensions', 'baton');
   await copyDir(source, bundlePath);
   if (options.includeHooks === false) await stripHookCaptureFromOpenClawBundle(bundlePath);
   await writeOfficialSkills(path.join(bundlePath, 'skills'));
@@ -1113,7 +1113,7 @@ export async function installOpenClawBundlePackage(
   return {
     agent: 'openclaw',
     bundlePath,
-    installHint: `Setup runs \`openclaw plugins install "${bundlePath}" --force\` and enables the Memorix hook pack when OpenClaw is available.`,
+    installHint: `Setup runs \`openclaw plugins install "${bundlePath}" --force\` and enables the Baton hook pack when OpenClaw is available.`,
   };
 }
 
@@ -1121,13 +1121,13 @@ export async function installHermesPluginPackage(
   options: HermesPluginInstallOptions = {},
 ): Promise<HermesPluginInstallResult> {
   const packageRoot = findPackageRoot();
-  const source = path.join(packageRoot, 'plugins', 'hermes', 'memorix');
+  const source = path.join(packageRoot, 'plugins', 'hermes', 'baton');
   if (!existsSync(source)) {
     throw new Error(`Hermes plugin template not found: ${source}`);
   }
 
   const hermesHome = resolveHermesHome(options.homeDir);
-  const pluginPath = path.join(hermesHome, 'plugins', 'memorix');
+  const pluginPath = path.join(hermesHome, 'plugins', 'baton');
   await copyDir(source, pluginPath);
   await writeOfficialSkills(path.join(pluginPath, 'skills'));
 
@@ -1139,20 +1139,20 @@ export async function installHermesPluginPackage(
     existingContent = null;
   }
   await mkdir(path.dirname(configPath), { recursive: true });
-  await writeFile(configPath, mergeHermesPluginEnabled(existingContent, 'memorix'), 'utf-8');
+  await writeFile(configPath, mergeHermesPluginEnabled(existingContent, 'baton'), 'utf-8');
 
   return {
     agent: 'hermes',
     hermesHome,
     pluginPath,
     configPath,
-    installHint: 'Restart Hermes Agent or run `hermes plugins list` to confirm the Memorix plugin is enabled.',
+    installHint: 'Restart Hermes Agent or run `hermes plugins list` to confirm the Baton plugin is enabled.',
   };
 }
 
 export async function installOmpPackage(options: OmpPackageInstallOptions = {}): Promise<OmpPackageInstallResult> {
   const packageRoot = findPackageRoot();
-  const source = path.join(packageRoot, 'plugins', 'omp', 'memorix');
+  const source = path.join(packageRoot, 'plugins', 'omp', 'baton');
   if (!existsSync(source)) {
     throw new Error(`Oh-my-Pi package template not found: ${source}`);
   }
@@ -1160,7 +1160,7 @@ export async function installOmpPackage(options: OmpPackageInstallOptions = {}):
   const defaultRoot = options.global
     ? path.join(options.homeDir ?? homedir(), '.omp', 'agent', 'packages')
     : path.join(process.cwd(), '.omp', 'packages');
-  const packagePath = options.packageDir ?? path.join(defaultRoot, 'memorix');
+  const packagePath = options.packageDir ?? path.join(defaultRoot, 'baton');
   await copyDir(source, packagePath);
   await writeOfficialSkills(path.join(packagePath, 'skills'));
 
@@ -1186,11 +1186,11 @@ function tryInstallClaudePlugin(marketplaceRoot: string): { ok: boolean; message
       ok: false,
       message: detail
         ? `claude: local marketplace written, but automatic marketplace registration did not finish: ${detail}`
-        : `claude: local marketplace written. Run \`claude plugin marketplace add "${marketplaceRoot}"\`, then \`claude plugin install memorix@memorix-local\`.`,
+        : `claude: local marketplace written. Run \`claude plugin marketplace add "${marketplaceRoot}"\`, then \`claude plugin install baton@baton-local\`.`,
     };
   }
 
-  const install = spawnSync('claude', ['plugin', 'install', 'memorix@memorix-local'], {
+  const install = spawnSync('claude', ['plugin', 'install', 'baton@baton-local'], {
     encoding: 'utf-8',
     stdio: 'pipe',
     shell: process.platform === 'win32',
@@ -1199,10 +1199,10 @@ function tryInstallClaudePlugin(marketplaceRoot: string): { ok: boolean; message
 
   const installOutput = `${install.stderr || ''}\n${install.stdout || ''}`.toLowerCase();
   if (install.status === 0) {
-    return { ok: true, message: 'claude: plugin installed from memorix-local marketplace' };
+    return { ok: true, message: 'claude: plugin installed from baton-local marketplace' };
   }
   if (installOutput.includes('already')) {
-    return { ok: true, message: 'claude: plugin already installed from memorix-local marketplace' };
+    return { ok: true, message: 'claude: plugin already installed from baton-local marketplace' };
   }
 
   const installDetail = (install.stderr || install.stdout || install.error?.message || '').trim();
@@ -1210,12 +1210,12 @@ function tryInstallClaudePlugin(marketplaceRoot: string): { ok: boolean; message
     ok: false,
     message: installDetail
       ? `claude: marketplace registered, but automatic plugin install did not finish: ${installDetail}`
-      : 'claude: marketplace registered. Run `claude plugin install memorix@memorix-local`.',
+      : 'claude: marketplace registered. Run `claude plugin install baton@baton-local`.',
   };
 }
 
 function tryInstallCodeBuddyPlugin(marketplaceRoot: string): { ok: boolean; message: string } {
-  const add = spawnSync('codebuddy', ['plugin', 'marketplace', 'add', marketplaceRoot, '--name', 'memorix-local'], {
+  const add = spawnSync('codebuddy', ['plugin', 'marketplace', 'add', marketplaceRoot, '--name', 'baton-local'], {
     encoding: 'utf-8',
     stdio: 'pipe',
     shell: process.platform === 'win32',
@@ -1228,11 +1228,11 @@ function tryInstallCodeBuddyPlugin(marketplaceRoot: string): { ok: boolean; mess
       ok: false,
       message: detail
         ? `codebuddy: local marketplace written, but registration did not finish: ${detail}`
-        : `codebuddy: local marketplace written. Run \`codebuddy plugin marketplace add "${marketplaceRoot}" --name memorix-local\`, then \`codebuddy plugin install memorix@memorix-local --scope user\`.`,
+        : `codebuddy: local marketplace written. Run \`codebuddy plugin marketplace add "${marketplaceRoot}" --name baton-local\`, then \`codebuddy plugin install baton@baton-local --scope user\`.`,
     };
   }
 
-  const install = spawnSync('codebuddy', ['plugin', 'install', 'memorix@memorix-local', '--scope', 'user'], {
+  const install = spawnSync('codebuddy', ['plugin', 'install', 'baton@baton-local', '--scope', 'user'], {
     encoding: 'utf-8',
     stdio: 'pipe',
     shell: process.platform === 'win32',
@@ -1240,14 +1240,14 @@ function tryInstallCodeBuddyPlugin(marketplaceRoot: string): { ok: boolean; mess
   });
   const output = `${install.stderr || ''}\n${install.stdout || ''}`.toLowerCase();
   if (install.status === 0 || output.includes('already')) {
-    return { ok: true, message: 'codebuddy: plugin installed from the memorix-local marketplace' };
+    return { ok: true, message: 'codebuddy: plugin installed from the baton-local marketplace' };
   }
   const detail = (install.stderr || install.stdout || install.error?.message || '').trim();
   return {
     ok: false,
     message: detail
       ? `codebuddy: marketplace registered, but plugin install did not finish: ${detail}`
-      : 'codebuddy: marketplace registered. Run `codebuddy plugin install memorix@memorix-local --scope user`.',
+      : 'codebuddy: marketplace registered. Run `codebuddy plugin install baton@baton-local --scope user`.',
   };
 }
 
@@ -1265,7 +1265,7 @@ export function parseCodexPluginState(content: string): CodexPluginState {
     const plugin = parsed.installed.find((entry): entry is Record<string, unknown> => (
       Boolean(entry)
       && typeof entry === 'object'
-      && (entry as Record<string, unknown>).pluginId === 'memorix@personal'
+      && (entry as Record<string, unknown>).pluginId === 'baton@personal'
     ));
     if (!plugin || plugin.installed !== true) return 'missing';
     return plugin.enabled === true ? 'ready' : 'disabled';
@@ -1286,7 +1286,7 @@ function getCodexPluginState(): CodexPluginState {
 }
 
 export function tryInstallCodexPlugin(): { ok: boolean; message: string } {
-  const result = spawnSync('codex', ['plugin', 'add', 'memorix@personal', '--json'], {
+  const result = spawnSync('codex', ['plugin', 'add', 'baton@personal', '--json'], {
     encoding: 'utf-8',
     stdio: 'pipe',
     shell: process.platform === 'win32',
@@ -1308,12 +1308,12 @@ export function tryInstallCodexPlugin(): { ok: boolean; message: string } {
     if (pluginState === 'disabled') {
       return {
         ok: false,
-        message: 'codex: Memorix plugin is installed but disabled. Enable it in Codex Plugins before any legacy MCP or project hooks are removed.',
+        message: 'codex: Baton plugin is installed but disabled. Enable it in Codex Plugins before any legacy MCP or project hooks are removed.',
       };
     }
     return {
       ok: false,
-      message: 'codex: plugin registration finished, but Codex did not confirm an enabled Memorix plugin. Legacy MCP and project hooks were kept unchanged.',
+      message: 'codex: plugin registration finished, but Codex did not confirm an enabled Baton plugin. Legacy MCP and project hooks were kept unchanged.',
     };
   }
 
@@ -1322,7 +1322,7 @@ export function tryInstallCodexPlugin(): { ok: boolean; message: string } {
     ok: false,
     message: detail
       ? `codex: plugin package registered, but automatic install did not finish: ${detail}`
-      : 'codex: plugin package registered, but automatic install did not finish. Run `codex plugin add memorix@personal`.',
+      : 'codex: plugin package registered, but automatic install did not finish. Run `codex plugin add baton@personal`.',
   };
 }
 
@@ -1409,11 +1409,11 @@ function tryInstallOpenClawBundle(bundlePath: string): { ok: boolean; message: s
       ok: false,
       message: detail
         ? `openclaw: bundle written, but automatic plugin install did not finish: ${detail}`
-        : `openclaw: bundle written. Run \`openclaw plugins install "${bundlePath}" --force\`, then \`openclaw hooks enable memorix\`.`,
+        : `openclaw: bundle written. Run \`openclaw plugins install "${bundlePath}" --force\`, then \`openclaw hooks enable baton\`.`,
     };
   }
 
-  const hook = spawnSync('openclaw', ['hooks', 'enable', 'memorix'], {
+  const hook = spawnSync('openclaw', ['hooks', 'enable', 'baton'], {
     encoding: 'utf-8',
     stdio: 'pipe',
     shell: process.platform === 'win32',
@@ -1421,7 +1421,7 @@ function tryInstallOpenClawBundle(bundlePath: string): { ok: boolean; message: s
   });
   const hookOutput = `${hook.stderr || ''}\n${hook.stdout || ''}`.toLowerCase();
   if (hook.status === 0 || hookOutput.includes('already') || hookOutput.includes('enabled')) {
-    return { ok: true, message: 'openclaw: bundle installed and Memorix hook pack enabled' };
+    return { ok: true, message: 'openclaw: bundle installed and Baton hook pack enabled' };
   }
 
   const hookDetail = (hook.stderr || hook.stdout || hook.error?.message || '').trim();
@@ -1429,7 +1429,7 @@ function tryInstallOpenClawBundle(bundlePath: string): { ok: boolean; message: s
     ok: false,
     message: hookDetail
       ? `openclaw: bundle installed, but hook enable did not finish: ${hookDetail}`
-      : 'openclaw: bundle installed. Run `openclaw hooks enable memorix`.',
+      : 'openclaw: bundle installed. Run `openclaw hooks enable baton`.',
   };
 }
 
@@ -1441,7 +1441,7 @@ function resolveHermesCommand(hermesHome: string): string {
   return 'hermes';
 }
 
-function tryEnableHermesPlugin(pluginName = 'memorix', hermesHome = resolveHermesHome()): { ok: boolean; message: string } {
+function tryEnableHermesPlugin(pluginName = 'baton', hermesHome = resolveHermesHome()): { ok: boolean; message: string } {
   const command = resolveHermesCommand(hermesHome);
   const result = spawnSync(command, ['plugins', 'enable', pluginName], {
     encoding: 'utf-8',
@@ -1515,7 +1515,7 @@ export async function installAgentSetup(agent: AgentName, plan: SetupPlan, globa
   const bundledMcpRoots: string[] = [];
 
   if (PLUGIN_PACKAGE_AGENTS.has(agent) && plan.includePlugin && !global) {
-    p.log.info(`${agent}: project setup leaves user-level plugins untouched. Run \`memorix setup --agent ${agent} --global\` to install its plugin, skills, and lifecycle hooks.`);
+    p.log.info(`${agent}: project setup leaves user-level plugins untouched. Run \`baton setup --agent ${agent} --global\` to install its plugin, skills, and lifecycle hooks.`);
   }
 
   if (hasPluginPackage) {
@@ -1534,9 +1534,9 @@ export async function installAgentSetup(agent: AgentName, plan: SetupPlan, globa
         p.log.success(install.message);
         const migration = await migrateLegacyCodexIntegration({ projectRoot: process.cwd() });
         if (migration.mcp === 'removed') p.log.info('codex: removed the legacy source-path MCP block; the enabled plugin now owns MCP.');
-        if (migration.mcp === 'preserved') p.log.warn('codex: kept a customized legacy Memorix MCP block; remove it manually only after confirming plugin MCP works.');
-        if (migration.projectHooks === 'removed') p.log.info('codex: removed a legacy project-local Memorix hooks.json; plugin hooks now own lifecycle capture.');
-        if (migration.projectHooks === 'preserved') p.log.warn('codex: kept a project .codex/hooks.json because it contains non-Memorix commands.');
+        if (migration.mcp === 'preserved') p.log.warn('codex: kept a customized legacy Baton MCP block; remove it manually only after confirming plugin MCP works.');
+        if (migration.projectHooks === 'removed') p.log.info('codex: removed a legacy project-local Baton hooks.json; plugin hooks now own lifecycle capture.');
+        if (migration.projectHooks === 'preserved') p.log.warn('codex: kept a project .codex/hooks.json because it contains non-Baton commands.');
         if (migration.pluginFolder === 'removed') p.log.info('codex: removed the migrated legacy plugin folder under ~/.codex/plugins.');
       } else {
         p.log.warn(install.message);
@@ -1609,7 +1609,7 @@ export async function installAgentSetup(agent: AgentName, plan: SetupPlan, globa
     const result = await installHermesPluginPackage();
     p.log.success(`${agent}: plugin -> ${result.pluginPath}`);
     p.log.success(`${agent}: plugin enabled in -> ${result.configPath}`);
-    const install = tryEnableHermesPlugin('memorix', result.hermesHome);
+    const install = tryEnableHermesPlugin('baton', result.hermesHome);
     if (install.ok) p.log.success(install.message);
     else p.log.warn(install.message);
     if (!plan.includeHooks) {
@@ -1645,7 +1645,7 @@ export async function installAgentSetup(agent: AgentName, plan: SetupPlan, globa
       p.log.info(`${agent}: stdio MCP is bundled in the ${packageLabel}`);
     } else if (mcpOwnedByPackage && plan.mcp === 'http') {
       for (const root of bundledMcpRoots) {
-        const rewritten = await rewriteBundledMemorixMcpToHttp(root);
+        const rewritten = await rewriteBundledBatonMcpToHttp(root);
         for (const filePath of rewritten) {
           p.log.success(`${agent}: plugin MCP -> HTTP ${filePath}`);
         }
@@ -1656,7 +1656,7 @@ export async function installAgentSetup(agent: AgentName, plan: SetupPlan, globa
       p.log.success(`${agent}: MCP config -> ${result.configPath}`);
     }
   } else if (agent === 'codex' && !global && plan.mcp !== 'none') {
-    p.log.info('codex: project-local .codex config is intentionally untouched. Run `memorix setup --agent codex --global` to install the user-level plugin.');
+    p.log.info('codex: project-local .codex config is intentionally untouched. Run `baton setup --agent codex --global` to install the user-level plugin.');
   }
 
   if (hasPluginPackage) {
@@ -1709,15 +1709,15 @@ export async function installAgentSetup(agent: AgentName, plan: SetupPlan, globa
 
   if (agent === 'grok') {
     if (plan.mcp === 'http') {
-      p.log.info('grok: wrote [mcp_servers.memorix] HTTP URL in Grok config.toml. Start the control plane with `memorix background start`.');
+      p.log.info('grok: wrote [mcp_servers.baton] HTTP URL in Grok config.toml. Start the control plane with `baton background start`.');
     } else {
-      p.log.info('grok: lifecycle hooks write ~/.grok/hooks/memorix.json. MCP stays host-owned unless you pass `--mcp http`.');
+      p.log.info('grok: lifecycle hooks write ~/.grok/hooks/baton.json. MCP stays host-owned unless you pass `--mcp http`.');
     }
     if (!global) p.log.info('grok: project hooks require `/hooks-trust` or launching Grok with `--trust`.');
   } else if (plan.mcp === 'stdio') {
-    p.log.info(`${agent}: MCP server command is \`memorix serve\``);
+    p.log.info(`${agent}: MCP server command is \`baton serve\``);
   } else if (plan.mcp === 'http') {
-    p.log.info(`${agent}: start HTTP MCP with \`memorix background start\` and use http://localhost:3211/mcp`);
+    p.log.info(`${agent}: start HTTP MCP with \`baton background start\` and use http://localhost:3211/mcp`);
   }
 }
 
@@ -1739,13 +1739,13 @@ function printSetupIntegrationRows(): void {
       row.install,
     ].join('')),
   ].join('\n');
-  p.note(table, 'Memorix integrations');
+  p.note(table, 'Baton integrations');
 }
 
 export default defineCommand({
   meta: {
     name: 'setup',
-    description: 'Install the best Memorix integration package for an agent',
+    description: 'Install the best Baton integration package for an agent',
   },
   args: {
     agent: {
@@ -1813,7 +1813,7 @@ export default defineCommand({
     let selectedAgent = args.agent as SetupAgent | undefined;
     if (!selectedAgent) {
       const selected = await p.select({
-        message: 'Install Memorix for which agent?',
+        message: 'Install Baton for which agent?',
         options: [
           { value: 'claude', label: 'Claude Code', hint: 'plugin package + hooks + MCP' },
           { value: 'codex', label: 'Codex', hint: 'plugin package + marketplace + MCP' },
@@ -1859,7 +1859,7 @@ export default defineCommand({
     const dryRun = Boolean(args.dryRun || args['dry-run']);
 
     if (dryRun) {
-      p.intro('Memorix Setup (dry run)');
+      p.intro('Baton Setup (dry run)');
       for (const plan of plans) {
         p.note(
           [
@@ -1876,7 +1876,7 @@ export default defineCommand({
       return;
     }
 
-    p.intro('Memorix Setup');
+    p.intro('Baton Setup');
     for (const plan of plans) {
       const agent = plan.agent as AgentName;
       await installAgentSetup(agent, plan, Boolean(args.global));

@@ -76,12 +76,12 @@ async function packageVersion() {
 async function main() {
   const records = readPositiveOption('--records', 1_000, 100_000);
   const runs = readPositiveOption('--runs', 100, 10_000);
-  const sandbox = await mkdtemp(path.join(tmpdir(), 'memorix-retrieval-benchmark-'));
+  const sandbox = await mkdtemp(path.join(tmpdir(), 'baton-retrieval-benchmark-'));
   const projectRoot = path.join(sandbox, 'project');
   const dataDir = path.join(sandbox, 'data');
 
-  process.env.MEMORIX_DATA_DIR = dataDir;
-  process.env.MEMORIX_EMBEDDING = 'off';
+  process.env.BATON_DATA_DIR = dataDir;
+  process.env.BATON_EMBEDDING = 'off';
 
   try {
     const git = spawnSync('git', ['init', '--quiet', projectRoot], { encoding: 'utf8', windowsHide: true });
