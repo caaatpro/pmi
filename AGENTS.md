@@ -25,7 +25,7 @@ Baton Hub is shared project memory and session continuity for AI coding agents, 
 - `src/git/` — incremental git analysis (pipeline, classifiers, local sink), commit ingest and hooks
 - `src/hooks/`, `src/workspace/` — agent hook normalization and MCP config installers
 - `src/workspace-snapshot/` — git worktree helpers (Workspace Recovery, Phase 7)
-- `src/cli/` — `baton` / `baton` CLI
+- `src/cli/` — `baton` CLI
 
 ## Commands
 
