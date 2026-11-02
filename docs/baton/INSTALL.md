@@ -43,10 +43,12 @@ echo "BATON_METRICS_TOKEN=$(openssl rand -hex 24)" >> deploy/.env     # дост
 ### 2.2. Запуск
 
 ```bash
-docker compose -f deploy/compose.yaml up -d --build --wait
+docker login registry.caaat.pro
+docker compose -f deploy/compose.yaml pull
+docker compose -f deploy/compose.yaml up -d --wait
 ```
 
-Первая сборка занимает 2–3 минуты. Команда завершается, когда все три контейнера здоровы. Проверка:
+Образ `baton-server` берётся из `registry.caaat.pro/baton` (его публикует CI, см. [OPERATIONS.md](OPERATIONS.md) §2.1). Без доступа к registry соберите его из рабочей копии: `docker compose -f deploy/compose.yaml up -d --build --wait`, первая сборка занимает 2–3 минуты. Команда завершается, когда все три контейнера здоровы. Проверка:
 
 ```bash
 curl https://baton.example.com/ready

@@ -1,7 +1,8 @@
 # Baton central server: Postgres (pgvector) + baton-server + Caddy (TLS).
 #
 #   cp .env.example .env    # set POSTGRES_PASSWORD and BATON_DOMAIN
-#   docker compose up -d --build
+#   docker login registry.caaat.pro
+#   docker compose pull && docker compose up -d --wait
 #   docker compose exec baton-server node dist/server/central/main.js create-org acme
 #
 # Only Caddy publishes ports; Postgres and baton-server stay on the internal network.
@@ -25,9 +26,11 @@ services:
     networks: [internal]
 
   baton-server:
+    # CI publishes the image to registry.caaat.pro from main (`latest`,
+    # `sha-<short>`) and version tags; `up --build` builds it from this checkout.
+    image: ${BATON_IMAGE:-registry.caaat.pro/baton:latest}
     build:
       context: ..
-    image: baton:local
     restart: unless-stopped
     depends_on:
       postgres:

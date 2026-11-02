@@ -78,8 +78,12 @@ Run the server with Docker Compose (Postgres with pgvector, `baton-server`, Cadd
 
 ```bash
 cp deploy/.env.example deploy/.env      # set POSTGRES_PASSWORD and BATON_DOMAIN
-docker compose -f deploy/compose.yaml up -d --build --wait
+docker login registry.caaat.pro
+docker compose -f deploy/compose.yaml pull
+docker compose -f deploy/compose.yaml up -d --wait
 ```
+
+CI publishes the `baton-server` image to `registry.caaat.pro/baton` from `main` and version tags. Without registry access, build it from the checkout with `up -d --build --wait`.
 
 Create an organization, a user and a token (the token is printed once):
 
