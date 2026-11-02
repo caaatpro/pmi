@@ -9,7 +9,7 @@
 | Сервис | Образ | Назначение |
 |---|---|---|
 | `postgres` | `pgvector/pgvector:pg17` | Вся общая память, сессии, снимки (метаданные и blobs < 256 KiB), git‑курсоры, аудит |
-| `baton-server` | собирается из `Dockerfile` | HTTP API `/v1`, MCP `/mcp`, `/health`, `/ready`, `/metrics`; применяет миграции при старте |
+| `baton-server` | `registry.caaat.pro/baton` (CI собирает из `Dockerfile`, см. §2.1) | HTTP API `/v1`, MCP `/mcp`, `/health`, `/ready`, `/metrics`; применяет миграции при старте |
 | `caddy` | `caddy:2.10-alpine` | TLS (Let's Encrypt для публичного домена, локальный CA для `localhost`), единственный открытый порт |
 
 Тома: `pg-data` (Postgres), `blob-data` (blobs ≥ 256 KiB, `/data/blobs`), `caddy-data`, `caddy-config`.
@@ -21,8 +21,25 @@ cp deploy/.env.example deploy/.env
 # POSTGRES_PASSWORD, BATON_DOMAIN; рекомендуется также:
 #   BATON_BLOB_KEY=$(openssl rand -base64 32)       шифрование blobs
 #   BATON_METRICS_TOKEN=$(openssl rand -hex 24)     доступ к /metrics
-docker compose -f deploy/compose.yaml up -d --build --wait
+docker login registry.caaat.pro
+docker compose -f deploy/compose.yaml pull
+docker compose -f deploy/compose.yaml up -d --wait
 ```
+
+Без доступа к registry образ можно собрать из рабочей копии: `docker compose -f deploy/compose.yaml up -d --build --wait`.
+
+### 2.1. Образ
+
+Job `publish-image` в CI собирает `Dockerfile` и публикует `registry.caaat.pro/baton` после того, как прошли все остальные проверки. Публикуются только push в `main` и теги `v*`, PR и ветки `baton/**` — никогда.
+
+| Событие | Теги |
+|---|---|
+| push в `main` | `latest`, `sha-<короткий sha>` |
+| тег `v1.2.3` | `1.2.3`, `1.2`, `sha-<короткий sha>` |
+
+По умолчанию Compose берёт `latest`. Чтобы обновления шли только по вашей команде, закрепите тег в `deploy/.env`: `BATON_IMAGE=registry.caaat.pro/baton:sha-0757b66` или `…:1.2.3`. Платформа — только `linux/amd64`.
+
+Для публикации в репозитории нужны секреты Actions `REGISTRY_USERNAME` и `REGISTRY_PASSWORD`.
 
 Первичная настройка (токен выводится один раз):
 
@@ -81,7 +98,7 @@ deploy/restore.sh /backups/baton-2026-10-31        # проверка контр
 ## 6. Обновление
 
 1. `deploy/backup.sh …`
-2. `git pull`, `docker compose -f deploy/compose.yaml up -d --build --wait`
+2. `docker compose -f deploy/compose.yaml pull`, `docker compose -f deploy/compose.yaml up -d --wait` (при закреплённом теге сначала поменяйте `BATON_IMAGE` в `deploy/.env`; при сборке из исходников — `git pull` и `up -d --build --wait`)
 3. Миграции применяются при старте `serve` под advisory lock (несколько реплик безопасно); статус — `GET /ready` (`pendingMigrations`).
 
 Миграции только добавляют; откат — восстановление из копии.
